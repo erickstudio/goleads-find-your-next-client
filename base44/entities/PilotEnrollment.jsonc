@@ -1,0 +1,141 @@
+{
+  "name": "PilotEnrollment",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string",
+      "description": "Authenticated user ID derived on the server"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Authenticated user email derived on the server"
+    },
+    "offer_code": {
+      "type": "string",
+      "description": "Identifier of the pilot offer version"
+    },
+    "payment_mode": {
+      "type": "string",
+      "enum": [
+        "test",
+        "live"
+      ],
+      "default": "test",
+      "description": "Whether this transaction occurred in Stripe test sandbox or live production mode"
+    },
+    "payment_classification": {
+      "type": "string",
+      "enum": [
+        "test_transaction",
+        "teammate_purchase",
+        "external_customer_production"
+      ],
+      "default": "test_transaction",
+      "description": "Separates test transactions, teammate purchases, and genuine external-customer production payments"
+    },
+    "payment_status": {
+      "type": "string",
+      "enum": [
+        "pending_checkout",
+        "paid_verified",
+        "canceled",
+        "failed",
+        "refunded"
+      ],
+      "default": "pending_checkout",
+      "description": "Server-verified payment status; only paid_verified grants pilot research allowance"
+    },
+    "stripe_checkout_session_id": {
+      "type": "string",
+      "description": "Stripe Checkout Session ID"
+    },
+    "stripe_payment_intent_id": {
+      "type": "string",
+      "description": "Stripe PaymentIntent ID when available"
+    },
+    "last_webhook_event_id": {
+      "type": "string",
+      "description": "Last verified Stripe webhook event ID processed for this enrollment"
+    },
+    "amount_cents": {
+      "type": "number",
+      "default": 0,
+      "description": "Amount in minor currency units"
+    },
+    "currency": {
+      "type": "string",
+      "default": "usd"
+    },
+    "granted_search_allowance": {
+      "type": "number",
+      "default": 0,
+      "description": "In-product live discovery searches granted after trusted server-side payment verification"
+    },
+    "used_pilot_searches": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of pilot-allowance searches consumed"
+    },
+    "counts_as_production_revenue": {
+      "type": "boolean",
+      "default": false,
+      "description": "True only for verified external_customer_production payments in live mode; false for all test and teammate transactions"
+    },
+    "status_note": {
+      "type": "string",
+      "description": "Plain-language explanation of current payment or verification state"
+    },
+    "created_at_iso": {
+      "type": "string"
+    },
+    "verified_at_iso": {
+      "type": "string"
+    },
+    "expires_at_iso": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_id",
+    "payment_mode",
+    "payment_classification",
+    "payment_status",
+    "granted_search_allowance"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

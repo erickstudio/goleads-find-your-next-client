@@ -21,7 +21,7 @@ const CustomServiceSchema = z
 // Per-isolate in-flight deduplication and concurrency guard keyed by userId
 const activeUserSearches = new Map();
 
-export function computeQuotaUsage(searches = [], nowMs = Date.now()) {
+export function computeQuotaUsage(searches = [], nowMs = Date.now(), pilotEnrollments = []) {
   const windowStartMs = nowMs - SEARCH_LIMITS.cacheTtlMs;
   const quotaSearches = searches.filter((s) => {
     if (s.status === "not_configured" || s.status === "failed") return false;
@@ -31,11 +31,37 @@ export function computeQuotaUsage(searches = [], nowMs = Date.now()) {
     return !Number.isNaN(ts) && ts >= windowStartMs;
   });
 
+  // Only server-verified paid_verified enrollments that have not expired grant pilot search allowance
+  const activeVerifiedEnrollments = (pilotEnrollments || []).filter((e) => {
+    if (e.payment_status !== "paid_verified") return false;
+    if (e.expires_at_iso) {
+      const expMs = new Date(e.expires_at_iso).getTime();
+      if (!Number.isNaN(expMs) && expMs <= nowMs) return false;
+    }
+    return true;
+  });
+
+  const pilotGrantedTotal = activeVerifiedEnrollments.reduce(
+    (sum, e) => sum + Math.max(0, Number(e.granted_search_allowance) || 0),
+    0
+  );
+  const pilotUsedTotal = activeVerifiedEnrollments.reduce(
+    (sum, e) => sum + Math.max(0, Number(e.used_pilot_searches) || 0),
+    0
+  );
+  const pilotRemaining = Math.max(0, pilotGrantedTotal - pilotUsedTotal);
+
   const used = quotaSearches.length;
+  const baseRemainingToday = Math.max(0, SEARCH_LIMITS.maxDailyNewSearches - used);
+
   return {
     usedToday: used,
     maxDaily: SEARCH_LIMITS.maxDailyNewSearches,
-    remainingToday: Math.max(0, SEARCH_LIMITS.maxDailyNewSearches - used),
+    baseRemainingToday,
+    pilotGrantedTotal,
+    pilotUsedTotal,
+    pilotRemaining,
+    remainingToday: baseRemainingToday + pilotRemaining,
     maxResultsPerSearch: SEARCH_LIMITS.maxResultsPerSearch,
     maxConcurrentSearches: SEARCH_LIMITS.maxConcurrentSearches,
     cacheTtlHours: SEARCH_LIMITS.cacheTtlHours,
@@ -72,7 +98,7 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
     const userId = context.user.id;
     const userEmail = context.user.email || "";
 
-    const [profilesPage, searchesPage, savedPage, feedbackPage] = await Promise.all([
+    const [profilesPage, searchesPage, savedPage, feedbackPage, enrollmentsPage] = await Promise.all([
       base44.entities.UserProfile.filter(
         { created_by_id: userId },
         { sort: "-created_date", limit: 1 }
@@ -88,6 +114,10 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
       base44.entities.OpportunityFeedback.filter(
         { created_by_id: userId },
         { sort: "-created_date", limit: 100 }
+      ),
+      base44.entities.PilotEnrollment.filter(
+        { created_by_id: userId },
+        { sort: "-created_date", limit: 20 }
       ),
     ]);
 
@@ -146,7 +176,10 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
       )
     );
 
-    const quota = computeQuotaUsage(recentSearches);
+    const ownedEnrollments = (enrollmentsPage?.items || []).filter(
+      (e) => e.created_by_id === userId && (!e.owner_id || e.owner_id === userId)
+    );
+    const quota = computeQuotaUsage(recentSearches, Date.now(), ownedEnrollments);
 
     return {
       user: {
@@ -211,8 +244,8 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       );
     }
 
-    // 2. Load user profile & recent searches for cache, concurrency, and quota checks
-    const [profilesPage, searchesPage] = await Promise.all([
+    // 2. Load user profile, recent searches, and pilot enrollments for cache, concurrency, and quota checks
+    const [profilesPage, searchesPage, enrollmentsPage] = await Promise.all([
       base44.entities.UserProfile.filter(
         { created_by_id: userId },
         { sort: "-created_date", limit: 1 }
@@ -220,6 +253,10 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       base44.entities.LeadSearch.filter(
         { created_by_id: userId },
         { sort: "-created_date", limit: 30 }
+      ),
+      base44.entities.PilotEnrollment.filter(
+        { created_by_id: userId },
+        { sort: "-created_date", limit: 20 }
       ),
     ]);
 
@@ -230,6 +267,9 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
     const serviceDescription = rawProfile?.service_description || "";
     const recentSearches = (searchesPage?.items || []).filter(
       (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
+    );
+    const ownedEnrollments = (enrollmentsPage?.items || []).filter(
+      (e) => e.created_by_id === userId && (!e.owner_id || e.owner_id === userId)
     );
 
     // Check DB-level concurrent search within last 35 seconds
@@ -262,7 +302,7 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       const cachedOpportunities = (cachedOppsPage?.items || []).filter(
         (o) => o.created_by_id === userId && (!o.owner_id || o.owner_id === userId)
       );
-      const quota = computeQuotaUsage(recentSearches, nowMs);
+      const quota = computeQuotaUsage(recentSearches, nowMs, ownedEnrollments);
 
       return {
         search: cachedSearch,
@@ -273,11 +313,15 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       };
     }
 
-    // 4. Enforce daily limit of 3 new searches per user/day
-    const quotaBefore = computeQuotaUsage(recentSearches, nowMs);
+    // 4. Enforce daily limit + verified pilot research allowance
+    const quotaBefore = computeQuotaUsage(recentSearches, nowMs, ownedEnrollments);
     if (quotaBefore.remainingToday <= 0) {
       throw new Error(
-        `Daily search limit reached (${quotaBefore.usedToday} of ${quotaBefore.maxDaily} new searches used in the last 24 hours). Identical queries run in the last 24 hours remain available from your private cache.`
+        `Search allowance reached (${quotaBefore.usedToday} of ${quotaBefore.maxDaily} daily searches used${
+          quotaBefore.pilotGrantedTotal > 0
+            ? `, and ${quotaBefore.pilotUsedTotal} of ${quotaBefore.pilotGrantedTotal} pilot searches used`
+            : ""
+        }). Identical queries run in the last 24 hours remain available from your private cache.`
       );
     }
 
@@ -397,9 +441,28 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
           completed_at: completedIso,
         });
 
+        // If base daily searches were already exhausted, deduct 1 search from the active verified pilot enrollment
+        if (quotaBefore.baseRemainingToday <= 0 && quotaBefore.pilotRemaining > 0) {
+          const activePilot = ownedEnrollments.find(
+            (e) =>
+              e.payment_status === "paid_verified" &&
+              (Number(e.granted_search_allowance) || 0) > (Number(e.used_pilot_searches) || 0)
+          );
+          if (activePilot) {
+            const updatedEnroll = await base44.asServiceRole.entities.PilotEnrollment.update(
+              activePilot.id,
+              {
+                used_pilot_searches: (Number(activePilot.used_pilot_searches) || 0) + 1,
+              }
+            );
+            activePilot.used_pilot_searches = updatedEnroll.used_pilot_searches;
+          }
+        }
+
         const updatedQuota = computeQuotaUsage(
           [updatedSearch, ...recentSearches],
-          Date.now()
+          Date.now(),
+          ownedEnrollments
         );
 
         return {

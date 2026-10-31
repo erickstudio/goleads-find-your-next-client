@@ -10,6 +10,7 @@ export default function AppShell({ children, user }) {
     { to: "/", label: "Find leads", active: pathname === "/" },
     { to: "/saved", label: "Saved leads", active: pathname.startsWith("/saved") },
     { to: "/onboarding", label: "Your services", active: pathname.startsWith("/onboarding") },
+    { to: "/pilot", label: "Pilot offer", active: pathname.startsWith("/pilot") },
   ];
 
   return (

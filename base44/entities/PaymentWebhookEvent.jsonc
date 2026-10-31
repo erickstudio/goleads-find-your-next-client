@@ -1,0 +1,63 @@
+{
+  "name": "PaymentWebhookEvent",
+  "type": "object",
+  "properties": {
+    "stripe_event_id": {
+      "type": "string",
+      "description": "Unique Stripe event ID (evt_...) used for idempotent processing"
+    },
+    "event_type": {
+      "type": "string",
+      "description": "Stripe webhook event type"
+    },
+    "stripe_session_id": {
+      "type": "string",
+      "description": "Associated Stripe Checkout Session ID"
+    },
+    "livemode": {
+      "type": "boolean",
+      "default": false
+    },
+    "processing_outcome": {
+      "type": "string",
+      "enum": [
+        "processed_paid",
+        "processed_canceled",
+        "processed_failed",
+        "ignored_duplicate",
+        "ignored_unhandled"
+      ]
+    },
+    "processed_at_iso": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "stripe_event_id",
+    "event_type",
+    "processing_outcome",
+    "processed_at_iso"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
