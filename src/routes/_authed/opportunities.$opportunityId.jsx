@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import RelevanceFeedbackPanel from "@/components/RelevanceFeedbackPanel";
+import AgentChatPanel from "@/components/AgentChatPanel";
 import {
   EXAMPLE_OPPORTUNITIES,
   normalizeServicesList,
@@ -454,6 +455,46 @@ function OpportunityDetailScreen() {
             ))}
           </div>
         </section>
+
+        {/* Evidence & Relevance Analyst Agent */}
+        <div className="pt-4 border-t border-slate-200">
+          <AgentChatPanel
+            agentName="evidence_analyst"
+            badgeLabel="Evidence Analyst Agent"
+            title="Interpret EvidenceItem data & summarize relevance"
+            subtitle="Ask the Evidence Analyst agent to evaluate the recovered source excerpts, publication vs. event dates, and why this opportunity fits your services."
+            conversationTitle={`Evidence Analysis: ${opp.business_name}`}
+            contextPreamble={`Opportunity ID: ${opp.id}. Business: ${opp.business_name} (${opp.business_category || "Uncategorized"}) in ${opp.location}. Signal: ${opp.signal_type} — ${opp.signal_summary}. Verification status: ${opp.verification_status} (${opp.verification_notes || "no notes"}). Recency basis: ${opp.recency_basis}. User services: ${
+              selectedServices.length > 0 ? selectedServices.join(", ") : "Not configured"
+            }. Evidence items: ${JSON.stringify(
+              evidenceList.map((e) => ({
+                source_title: e.source_title,
+                source_url: e.source_url,
+                supporting_excerpt: e.supporting_excerpt,
+                publication_date: e.publication_date,
+                event_date: e.event_date,
+                retrieval_date: e.retrieval_date,
+                verification_status: e.verification_status,
+                evidence_status: e.evidence_status,
+              }))
+            )}`}
+            starterPrompts={[
+              {
+                label: "Summarize why this opportunity is relevant",
+                prompt: `Interpret the EvidenceItem data for ${opp.business_name} and summarize why this opportunity is relevant to my services, separating verified facts from hypotheses.`,
+              },
+              {
+                label: "Audit source credibility & dates",
+                prompt: `Break down the publication_date, event_date, retrieval_date, and verification_status for ${opp.business_name}. What is confirmed and what still needs manual verification?`,
+              },
+              {
+                label: "Draft an evidence-based outreach angle",
+                prompt: `Based strictly on the verified EvidenceItem excerpt for ${opp.business_name}, suggest a concise, factual outreach angle tailored to my services without overclaiming.`,
+              },
+            ]}
+            placeholder={`Ask about ${opp.business_name}'s evidence, dates, or service fit…`}
+          />
+        </div>
 
         {/* Possible Service Fit (Hypothesis) */}
         <section className="space-y-2 pt-4 border-t border-slate-200">

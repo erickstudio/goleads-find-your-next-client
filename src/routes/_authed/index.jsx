@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import OpportunityCard from "@/components/OpportunityCard";
+import AgentChatPanel from "@/components/AgentChatPanel";
 import {
   EXAMPLE_OPPORTUNITIES,
   normalizeServicesList,
@@ -449,6 +450,35 @@ function DiscoverScreen() {
           </Link>
         </div>
       )}
+
+      {/* LeadSearch Parameter Strategy Agent */}
+      <AgentChatPanel
+        agentName="search_strategist"
+        badgeLabel="Search Strategist Agent"
+        title="Need help choosing high-signal search parameters?"
+        subtitle="Ask the Search Strategist agent to suggest specific business sectors, target cities, and 30/90/180-day windows tailored to your services."
+        conversationTitle="LeadSearch Strategy Advisor"
+        contextPreamble={`Current user services: ${
+          selectedServices.length > 0 ? selectedServices.join(", ") : "None configured yet"
+        }. Service description: ${serviceDescription || "Not set"}. Current form inputs: Business category="${businessCategory}", Location="${locationQuery}", Time window=${timeWindowDays} days.`}
+        starterPrompts={[
+          {
+            label: "Suggest 3 high-signal sectors for my services",
+            prompt:
+              "Based on my configured services, suggest 3 specific business categories, locations, and time windows (30, 90, or 180 days) that frequently publish opening or expansion announcements.",
+          },
+          {
+            label: `Refine "${businessCategory}" in ${locationQuery}`,
+            prompt: `How can I refine my LeadSearch parameters for "${businessCategory}" in "${locationQuery}" (${timeWindowDays} days) to uncover higher-quality opening or expansion prospects?`,
+          },
+          {
+            label: "Compare 30 vs. 90 vs. 180-day windows",
+            prompt:
+              "Which time window (30, 90, or 180 days) works best for my services and target sectors, and why?",
+          },
+        ]}
+        placeholder="Ask for category ideas, regional targeting, or time-window advice…"
+      />
 
       {/* Search Form */}
       <section aria-label="Search criteria" className="bg-white rounded-lg border border-slate-200 p-5 space-y-4">
