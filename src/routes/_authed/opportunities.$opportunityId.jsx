@@ -5,6 +5,7 @@ import {
   EXAMPLE_OPPORTUNITIES,
   normalizeServicesList,
   buildServiceFitHypothesis,
+  formatRecencyBasisLabel,
 } from "@/lib/leads-constants";
 import {
   getOpportunityDetail,
@@ -72,13 +73,18 @@ function OpportunityDetailScreen() {
             publication_date: opp.publication_date,
             event_date: opp.event_date,
             retrieval_date: opp.retrieval_date,
+            recency_basis: opp.recency_basis,
+            verification_status: opp.verification_status,
+            verification_notes: opp.verification_notes,
             evidence_status: opp.evidence_status,
           },
         ];
 
   const isSavedLive = Boolean(detailData?.savedRecord);
   const isFeedbackLive = Boolean(detailData?.feedbackRecord);
+  const isVerified = opp.verification_status === "verified";
   const dynamicFitText = buildServiceFitHypothesis(opp, selectedServices, serviceDescription);
+  const recencyLabel = formatRecencyBasisLabel(opp.recency_basis);
 
   const handleSave = async () => {
     if (isExample) {
@@ -103,6 +109,9 @@ function OpportunityDetailScreen() {
           publication_date: opp.publication_date || null,
           event_date: opp.event_date || null,
           retrieval_date: opp.retrieval_date,
+          recency_basis: opp.recency_basis || "unverified_date",
+          verification_status: opp.verification_status || "needs_review",
+          verification_notes: opp.verification_notes || "",
           evidence_status: opp.evidence_status,
           service_fit_inference: dynamicFitText,
           inferred_service_categories: selectedServices,
@@ -153,7 +162,7 @@ function OpportunityDetailScreen() {
         </Link>
         {isExample && (
           <span className="px-2.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-            Example result
+            Example result — Not live data
           </span>
         )}
       </div>
@@ -168,11 +177,20 @@ function OpportunityDetailScreen() {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-200 pb-5">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`px-2 py-0.5 rounded text-xs font-semibold border ${
+                  isVerified
+                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                    : "bg-amber-50 text-amber-900 border-amber-300"
+                }`}
+              >
+                {isVerified ? "Verified" : "Needs review"}
+              </span>
               <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200">
                 {opp.signal_type}
               </span>
-              <span className="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">
-                {opp.evidence_status}
+              <span className="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700 border border-slate-200">
+                {recencyLabel}
               </span>
             </div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
@@ -191,7 +209,7 @@ function OpportunityDetailScreen() {
                   {opp.website_url}
                 </a>
               ) : (
-                <span className="text-slate-500">Website not listed in source</span>
+                <span className="text-slate-500">Website unknown</span>
               )}
             </div>
           </div>
@@ -227,9 +245,21 @@ function OpportunityDetailScreen() {
         {/* Verified Facts & Sources */}
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-slate-900">
-            Verified opening / expansion sources ({evidenceList.length})
+            Opening / expansion evidence ({evidenceList.length})
           </h2>
           <p className="text-sm text-slate-700">{opp.signal_summary}</p>
+
+          {opp.verification_notes && (
+            <div
+              className={`p-3 rounded-md border text-xs ${
+                isVerified
+                  ? "bg-emerald-50/60 border-emerald-200 text-emerald-900"
+                  : "bg-amber-50/70 border-amber-200 text-amber-950"
+              }`}
+            >
+              <strong>Verification status:</strong> {opp.verification_notes}
+            </div>
+          )}
 
           <div className="space-y-3">
             {evidenceList.map((ev, idx) => (
@@ -254,21 +284,26 @@ function OpportunityDetailScreen() {
                 <div className="flex flex-wrap gap-4 text-[11px] text-slate-500 pt-1">
                   <span>Published: {ev.publication_date || "Not stated"}</span>
                   <span>Event/opening date: {ev.event_date || "Not stated"}</span>
-                  <span>Retrieved: {ev.retrieval_date}</span>
+                  <span>
+                    Retrieved:{" "}
+                    {ev.retrieval_date
+                      ? String(ev.retrieval_date).replace("T", " ").slice(0, 16) + " UTC"
+                      : "Not stated"}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* Possible Service Fit (Inference) */}
+        {/* Possible Service Fit (Hypothesis) */}
         <section className="space-y-2 pt-4 border-t border-slate-200">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-900">
               Possible service fit
             </h2>
-            <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-blue-50 text-blue-800 border border-blue-200">
-              Inference
+            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+              Hypothesis
             </span>
           </div>
 

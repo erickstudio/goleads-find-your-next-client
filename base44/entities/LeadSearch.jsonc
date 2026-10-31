@@ -23,11 +23,19 @@
       ],
       "default": 90
     },
+    "query_cache_key": {
+      "type": "string",
+      "description": "Normalized per-user cache key for category, location, and time window"
+    },
     "selected_services_snapshot": {
       "type": "array",
       "items": {
         "type": "string"
       }
+    },
+    "service_description_snapshot": {
+      "type": "string",
+      "description": "Snapshot of the user's optional service description when the search ran"
     },
     "status": {
       "type": "string",
@@ -44,15 +52,39 @@
     },
     "honest_status_reason": {
       "type": "string",
-      "description": "Explicit explanation of search status or why live discovery did not run"
+      "description": "Explicit explanation of search status, verification summary, or failure reason"
     },
     "results_count": {
       "type": "number",
       "default": 0
     },
+    "verified_count": {
+      "type": "number",
+      "default": 0
+    },
+    "needs_review_count": {
+      "type": "number",
+      "default": 0
+    },
+    "counts_toward_quota": {
+      "type": "boolean",
+      "default": true
+    },
+    "cached_from_search_id": {
+      "type": "string",
+      "description": "Original search ID if served from 24-hour cache"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Observed execution time in milliseconds"
+    },
     "executed_at": {
       "type": "string",
       "description": "ISO timestamp when search record was created"
+    },
+    "completed_at": {
+      "type": "string",
+      "description": "ISO timestamp when search finished"
     }
   },
   "required": [

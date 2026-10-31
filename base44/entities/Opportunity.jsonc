@@ -42,7 +42,7 @@
     },
     "publication_date": {
       "type": "string",
-      "description": "Date source was published, when available"
+      "description": "Date source was published, when available (never conflated with event or retrieval date)"
     },
     "event_date": {
       "type": "string",
@@ -50,7 +50,28 @@
     },
     "retrieval_date": {
       "type": "string",
-      "description": "Date record was retrieved/discovered"
+      "description": "ISO timestamp when record was retrieved/discovered"
+    },
+    "recency_basis": {
+      "type": "string",
+      "enum": [
+        "announcement_date",
+        "event_date",
+        "unverified_date"
+      ],
+      "description": "Whether recency within the search window is substantiated by the announcement date or the event date"
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "verified",
+        "needs_review"
+      ],
+      "description": "Verified only when recovered source content supports identity, location, event, and recency window; otherwise needs_review"
+    },
+    "verification_notes": {
+      "type": "string",
+      "description": "Plain-language explanation of what was verified from the recovered source or what remains uncertain"
     },
     "evidence_status": {
       "type": "string",

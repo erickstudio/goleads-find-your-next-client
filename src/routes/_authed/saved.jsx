@@ -85,11 +85,17 @@ function SavedOpportunitiesScreen() {
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded text-xs font-semibold border ${
+                        item.verification_status === "verified"
+                          ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                          : "bg-amber-50 text-amber-900 border-amber-300"
+                      }`}
+                    >
+                      {item.verification_status === "verified" ? "Verified" : "Needs review"}
+                    </span>
                     <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200">
                       {item.signal_type}
-                    </span>
-                    <span className="px-2 py-0.5 rounded text-xs bg-slate-100 text-slate-700">
-                      {item.evidence_status || "Verified excerpt"}
                     </span>
                   </div>
                   <h3 className="text-base font-semibold text-slate-900">
@@ -147,9 +153,19 @@ function SavedOpportunitiesScreen() {
                   <blockquote className="text-xs italic text-slate-600 border-l-2 border-slate-300 pl-2.5">
                     {item.supporting_excerpt}
                   </blockquote>
+                  <div className="flex flex-wrap gap-3 text-[11px] text-slate-500 pt-1">
+                    <span>Published: {item.publication_date || "Not stated"}</span>
+                    <span>Event date: {item.event_date || "Not stated"}</span>
+                    <span>
+                      Retrieved:{" "}
+                      {item.retrieval_date
+                        ? String(item.retrieval_date).replace("T", " ").slice(0, 16)
+                        : "Not stated"}
+                    </span>
+                  </div>
                 </div>
                 <div className="bg-blue-50/40 rounded-md p-3 border border-blue-200/70 space-y-1">
-                  <div className="text-xs font-medium text-blue-950">Possible service fit (Inference)</div>
+                  <div className="text-xs font-medium text-blue-950">Possible service fit (Hypothesis)</div>
                   <p className="text-xs text-slate-700">{item.service_fit_inference}</p>
                 </div>
               </div>

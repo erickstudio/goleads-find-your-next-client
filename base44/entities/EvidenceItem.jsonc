@@ -28,6 +28,27 @@
     "retrieval_date": {
       "type": "string"
     },
+    "recency_basis": {
+      "type": "string",
+      "enum": [
+        "announcement_date",
+        "event_date",
+        "unverified_date"
+      ]
+    },
+    "verification_status": {
+      "type": "string",
+      "enum": [
+        "verified",
+        "needs_review"
+      ]
+    },
+    "verification_notes": {
+      "type": "string"
+    },
+    "http_status": {
+      "type": "number"
+    },
     "evidence_status": {
       "type": "string",
       "enum": [

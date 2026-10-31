@@ -46,6 +46,15 @@
     "retrieval_date": {
       "type": "string"
     },
+    "recency_basis": {
+      "type": "string"
+    },
+    "verification_status": {
+      "type": "string"
+    },
+    "verification_notes": {
+      "type": "string"
+    },
     "evidence_status": {
       "type": "string"
     },

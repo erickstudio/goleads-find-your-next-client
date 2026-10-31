@@ -1,13 +1,45 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth-middleware";
-import { normalizeServicesList } from "@/lib/leads-constants";
+import {
+  SEARCH_LIMITS,
+  buildQueryCacheKey,
+  normalizeServicesList,
+} from "@/lib/leads-constants";
+import {
+  queryBuiltInWebSearchWithRetry,
+  verifyAndStructureCandidates,
+} from "@/lib/discovery.server";
 
 const CustomServiceSchema = z
   .string()
   .trim()
   .min(1, "Service name cannot be empty")
   .max(80, "Keep service names under 80 characters");
+
+// Per-isolate in-flight deduplication and concurrency guard keyed by userId
+const activeUserSearches = new Map();
+
+function computeQuotaUsage(searches = [], nowMs = Date.now()) {
+  const windowStartMs = nowMs - SEARCH_LIMITS.cacheTtlMs;
+  const quotaSearches = searches.filter((s) => {
+    if (s.status === "not_configured" || s.status === "failed") return false;
+    if (s.counts_toward_quota === false) return false;
+    if (s.cached_from_search_id) return false;
+    const ts = new Date(s.executed_at || s.created_date || 0).getTime();
+    return !Number.isNaN(ts) && ts >= windowStartMs;
+  });
+
+  const used = quotaSearches.length;
+  return {
+    usedToday: used,
+    maxDaily: SEARCH_LIMITS.maxDailyNewSearches,
+    remainingToday: Math.max(0, SEARCH_LIMITS.maxDailyNewSearches - used),
+    maxResultsPerSearch: SEARCH_LIMITS.maxResultsPerSearch,
+    maxConcurrentSearches: SEARCH_LIMITS.maxConcurrentSearches,
+    cacheTtlHours: SEARCH_LIMITS.cacheTtlHours,
+  };
+}
 
 export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
   .middleware([requireUser])
@@ -23,7 +55,7 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
       ),
       base44.entities.LeadSearch.filter(
         { created_by_id: userId },
-        { sort: "-created_date", limit: 10 }
+        { sort: "-created_date", limit: 25 }
       ),
       base44.entities.SavedOpportunity.filter(
         { created_by_id: userId },
@@ -40,7 +72,6 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
 
     if (rawProfile) {
       const migratedServices = normalizeServicesList(rawProfile.selected_services || []);
-      // Automatically persist migration if legacy IDs were stored
       const needsMigration =
         JSON.stringify(migratedServices) !== JSON.stringify(rawProfile.selected_services || []);
       if (needsMigration && migratedServices.length > 0) {
@@ -55,6 +86,23 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
       }
     }
 
+    const recentSearches = searchesPage?.items || [];
+    // Find most recent real search (excluding legacy not_configured placeholders)
+    const latestLiveSearch =
+      recentSearches.find((s) => s.status !== "not_configured") || null;
+
+    let latestOpportunities = [];
+    if (latestLiveSearch) {
+      const targetSearchId = latestLiveSearch.cached_from_search_id || latestLiveSearch.id;
+      const oppPage = await base44.entities.Opportunity.filter(
+        { created_by_id: userId, search_id: targetSearchId },
+        { sort: "-created_date", limit: SEARCH_LIMITS.maxResultsPerSearch }
+      );
+      latestOpportunities = oppPage?.items || [];
+    }
+
+    const quota = computeQuotaUsage(recentSearches);
+
     return {
       user: {
         id: userId,
@@ -62,11 +110,295 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
         full_name: context.user.full_name || "",
       },
       profile,
-      recentSearches: searchesPage?.items || [],
+      recentSearches,
+      latestLiveSearch,
+      latestOpportunities,
       savedOpportunities: savedPage?.items || [],
       feedbackRecords: feedbackPage?.items || [],
-      liveSearchConnected: false,
+      quota,
+      liveSearchConnected: true,
     };
+  });
+
+export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .validator(
+    z.object({
+      business_category: z
+        .string()
+        .trim()
+        .min(2, "Enter a business category or sector")
+        .max(120, "Keep business category under 120 characters"),
+      location_query: z
+        .string()
+        .trim()
+        .min(2, "Enter a city or country")
+        .max(120, "Keep location under 120 characters"),
+      time_window_days: z.union([z.literal(30), z.literal(90), z.literal(180)]),
+      force_retry: z.boolean().optional(),
+    })
+  )
+  .handler(async ({ data, context }) => {
+    const base44 = context.getBase44();
+    const userId = context.user.id;
+    const now = new Date();
+    const nowMs = now.getTime();
+    const nowIso = now.toISOString();
+
+    const businessCategory = data.business_category.trim();
+    const locationQuery = data.location_query.trim();
+    const timeWindowDays = data.time_window_days;
+    const queryCacheKey = buildQueryCacheKey(
+      businessCategory,
+      locationQuery,
+      timeWindowDays
+    );
+
+    // 1. Check in-memory active search lock for this user
+    const inFlight = activeUserSearches.get(userId);
+    if (inFlight) {
+      if (inFlight.queryCacheKey === queryCacheKey) {
+        // Duplicate submission of the exact same in-flight query: await existing run
+        return await inFlight.promise;
+      }
+      throw new Error(
+        "You already have a search in progress (limit: 1 concurrent search). Please wait for it to finish."
+      );
+    }
+
+    // 2. Load user profile & recent searches for cache, concurrency, and quota checks
+    const [profilesPage, searchesPage] = await Promise.all([
+      base44.entities.UserProfile.filter(
+        { created_by_id: userId },
+        { sort: "-created_date", limit: 1 }
+      ),
+      base44.entities.LeadSearch.filter(
+        { created_by_id: userId },
+        { sort: "-created_date", limit: 30 }
+      ),
+    ]);
+
+    const rawProfile = profilesPage?.items?.[0] || null;
+    const selectedServices = normalizeServicesList(rawProfile?.selected_services || []);
+    const serviceDescription = rawProfile?.service_description || "";
+    const recentSearches = searchesPage?.items || [];
+
+    // Check DB-level concurrent search within last 35 seconds
+    const activeDbSearch = recentSearches.find((s) => {
+      if (s.status !== "searching") return false;
+      const age = nowMs - new Date(s.executed_at || s.created_date || 0).getTime();
+      return age >= 0 && age < 35000;
+    });
+    if (activeDbSearch && activeDbSearch.query_cache_key !== queryCacheKey) {
+      throw new Error(
+        "You already have a search in progress (limit: 1 concurrent search). Please wait for it to finish."
+      );
+    }
+
+    // 3. Check 24-hour private per-user query cache (unless force_retry on a failed search)
+    const cacheCutoffMs = nowMs - SEARCH_LIMITS.cacheTtlMs;
+    const cachedSearch = recentSearches.find((s) => {
+      if (s.query_cache_key !== queryCacheKey) return false;
+      if (!["completed", "partial", "empty"].includes(s.status)) return false;
+      if (s.cached_from_search_id) return false;
+      const ts = new Date(s.completed_at || s.executed_at || s.created_date || 0).getTime();
+      return !Number.isNaN(ts) && ts >= cacheCutoffMs;
+    });
+
+    if (cachedSearch) {
+      const cachedOppsPage = await base44.entities.Opportunity.filter(
+        { created_by_id: userId, search_id: cachedSearch.id },
+        { sort: "-created_date", limit: SEARCH_LIMITS.maxResultsPerSearch }
+      );
+      const cachedOpportunities = cachedOppsPage?.items || [];
+      const quota = computeQuotaUsage(recentSearches, nowMs);
+
+      return {
+        search: cachedSearch,
+        opportunities: cachedOpportunities,
+        fromCache: true,
+        cachedAt: cachedSearch.completed_at || cachedSearch.executed_at,
+        quota,
+      };
+    }
+
+    // 4. Enforce daily limit of 3 new searches per user/day
+    const quotaBefore = computeQuotaUsage(recentSearches, nowMs);
+    if (quotaBefore.remainingToday <= 0) {
+      throw new Error(
+        `Daily search limit reached (${quotaBefore.usedToday} of ${quotaBefore.maxDaily} new searches used in the last 24 hours). Identical queries run in the last 24 hours remain available from your private cache.`
+      );
+    }
+
+    // 5. Execute live search under per-user concurrency lock
+    const runPromise = (async () => {
+      const startTime = Date.now();
+      const searchRecord = await base44.entities.LeadSearch.create({
+        owner_id: userId,
+        business_category: businessCategory,
+        location_query: locationQuery,
+        time_window_days: timeWindowDays,
+        query_cache_key: queryCacheKey,
+        selected_services_snapshot: selectedServices,
+        service_description_snapshot: serviceDescription,
+        status: "searching",
+        honest_status_reason:
+          "Searching public web announcements and verifying source content...",
+        results_count: 0,
+        verified_count: 0,
+        needs_review_count: 0,
+        counts_toward_quota: true,
+        executed_at: nowIso,
+      });
+
+      try {
+        const { candidates, attemptsUsed } = await queryBuiltInWebSearchWithRetry(base44, {
+          businessCategory,
+          locationQuery,
+          timeWindowDays,
+          nowIso,
+        });
+
+        const { allOpportunities, verifiedCount, needsReviewCount } =
+          await verifyAndStructureCandidates({
+            rawCandidates: candidates,
+            businessCategory,
+            locationQuery,
+            timeWindowDays,
+            selectedServices,
+            serviceDescription,
+            nowDate: now,
+          });
+
+        // Persist Opportunities and EvidenceItems scoped to authenticated owner
+        const savedOpportunityRecords = [];
+        for (const oppDraft of allOpportunities) {
+          const createdOpp = await base44.entities.Opportunity.create({
+            owner_id: userId,
+            search_id: searchRecord.id,
+            business_name: oppDraft.business_name,
+            business_category: oppDraft.business_category,
+            location: oppDraft.location,
+            website_url: oppDraft.website_url,
+            signal_type: oppDraft.signal_type,
+            signal_summary: oppDraft.signal_summary,
+            source_title: oppDraft.source_title,
+            source_url: oppDraft.source_url,
+            supporting_excerpt: oppDraft.supporting_excerpt,
+            publication_date: oppDraft.publication_date,
+            event_date: oppDraft.event_date,
+            retrieval_date: oppDraft.retrieval_date,
+            recency_basis: oppDraft.recency_basis,
+            verification_status: oppDraft.verification_status,
+            verification_notes: oppDraft.verification_notes,
+            evidence_status: oppDraft.evidence_status,
+            inferred_service_categories: oppDraft.inferred_service_categories,
+            service_fit_inference: oppDraft.service_fit_inference,
+          });
+
+          await base44.entities.EvidenceItem.create({
+            owner_id: userId,
+            opportunity_id: createdOpp.id,
+            source_title: oppDraft.source_title,
+            source_url: oppDraft.source_url,
+            supporting_excerpt: oppDraft.supporting_excerpt,
+            publication_date: oppDraft.publication_date,
+            event_date: oppDraft.event_date,
+            retrieval_date: oppDraft.retrieval_date,
+            recency_basis: oppDraft.recency_basis,
+            verification_status: oppDraft.verification_status,
+            verification_notes: oppDraft.verification_notes,
+            http_status: oppDraft.http_status || 0,
+            evidence_status: oppDraft.evidence_status,
+          });
+
+          savedOpportunityRecords.push(createdOpp);
+        }
+
+        const durationMs = Date.now() - startTime;
+        const completedIso = new Date().toISOString();
+
+        let finalStatus = "completed";
+        let statusReason = "";
+
+        if (savedOpportunityRecords.length === 0) {
+          finalStatus = "empty";
+          statusReason = `No public opening or expansion announcements could be substantiated for "${businessCategory}" in "${locationQuery}" within the last ${timeWindowDays} days.`;
+        } else if (needsReviewCount > 0) {
+          finalStatus = "partial";
+          statusReason = `Found ${savedOpportunityRecords.length} candidate${
+            savedOpportunityRecords.length === 1 ? "" : "s"
+          }: ${verifiedCount} verified directly against recovered source content, and ${needsReviewCount} marked "Needs review" where the publisher blocked automated page recovery or a date/detail required manual check.`;
+        } else {
+          finalStatus = "completed";
+          statusReason = `Found ${verifiedCount} verified business${
+            verifiedCount === 1 ? "" : "es"
+          } with opening or expansion evidence confirmed from recovered source pages.`;
+        }
+
+        const updatedSearch = await base44.entities.LeadSearch.update(searchRecord.id, {
+          status: finalStatus,
+          honest_status_reason: statusReason,
+          results_count: savedOpportunityRecords.length,
+          verified_count: verifiedCount,
+          needs_review_count: needsReviewCount,
+          counts_toward_quota: true,
+          duration_ms: durationMs,
+          completed_at: completedIso,
+        });
+
+        const updatedQuota = computeQuotaUsage(
+          [updatedSearch, ...recentSearches],
+          Date.now()
+        );
+
+        return {
+          search: updatedSearch,
+          opportunities: savedOpportunityRecords,
+          fromCache: false,
+          cachedAt: null,
+          attemptsUsed,
+          durationMs,
+          quota: updatedQuota,
+        };
+      } catch (err) {
+        const durationMs = Date.now() - startTime;
+        const failReason =
+          err?.message ||
+          "Live web search provider failed after automatic retry. No results were fabricated.";
+
+        const failedSearch = await base44.entities.LeadSearch.update(searchRecord.id, {
+          status: "failed",
+          honest_status_reason: failReason,
+          results_count: 0,
+          verified_count: 0,
+          needs_review_count: 0,
+          counts_toward_quota: false,
+          duration_ms: durationMs,
+          completed_at: new Date().toISOString(),
+        });
+
+        return {
+          search: failedSearch,
+          opportunities: [],
+          fromCache: false,
+          cachedAt: null,
+          durationMs,
+          quota: quotaBefore,
+        };
+      }
+    })();
+
+    activeUserSearches.set(userId, {
+      queryCacheKey,
+      promise: runPromise,
+    });
+
+    try {
+      return await runPromise;
+    } finally {
+      activeUserSearches.delete(userId);
+    }
   });
 
 export const saveUserProfile = createServerFn({ method: "POST" })
@@ -106,7 +438,6 @@ export const saveUserProfile = createServerFn({ method: "POST" })
     };
 
     if (existing) {
-      // Strictly verify ownership before updating
       if (existing.created_by_id !== userId && existing.owner_id !== userId) {
         throw new Error("Forbidden: You do not own this profile record.");
       }
@@ -207,6 +538,9 @@ export const saveOpportunityForUser = createServerFn({ method: "POST" })
       publication_date: z.string().max(80).nullable().optional(),
       event_date: z.string().max(120).nullable().optional(),
       retrieval_date: z.string().max(80),
+      recency_basis: z.string().max(80).optional(),
+      verification_status: z.string().max(80).optional(),
+      verification_notes: z.string().max(600).optional(),
       evidence_status: z.string().max(80),
       service_fit_inference: z.string().max(1500),
       inferred_service_categories: z.array(z.string()).max(20).optional(),
@@ -250,6 +584,9 @@ export const saveOpportunityForUser = createServerFn({ method: "POST" })
       publication_date: data.publication_date || "",
       event_date: data.event_date || "",
       retrieval_date: data.retrieval_date,
+      recency_basis: data.recency_basis || "unverified_date",
+      verification_status: data.verification_status || "needs_review",
+      verification_notes: data.verification_notes || "",
       evidence_status: data.evidence_status,
       service_fit_inference: data.service_fit_inference,
       inferred_service_categories: normalizeServicesList(data.inferred_service_categories || []),

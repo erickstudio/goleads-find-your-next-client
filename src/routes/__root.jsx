@@ -29,7 +29,9 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <AuthProvider>
-      <Outlet />
+      <div className="min-h-screen bg-background text-foreground">
+        <Outlet />
+      </div>
       <Toaster />
     </AuthProvider>
   );

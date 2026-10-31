@@ -15,6 +15,34 @@ export const SERVICE_EXAMPLES = [
   "Automation",
 ];
 
+// Initial configurable usage and execution limits enforced on the server
+export const SEARCH_LIMITS = {
+  maxDailyNewSearches: 3,
+  maxResultsPerSearch: 5,
+  maxConcurrentSearches: 1,
+  cacheTtlHours: 24,
+  cacheTtlMs: 24 * 60 * 60 * 1000,
+  providerTimeoutMs: 25000,
+  sourceFetchTimeoutMs: 6500,
+  maxTransientRetries: 1,
+};
+
+/**
+ * Normalizes a search query into a deterministic per-user cache key.
+ */
+export function buildQueryCacheKey(businessCategory, locationQuery, timeWindowDays) {
+  const cat = String(businessCategory || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  const loc = String(locationQuery || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+  const days = Number(timeWindowDays) || 90;
+  return `${cat}::${loc}::${days}`;
+}
+
 /**
  * Normalizes, migrates legacy IDs, trims whitespace, and deduplicates service names
  * case-insensitively while preserving the user's preferred casing.
@@ -39,8 +67,22 @@ export function normalizeServicesList(rawList) {
 }
 
 /**
+ * Human-readable label for recency basis.
+ */
+export function formatRecencyBasisLabel(recencyBasis) {
+  if (recencyBasis === "announcement_date") {
+    return "Recency based on announcement date";
+  }
+  if (recencyBasis === "event_date") {
+    return "Recency based on event date";
+  }
+  return "Recency date unverified";
+}
+
+/**
  * Builds a plain-language, clearly labeled service-fit inference based on the user's
- * actual custom services and optional description, without overclaiming verified need.
+ * actual custom services and optional description, without overclaiming verified need,
+ * contacts, technical defects, budgets, or buying intent.
  */
 export function buildServiceFitHypothesis(opportunity, selectedServices = [], serviceDescription = "") {
   const cleanServices = normalizeServicesList(selectedServices);
@@ -53,17 +95,20 @@ export function buildServiceFitHypothesis(opportunity, selectedServices = [], se
       : "when opening or expanding";
 
     const descClause = desc
-      ? ` Based on what you offer (${desc}), this timing may be worth reviewing.`
+      ? ` Based on your offer description (${desc}), this timing may be relevant to review.`
       : "";
 
-    return `Possible fit for ${servicesText}: Businesses ${signalContext} often review outside vendors and operational support as they set up a new site or expand capacity.${descClause} Opening or expansion does not confirm budget or an active need.`;
+    return `Hypothesis for ${servicesText}: Businesses ${signalContext} often evaluate external providers and operational support while setting up a new site or expanding capacity.${descClause} Public opening or expansion evidence does not confirm budget, technical defects, or active buying intent.`;
   }
 
   if (opportunity?.service_fit_inference) {
-    return opportunity.service_fit_inference.replace(/^INFERENCE \(Not a verified fact\):\s*/i, "Possible fit: ");
+    return opportunity.service_fit_inference.replace(
+      /^INFERENCE \(Not a verified fact\):\s*/i,
+      "Hypothesis: "
+    );
   }
 
-  return "Possible fit: Opening or expanding locations can create demand for external business services, though expansion alone does not confirm budget or active buying intent.";
+  return "Hypothesis: Opening or expanding locations may evaluate external business services during launch or growth, though public announcements do not confirm budget or active buying intent.";
 }
 
 // Sample opportunities kept strictly for the optional "Example results" view (excluded from live metrics)
@@ -85,9 +130,12 @@ export const EXAMPLE_OPPORTUNITIES = [
     publication_date: "2026-09-18",
     event_date: "2026-11-15 (Planned opening)",
     retrieval_date: "2026-10-31",
-    evidence_status: "Verified excerpt",
+    recency_basis: "announcement_date",
+    verification_status: "verified",
+    verification_notes: "Sample demonstration record.",
+    evidence_status: "verified_excerpt",
     service_fit_inference:
-      "Possible fit: Expanding from one clinic to a second physical location often involves new vendor onboarding, staffing, local marketing, and operational setup.",
+      "Hypothesis: Expanding from one clinic to a second physical location often involves new vendor onboarding, staffing, local marketing, and operational setup.",
     evidence_items: [
       {
         id: "demo-ev-1a",
@@ -98,18 +146,9 @@ export const EXAMPLE_OPPORTUNITIES = [
         publication_date: "2026-09-18",
         event_date: "2026-11-15",
         retrieval_date: "2026-10-31",
-        evidence_status: "Verified excerpt",
-      },
-      {
-        id: "demo-ev-1b",
-        source_title: "City of Austin Commercial Remodel Permit #2026-098412",
-        source_url: "https://example.com/permits/2026-098412",
-        supporting_excerpt:
-          "\"Tenant finish-out for outpatient medical office at 7800 Burnet Rd Ste 120. Applicant: Harborview Physical Therapy LLC.\"",
-        publication_date: "2026-09-24",
-        event_date: null,
-        retrieval_date: "2026-10-31",
-        evidence_status: "Corroborated permit",
+        recency_basis: "announcement_date",
+        verification_status: "verified",
+        evidence_status: "verified_excerpt",
       },
     ],
   },
@@ -130,9 +169,12 @@ export const EXAMPLE_OPPORTUNITIES = [
     publication_date: "2026-10-04",
     event_date: "2026-11-20 (Target launch)",
     retrieval_date: "2026-10-31",
-    evidence_status: "Verified excerpt",
+    recency_basis: "announcement_date",
+    verification_status: "verified",
+    verification_notes: "Sample demonstration record.",
+    evidence_status: "verified_excerpt",
     service_fit_inference:
-      "Possible fit: Moving from wholesale into retail and packaged goods commonly requires product photography, retail bookkeeping, storefront upkeep, and online ordering setup.",
+      "Hypothesis: Moving from wholesale into retail and packaged goods commonly requires product photography, retail bookkeeping, storefront upkeep, and online ordering setup.",
     evidence_items: [
       {
         id: "demo-ev-2a",
@@ -143,41 +185,9 @@ export const EXAMPLE_OPPORTUNITIES = [
         publication_date: "2026-10-04",
         event_date: "2026-11-20",
         retrieval_date: "2026-10-31",
-        evidence_status: "Verified excerpt",
-      },
-    ],
-  },
-  {
-    id: "demo-opp-3",
-    is_example: true,
-    business_name: "Bluebonnet Veterinary Urgent Care",
-    business_category: "Veterinary & Pet Care",
-    location: "Round Rock / Austin Metro, TX, USA",
-    website_url: null,
-    signal_type: "New clinic opening",
-    signal_summary:
-      "Newly formed veterinary urgent care clinic preparing to open evening and weekend walk-in services in Round Rock.",
-    source_title: "Community Impact — Round Rock / Pflugerville Edition",
-    source_url: "https://example.com/community-impact/bluebonnet-vet-opening",
-    supporting_excerpt:
-      "\"Dr. Elena Vance announced that Bluebonnet Veterinary Urgent Care will begin serving patients at 1401 E. Palm Valley Blvd in early December. A clinic website has not yet been published.\"",
-    publication_date: "2026-10-12",
-    event_date: "2026-12-05 (Planned opening)",
-    retrieval_date: "2026-10-31",
-    evidence_status: "Verified excerpt",
-    service_fit_inference:
-      "Possible fit: A newly launching clinic with no published website yet may evaluate web design, staff recruiting, medical facility cleaning, and local launch support.",
-    evidence_items: [
-      {
-        id: "demo-ev-3a",
-        source_title: "Community Impact — Round Rock / Pflugerville Edition",
-        source_url: "https://example.com/community-impact/bluebonnet-vet-opening",
-        supporting_excerpt:
-          "\"Dr. Elena Vance announced that Bluebonnet Veterinary Urgent Care will begin serving patients at 1401 E. Palm Valley Blvd in early December. A clinic website has not yet been published.\"",
-        publication_date: "2026-10-12",
-        event_date: "2026-12-05",
-        retrieval_date: "2026-10-31",
-        evidence_status: "Verified excerpt",
+        recency_basis: "announcement_date",
+        verification_status: "verified",
+        evidence_status: "verified_excerpt",
       },
     ],
   },
