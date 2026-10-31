@@ -104,7 +104,7 @@ function SearchHistoryPage() {
             })}
           </span>
           <Link
-            to="/"
+            to="/app"
             className="px-3.5 py-2 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {isEs ? "Nueva búsqueda" : "New search"}
@@ -216,7 +216,7 @@ function SearchHistoryPage() {
 
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
                   <Link
-                    to="/"
+                    to="/app"
                     search={{
                       category: s.business_category,
                       location: s.location_query,

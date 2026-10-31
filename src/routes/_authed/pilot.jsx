@@ -141,7 +141,7 @@ function PilotOfferScreen() {
         </div>
 
         <Link
-          to="/"
+          to="/app"
           className="px-3.5 py-2 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 text-center focus:outline-none focus:ring-2 focus:ring-ring"
         >
           {t("pilot.backToDiscover")}

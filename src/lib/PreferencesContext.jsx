@@ -8,6 +8,8 @@ import {
 } from "@/lib/i18n";
 import { updateUserPreferences } from "@/lib/server-fns";
 import { useAuth } from "@/lib/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import { getUserAppearancePreferences } from "@/lib/preference-server-fns";
 
 const UI_LANG_STORAGE_KEY = "goleads_ui_language";
 const OUTREACH_LANG_STORAGE_KEY = "goleads_outreach_language";
@@ -40,8 +42,15 @@ export function PreferencesProvider({ children }) {
   const [outreachLang, setOutreachLangState] = useState("en");
   const [theme, setThemeState] = useState("dark");
   const [resolvedTheme, setResolvedTheme] = useState("dark");
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [hydrated, setHydrated] = useState(false);
+  const { data: savedAppearance } = useQuery({
+    queryKey: ["appearance", user?.id],
+    queryFn: () => getUserAppearancePreferences(),
+    enabled: isAuthenticated && hydrated,
+    staleTime: Infinity,
+    retry: false,
+  });
 
   // Hydrate visitor/saved preferences from localStorage or browser language on mount
   useEffect(() => {
@@ -196,6 +205,10 @@ export function PreferencesProvider({ children }) {
       // ignore storage errors
     }
   }, []);
+
+  useEffect(() => {
+    if (savedAppearance) syncFromProfile(savedAppearance);
+  }, [savedAppearance, syncFromProfile]);
 
   const t = useCallback(
     (keyPath, vars) => translate(lang, keyPath, vars),

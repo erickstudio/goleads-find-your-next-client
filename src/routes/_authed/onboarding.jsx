@@ -159,7 +159,7 @@ function ServicesScreen() {
           </p>
         </div>
         <Link
-          to="/"
+          to="/app"
           className="text-xs font-medium text-primary hover:underline shrink-0"
         >
           {t("onboarding.backToDiscover")}
@@ -474,7 +474,7 @@ function ServicesScreen() {
 
           <button
             type="button"
-            onClick={() => navigate({ to: "/" })}
+            onClick={() => navigate({ to: "/app" })}
             className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {t("onboarding.goToFindLeadsBtn")}

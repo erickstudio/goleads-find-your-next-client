@@ -1,0 +1,10 @@
+import DiscoverOpportunityGroup from "@/components/discovery/DiscoverOpportunityGroup";
+
+export default function DiscoverResults({ d }) {
+  const { t, activeSearch, currentSearchStatus: status } = d;
+  if (d.showExamples || !activeSearch || !["completed", "partial"].includes(status)) return null;
+  const timestamp = String(d.fromCacheInfo || activeSearch.completed_at || activeSearch.executed_at || "").replace("T", " ").slice(0, 16);
+  return (
+    <div className="space-y-7"><div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4"><div className="space-y-2"><p className="text-xs font-semibold text-primary">{status === "completed" ? t("discover.completeBadge") : t("discover.partialBadge")}</p><p className="text-sm font-medium">{activeSearch.business_category} · {activeSearch.location_query} · {t("discover.lastDaysLabel", { days: activeSearch.time_window_days })}</p><p className="text-xs text-muted-foreground">{activeSearch.honest_status_reason}</p></div><div className="space-y-2 text-[11px] text-muted-foreground"><p>{t(d.fromCacheInfo ? "discover.cacheBadge" : "discover.retrievedAtLabel", { time: timestamp })}{activeSearch.duration_ms ? ` · ${(activeSearch.duration_ms / 1000).toFixed(1)}s` : ""}</p>{d.dismissedLiveOpps.length > 0 && <button type="button" onClick={d.toggleDismissed} className="min-h-9 text-primary hover:underline">{t(d.showDismissed ? "discover.hideDismissedBtn" : "discover.showDismissedBtn", { count: d.dismissedLiveOpps.length })}</button>}</div></div><DiscoverOpportunityGroup d={d} type="verified" items={d.verifiedOpps} /><DiscoverOpportunityGroup d={d} type="review" items={d.needsReviewOpps} />{d.showDismissed && <DiscoverOpportunityGroup d={d} type="dismissed" items={d.dismissedLiveOpps} />}</div>
+  );
+}

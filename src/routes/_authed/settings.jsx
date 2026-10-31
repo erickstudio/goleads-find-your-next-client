@@ -146,7 +146,7 @@ function AccountSettingsPage() {
             {isEs ? "Ajustes de agentes IA" : "Agent Settings"}
           </Link>
           <Link
-            to="/"
+            to="/app"
             className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {t("nav.findLeads")}

@@ -2,12 +2,12 @@ import { Search, MapPin, Clock3, FileText, Bookmark } from "lucide-react";
 import { usePublicLocale } from "@/lib/PublicLocaleContext";
 
 export default function ProductPreview() {
-  const { copy } = usePublicLocale();
+  const { copy, lang } = usePublicLocale();
   const p = copy.preview;
   return (
     <section id="product-preview" className="mx-auto max-w-6xl scroll-mt-8 px-5 pb-20 sm:px-8">
       <figure className="overflow-hidden rounded-2xl border border-primary/25 bg-card shadow-2xl shadow-brand/10">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-secondary/50 px-5 py-4"><span className="text-[10px] font-semibold tracking-widest text-primary sm:text-xs">{p.label}</span><span className="font-mono text-xs text-muted-foreground">GoLeads / Discover</span></div>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-secondary/50 px-5 py-4"><span className="text-[10px] font-semibold tracking-widest text-primary sm:text-xs">{p.label}</span><span className="font-mono text-xs text-muted-foreground">GoLeads / {lang === "es" ? "Descubrir" : "Discover"}</span></div>
         <div className="p-5 sm:p-9"><h2 className="text-xl font-semibold tracking-tight sm:text-2xl">{p.title}</h2><p className="mt-2 text-sm text-muted-foreground">{p.subtitle}</p>
           <div className="my-7 grid gap-3 rounded-xl border border-border p-4 sm:grid-cols-3">{[[Search, p.category, p.categoryValue], [MapPin, p.location, p.locationValue], [Clock3, p.window, p.windowValue]].map(([Icon, label, value]) => <div key={label} className="rounded-lg bg-background/60 p-3"><div className="mb-2 text-xs text-muted-foreground">{label}</div><div className="flex items-center gap-2 text-sm"><Icon className="h-4 w-4 text-primary" aria-hidden="true" />{value}</div></div>)}</div>
           <div className="mb-3 text-xs font-medium text-muted-foreground">{p.results}</div>

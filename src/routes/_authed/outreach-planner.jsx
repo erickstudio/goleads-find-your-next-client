@@ -150,7 +150,7 @@ function OutreachPlannerPage() {
             {t("nav.savedLeads")} ({savedLeads.length})
           </Link>
           <Link
-            to="/"
+            to="/app"
             className="px-3.5 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {t("nav.findLeads")}
@@ -187,7 +187,7 @@ function OutreachPlannerPage() {
               : "Save at least one prospect from Find leads to draft and store personalized outreach templates here."}
           </p>
           <Link
-            to="/"
+            to="/app"
             className="inline-block px-4 py-2 rounded-md text-xs font-medium bg-primary text-primary-foreground"
           >
             {t("nav.findLeads")}

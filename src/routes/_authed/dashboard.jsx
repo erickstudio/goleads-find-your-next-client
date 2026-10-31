@@ -72,7 +72,7 @@ function UsageDashboardPage() {
             {t("nav.pilotOffer")}
           </Link>
           <Link
-            to="/"
+            to="/app"
             className="px-3.5 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
           >
             {t("nav.findLeads")}
@@ -223,7 +223,7 @@ function UsageDashboardPage() {
                     </div>
                   </div>
                   <Link
-                    to="/"
+                    to="/app"
                     search={{
                       category: s.business_category,
                       location: s.location_query,
