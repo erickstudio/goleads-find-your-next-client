@@ -1,8 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth-middleware";
+import { normalizeServicesList } from "@/lib/leads-constants";
 
-const ServiceCategoryEnum = z.enum(["web_design_seo", "ecommerce", "automation_crm"]);
+const CustomServiceSchema = z
+  .string()
+  .trim()
+  .min(1, "Service name cannot be empty")
+  .max(80, "Keep service names under 80 characters");
 
 export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
   .middleware([requireUser])
@@ -30,10 +35,25 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
       ),
     ]);
 
-    const profile = profilesPage?.items?.[0] || null;
-    const recentSearches = searchesPage?.items || [];
-    const savedOpportunities = savedPage?.items || [];
-    const feedbackRecords = feedbackPage?.items || [];
+    const rawProfile = profilesPage?.items?.[0] || null;
+    let profile = null;
+
+    if (rawProfile) {
+      const migratedServices = normalizeServicesList(rawProfile.selected_services || []);
+      // Automatically persist migration if legacy IDs were stored
+      const needsMigration =
+        JSON.stringify(migratedServices) !== JSON.stringify(rawProfile.selected_services || []);
+      if (needsMigration && migratedServices.length > 0) {
+        profile = await base44.entities.UserProfile.update(rawProfile.id, {
+          selected_services: migratedServices,
+        });
+      } else {
+        profile = {
+          ...rawProfile,
+          selected_services: migratedServices,
+        };
+      }
+    }
 
     return {
       user: {
@@ -42,16 +62,10 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
         full_name: context.user.full_name || "",
       },
       profile,
-      recentSearches,
-      savedOpportunities,
-      feedbackRecords,
-      integrationStatus: {
-        liveSearchConfigured: false,
-        state: "not_configured",
-        checkedProvider: "Base44 Core.InvokeLLM (add_context_from_internet=true, model='gemini_3_flash')",
-        summary:
-          "Built-in InvokeLLM web search is available and verified capable of returning real business expansion articles with HTTP 200 URLs and publication dates, but live search execution is held in 'not_configured' state until post-retrieval URL/excerpt verification is explicitly enabled for a live test search.",
-      },
+      recentSearches: searchesPage?.items || [],
+      savedOpportunities: savedPage?.items || [],
+      feedbackRecords: feedbackPage?.items || [],
+      liveSearchConnected: false,
     };
   });
 
@@ -59,7 +73,8 @@ export const saveUserProfile = createServerFn({ method: "POST" })
   .middleware([requireUser])
   .validator(
     z.object({
-      selected_services: z.array(ServiceCategoryEnum).min(1).max(3),
+      selected_services: z.array(CustomServiceSchema).min(1, "Add at least one service").max(20),
+      service_description: z.string().max(600).optional(),
       agency_or_freelancer_name: z.string().max(120).optional(),
       default_time_window_days: z.union([z.literal(30), z.literal(90), z.literal(180)]).optional(),
     })
@@ -68,6 +83,11 @@ export const saveUserProfile = createServerFn({ method: "POST" })
     const base44 = context.getBase44();
     const userId = context.user.id;
     const userEmail = context.user.email || "";
+
+    const normalizedServices = normalizeServicesList(data.selected_services);
+    if (normalizedServices.length === 0) {
+      throw new Error("Please enter at least one valid service name.");
+    }
 
     const existingPage = await base44.entities.UserProfile.filter(
       { created_by_id: userId },
@@ -78,51 +98,21 @@ export const saveUserProfile = createServerFn({ method: "POST" })
     const payload = {
       owner_id: userId,
       owner_email: userEmail,
-      selected_services: data.selected_services,
+      selected_services: normalizedServices,
+      service_description: data.service_description?.trim() || "",
       agency_or_freelancer_name: data.agency_or_freelancer_name?.trim() || "",
       default_time_window_days: data.default_time_window_days || 90,
       onboarding_completed: true,
     };
 
     if (existing) {
+      // Strictly verify ownership before updating
+      if (existing.created_by_id !== userId && existing.owner_id !== userId) {
+        throw new Error("Forbidden: You do not own this profile record.");
+      }
       return await base44.entities.UserProfile.update(existing.id, payload);
     }
     return await base44.entities.UserProfile.create(payload);
-  });
-
-export const recordSearchAttempt = createServerFn({ method: "POST" })
-  .middleware([requireUser])
-  .validator(
-    z.object({
-      business_category: z.string().min(1).max(160),
-      location_query: z.string().min(1).max(160),
-      time_window_days: z.union([z.literal(30), z.literal(90), z.literal(180)]),
-      selected_services_snapshot: z.array(z.string()).max(5).optional(),
-    })
-  )
-  .handler(async ({ data, context }) => {
-    const base44 = context.getBase44();
-    const userId = context.user.id;
-
-    // Until the live web discovery integration + URL verifier is wired and enabled,
-    // record the search honestly as "not_configured" with 0 live results.
-    const searchRecord = await base44.entities.LeadSearch.create({
-      owner_id: userId,
-      business_category: data.business_category.trim(),
-      location_query: data.location_query.trim(),
-      time_window_days: data.time_window_days,
-      selected_services_snapshot: data.selected_services_snapshot || [],
-      status: "not_configured",
-      honest_status_reason:
-        "Live discovery pipeline is not yet enabled. Search parameters were logged under your account with status 'not_configured' and 0 fabricated results.",
-      results_count: 0,
-      executed_at: new Date().toISOString(),
-    });
-
-    return {
-      searchRecord,
-      opportunities: [],
-    };
   });
 
 export const getOpportunityDetail = createServerFn({ method: "GET" })
@@ -136,24 +126,26 @@ export const getOpportunityDetail = createServerFn({ method: "GET" })
     const base44 = context.getBase44();
     const userId = context.user.id;
 
-    // If it's a demo fixture ID, return null for live DB and let the UI render the isolated demo fixture
+    const profilesPage = await base44.entities.UserProfile.filter(
+      { created_by_id: userId },
+      { sort: "-created_date", limit: 1 }
+    );
+    const rawProfile = profilesPage?.items?.[0] || null;
+    const profile = rawProfile
+      ? {
+          ...rawProfile,
+          selected_services: normalizeServicesList(rawProfile.selected_services || []),
+        }
+      : null;
+
     if (data.opportunityId.startsWith("demo-")) {
-      const [savedPage, feedbackPage] = await Promise.all([
-        base44.entities.SavedOpportunity.filter(
-          { created_by_id: userId, opportunity_id: data.opportunityId },
-          { limit: 1 }
-        ),
-        base44.entities.OpportunityFeedback.filter(
-          { created_by_id: userId, opportunity_id: data.opportunityId },
-          { limit: 1 }
-        ),
-      ]);
       return {
-        isDemo: true,
+        isExample: true,
+        profile,
         opportunity: null,
         evidenceItems: [],
-        savedRecord: savedPage?.items?.[0] || null,
-        feedbackRecord: feedbackPage?.items?.[0] || null,
+        savedRecord: null,
+        feedbackRecord: null,
       };
     }
 
@@ -164,7 +156,8 @@ export const getOpportunityDetail = createServerFn({ method: "GET" })
     const opportunity = oppPage?.items?.[0] || null;
     if (!opportunity) {
       return {
-        isDemo: false,
+        isExample: false,
+        profile,
         opportunity: null,
         evidenceItems: [],
         savedRecord: null,
@@ -188,7 +181,8 @@ export const getOpportunityDetail = createServerFn({ method: "GET" })
     ]);
 
     return {
-      isDemo: false,
+      isExample: false,
+      profile,
       opportunity,
       evidenceItems: evidencePage?.items || [],
       savedRecord: savedPage?.items?.[0] || null,
@@ -215,7 +209,7 @@ export const saveOpportunityForUser = createServerFn({ method: "POST" })
       retrieval_date: z.string().max(80),
       evidence_status: z.string().max(80),
       service_fit_inference: z.string().max(1500),
-      inferred_service_categories: z.array(z.string()).max(5).optional(),
+      inferred_service_categories: z.array(z.string()).max(20).optional(),
       qualification_notes: z.string().max(1000).optional(),
     })
   )
@@ -223,20 +217,16 @@ export const saveOpportunityForUser = createServerFn({ method: "POST" })
     const base44 = context.getBase44();
     const userId = context.user.id;
 
-    // Prevent saving demo fixtures into live database records
     if (data.opportunity_id.startsWith("demo-")) {
-      throw new Error(
-        "Demo fixtures are isolated for visual inspection and cannot be saved into live database records."
-      );
+      throw new Error("Example results are for preview only and are not saved to live records.");
     }
 
-    // Verify the caller actually owns the underlying Opportunity record
     const ownedOpp = await base44.entities.Opportunity.filter(
       { id: data.opportunity_id, created_by_id: userId },
       { limit: 1 }
     );
     if (!ownedOpp?.items?.[0]) {
-      throw new Error("Opportunity not found in your authenticated workspace.");
+      throw new Error("Opportunity not found in your account.");
     }
 
     const existingPage = await base44.entities.SavedOpportunity.filter(
@@ -262,7 +252,7 @@ export const saveOpportunityForUser = createServerFn({ method: "POST" })
       retrieval_date: data.retrieval_date,
       evidence_status: data.evidence_status,
       service_fit_inference: data.service_fit_inference,
-      inferred_service_categories: data.inferred_service_categories || [],
+      inferred_service_categories: normalizeServicesList(data.inferred_service_categories || []),
       qualification_notes: data.qualification_notes || "",
       review_stage: "saved",
     };
@@ -292,7 +282,7 @@ export const updateSavedOpportunityItem = createServerFn({ method: "POST" })
     );
     const existing = existingPage?.items?.[0];
     if (!existing) {
-      throw new Error("Saved opportunity not found or not owned by current user.");
+      throw new Error("Saved lead not found or not owned by current user.");
     }
 
     const patch = {};
@@ -315,7 +305,7 @@ export const deleteSavedOpportunityItem = createServerFn({ method: "POST" })
     );
     const existing = existingPage?.items?.[0];
     if (!existing) {
-      throw new Error("Saved opportunity not found or not owned by current user.");
+      throw new Error("Saved lead not found or not owned by current user.");
     }
 
     await base44.entities.SavedOpportunity.delete(existing.id);
@@ -337,9 +327,7 @@ export const recordOpportunityFeedback = createServerFn({ method: "POST" })
     const userId = context.user.id;
 
     if (data.opportunity_id.startsWith("demo-")) {
-      throw new Error(
-        "Demo fixtures are isolated and do not write feedback into live database records."
-      );
+      throw new Error("Example results are for preview only and do not write live feedback.");
     }
 
     const existingPage = await base44.entities.OpportunityFeedback.filter(
