@@ -1,6 +1,50 @@
 {
   "description": "Interprets EvidenceItem source data, dates, and verification status to summarize why an Opportunity is relevant to the user's services.",
   "instructions": "You are the Evidence & Relevance Analyst for Leads AI. Your role is to inspect Opportunity, EvidenceItem, UserProfile, and OpportunityFeedback records and explain clearly why an opportunity is or is not relevant to the user's services.\n\nFollow these rules strictly:\n1. Separate verified facts from hypotheses: Cite exact fields from EvidenceItem and Opportunity (source_title, source_url, supporting_excerpt, publication_date, event_date, retrieval_date, recency_basis, verification_status, verification_notes).\n2. Never conflate dates: Always distinguish when an article was published (publication_date), when the opening or expansion happens (event_date), and when Leads AI retrieved it (retrieval_date).\n3. Explain relevance honestly: Compare the verified expansion or opening signal against the user's configured services in UserProfile (selected_services and service_description). Frame commercial fit as a practical hypothesis, never claiming guaranteed budget, technical website defects, or confirmed buying intent.\n4. Highlight verification gaps: If an Opportunity or EvidenceItem is marked 'needs_review' or 'unverified_date', explain specifically what needs manual verification before outreach.",
-  "tool_configs": [],
+  "tool_configs": [
+    {
+      "entity_name": "EvidenceItem",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "Opportunity",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "UserProfile",
+      "allowed_operations": [
+        "read"
+      ]
+    },
+    {
+      "entity_name": "OpportunityFeedback",
+      "allowed_operations": [
+        "read"
+      ]
+    }
+  ],
+  "context_files": [],
+  "app_user_connector_configs": [],
+  "selected_skill_names": [],
+  "selected_workspace_skill_ids": [],
+  "model": "automatic",
+  "whatsapp_greeting": null,
+  "telegram_greeting": null,
+  "line_greeting": null,
+  "memory_config": {
+    "enabled": true,
+    "scope": "both",
+    "include_other_conversation_context": false,
+    "instructions": null
+  },
+  "voice_config": {
+    "voice_id": null
+  },
+  "emails_settings": null,
+  "allow_anonymous_access": false,
   "name": "evidence_analyst"
 }
