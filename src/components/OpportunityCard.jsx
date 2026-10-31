@@ -3,6 +3,7 @@ import {
   buildServiceFitHypothesis,
   formatRecencyBasisLabel,
 } from "@/lib/leads-constants";
+import { trackLeadsEvent } from "@/lib/telemetry";
 
 export default function OpportunityCard({
   opp,
@@ -11,17 +12,34 @@ export default function OpportunityCard({
   isExample = false,
   isSaved = false,
   isDismissed = false,
+  feedbackVerdict = null,
   isBusy = false,
+  detailSearchParams = {},
   onSave,
+  onUnsave,
   onDismiss,
+  onRestore,
 }) {
   const isVerified = opp.verification_status === "verified";
   const fitText = buildServiceFitHypothesis(opp, selectedServices, serviceDescription);
   const recencyLabel = formatRecencyBasisLabel(opp.recency_basis);
 
   const formattedRetrieval = opp.retrieval_date
-    ? opp.retrieval_date.replace("T", " ").slice(0, 16) + (opp.retrieval_date.includes("T") ? " UTC" : "")
+    ? opp.retrieval_date.replace("T", " ").slice(0, 16) +
+      (opp.retrieval_date.includes("T") ? " UTC" : "")
     : "Not stated";
+
+  const handleSourceClick = () => {
+    trackLeadsEvent(
+      "source_opened",
+      {
+        verification_status: opp.verification_status || "needs_review",
+        recency_basis: opp.recency_basis || "unverified_date",
+        surface: "discover_card",
+      },
+      { isExample, opportunityId: opp.id }
+    );
+  };
 
   return (
     <article
@@ -49,6 +67,18 @@ export default function OpportunityCard({
             <span className="px-2 py-0.5 rounded text-xs text-slate-600 bg-slate-100 border border-slate-200">
               {recencyLabel}
             </span>
+
+            {feedbackVerdict === "relevant" && (
+              <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-900 border border-emerald-200">
+                Rated relevant
+              </span>
+            )}
+
+            {isDismissed && (
+              <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-300">
+                Dismissed (Not relevant)
+              </span>
+            )}
 
             {isExample && (
               <span className="px-2 py-0.5 rounded text-xs font-medium text-slate-600 bg-slate-100 border border-slate-300">
@@ -84,38 +114,51 @@ export default function OpportunityCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          {!isExample && onSave && (
+          {!isExample && (onSave || onUnsave) && (
             <button
               type="button"
-              disabled={isBusy || isSaved}
-              onClick={() => onSave(opp)}
+              disabled={isBusy}
+              onClick={() => (isSaved && onUnsave ? onUnsave(opp) : onSave?.(opp))}
               className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
                 isSaved
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200 cursor-default"
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
                   : "bg-white text-slate-800 border-slate-300 hover:bg-slate-50"
               }`}
+              title={isSaved ? "Click to remove from Saved leads" : "Save to your leads list"}
             >
-              {isSaved ? "Saved" : "Save lead"}
+              {isSaved ? "Saved · Unsave" : "Save lead"}
             </button>
           )}
 
           <Link
             to="/opportunities/$opportunityId"
             params={{ opportunityId: opp.id }}
+            search={detailSearchParams}
             className="px-3 py-1.5 rounded-md text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors"
           >
             View details
           </Link>
 
-          {onDismiss && (
+          {isDismissed && onRestore ? (
             <button
               type="button"
-              disabled={isBusy || isDismissed}
-              onClick={() => onDismiss(opp)}
-              className="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              disabled={isBusy}
+              onClick={() => onRestore(opp)}
+              className="px-2.5 py-1.5 rounded-md text-xs font-medium text-blue-700 hover:bg-blue-50 border border-blue-200 transition-colors"
             >
-              {isDismissed ? "Dismissed" : "Not relevant"}
+              Restore
             </button>
+          ) : (
+            onDismiss && (
+              <button
+                type="button"
+                disabled={isBusy}
+                onClick={() => onDismiss(opp)}
+                className="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              >
+                Not relevant
+              </button>
+            )
           )}
         </div>
       </div>
@@ -129,6 +172,7 @@ export default function OpportunityCard({
               href={opp.source_url}
               target="_blank"
               rel="noreferrer"
+              onClick={handleSourceClick}
               className="text-blue-700 hover:underline font-medium truncate max-w-[260px]"
               title={opp.source_title}
             >

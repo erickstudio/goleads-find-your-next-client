@@ -5,6 +5,7 @@ import {
   SEARCH_LIMITS,
   buildQueryCacheKey,
   normalizeServicesList,
+  buildServiceFitHypothesis,
 } from "@/lib/leads-constants";
 import {
   queryBuiltInWebSearchWithRetry,
@@ -20,7 +21,7 @@ const CustomServiceSchema = z
 // Per-isolate in-flight deduplication and concurrency guard keyed by userId
 const activeUserSearches = new Map();
 
-function computeQuotaUsage(searches = [], nowMs = Date.now()) {
+export function computeQuotaUsage(searches = [], nowMs = Date.now()) {
   const windowStartMs = nowMs - SEARCH_LIMITS.cacheTtlMs;
   const quotaSearches = searches.filter((s) => {
     if (s.status === "not_configured" || s.status === "failed") return false;
@@ -39,6 +40,29 @@ function computeQuotaUsage(searches = [], nowMs = Date.now()) {
     maxConcurrentSearches: SEARCH_LIMITS.maxConcurrentSearches,
     cacheTtlHours: SEARCH_LIMITS.cacheTtlHours,
   };
+}
+
+function assertRecordOwnedByUser(record, userId, entityLabel = "Record") {
+  if (!record) {
+    throw new Error(`${entityLabel} not found in your account.`);
+  }
+  const matchesCreator = record.created_by_id === userId;
+  const matchesOwner = !record.owner_id || record.owner_id === userId;
+  if (!matchesCreator || !matchesOwner) {
+    throw new Error(`Forbidden: You do not have access to this ${entityLabel.toLowerCase()}.`);
+  }
+}
+
+function deduplicateByOpportunityId(records = []) {
+  const seen = new Set();
+  const unique = [];
+  for (const rec of records) {
+    const key = rec?.opportunity_id;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unique.push(rec);
+  }
+  return unique;
 }
 
 export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
@@ -63,11 +87,13 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
       ),
       base44.entities.OpportunityFeedback.filter(
         { created_by_id: userId },
-        { sort: "-created_date", limit: 50 }
+        { sort: "-created_date", limit: 100 }
       ),
     ]);
 
-    const rawProfile = profilesPage?.items?.[0] || null;
+    const rawProfile = (profilesPage?.items || []).find(
+      (p) => p.created_by_id === userId && (!p.owner_id || p.owner_id === userId)
+    ) || null;
     let profile = null;
 
     if (rawProfile) {
@@ -86,20 +112,39 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
       }
     }
 
-    const recentSearches = searchesPage?.items || [];
-    // Find most recent real search (excluding legacy not_configured placeholders)
+    const recentSearches = (searchesPage?.items || []).filter(
+      (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
+    );
     const latestLiveSearch =
       recentSearches.find((s) => s.status !== "not_configured") || null;
+
+    const oppsPage = await base44.entities.Opportunity.filter(
+      { created_by_id: userId },
+      { sort: "-created_date", limit: 50 }
+    );
+    const allUserOpportunities = (oppsPage?.items || []).filter(
+      (o) => o.created_by_id === userId && (!o.owner_id || o.owner_id === userId)
+    );
 
     let latestOpportunities = [];
     if (latestLiveSearch) {
       const targetSearchId = latestLiveSearch.cached_from_search_id || latestLiveSearch.id;
-      const oppPage = await base44.entities.Opportunity.filter(
-        { created_by_id: userId, search_id: targetSearchId },
-        { sort: "-created_date", limit: SEARCH_LIMITS.maxResultsPerSearch }
-      );
-      latestOpportunities = oppPage?.items || [];
+      latestOpportunities = allUserOpportunities
+        .filter((o) => o.search_id === targetSearchId)
+        .slice(0, SEARCH_LIMITS.maxResultsPerSearch);
     }
+
+    const ownedSaved = deduplicateByOpportunityId(
+      (savedPage?.items || []).filter(
+        (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
+      )
+    );
+
+    const ownedFeedback = deduplicateByOpportunityId(
+      (feedbackPage?.items || []).filter(
+        (f) => f.created_by_id === userId && (!f.owner_id || f.owner_id === userId)
+      )
+    );
 
     const quota = computeQuotaUsage(recentSearches);
 
@@ -113,8 +158,9 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
       recentSearches,
       latestLiveSearch,
       latestOpportunities,
-      savedOpportunities: savedPage?.items || [],
-      feedbackRecords: feedbackPage?.items || [],
+      allUserOpportunities,
+      savedOpportunities: ownedSaved,
+      feedbackRecords: ownedFeedback,
       quota,
       liveSearchConnected: true,
     };
@@ -158,7 +204,6 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
     const inFlight = activeUserSearches.get(userId);
     if (inFlight) {
       if (inFlight.queryCacheKey === queryCacheKey) {
-        // Duplicate submission of the exact same in-flight query: await existing run
         return await inFlight.promise;
       }
       throw new Error(
@@ -178,10 +223,14 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       ),
     ]);
 
-    const rawProfile = profilesPage?.items?.[0] || null;
+    const rawProfile = (profilesPage?.items || []).find(
+      (p) => p.created_by_id === userId && (!p.owner_id || p.owner_id === userId)
+    ) || null;
     const selectedServices = normalizeServicesList(rawProfile?.selected_services || []);
     const serviceDescription = rawProfile?.service_description || "";
-    const recentSearches = searchesPage?.items || [];
+    const recentSearches = (searchesPage?.items || []).filter(
+      (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
+    );
 
     // Check DB-level concurrent search within last 35 seconds
     const activeDbSearch = recentSearches.find((s) => {
@@ -195,7 +244,7 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       );
     }
 
-    // 3. Check 24-hour private per-user query cache (unless force_retry on a failed search)
+    // 3. Check 24-hour private per-user query cache
     const cacheCutoffMs = nowMs - SEARCH_LIMITS.cacheTtlMs;
     const cachedSearch = recentSearches.find((s) => {
       if (s.query_cache_key !== queryCacheKey) return false;
@@ -210,7 +259,9 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
         { created_by_id: userId, search_id: cachedSearch.id },
         { sort: "-created_date", limit: SEARCH_LIMITS.maxResultsPerSearch }
       );
-      const cachedOpportunities = cachedOppsPage?.items || [];
+      const cachedOpportunities = (cachedOppsPage?.items || []).filter(
+        (o) => o.created_by_id === userId && (!o.owner_id || o.owner_id === userId)
+      );
       const quota = computeQuotaUsage(recentSearches, nowMs);
 
       return {
@@ -270,7 +321,6 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
             nowDate: now,
           });
 
-        // Persist Opportunities and EvidenceItems scoped to authenticated owner
         const savedOpportunityRecords = [];
         for (const oppDraft of allOpportunities) {
           const createdOpp = await base44.entities.Opportunity.create({
@@ -423,9 +473,11 @@ export const saveUserProfile = createServerFn({ method: "POST" })
 
     const existingPage = await base44.entities.UserProfile.filter(
       { created_by_id: userId },
-      { sort: "-created_date", limit: 1 }
+      { sort: "-created_date", limit: 5 }
     );
-    const existing = existingPage?.items?.[0];
+    const existing = (existingPage?.items || []).find(
+      (p) => p.created_by_id === userId && (!p.owner_id || p.owner_id === userId)
+    );
 
     const payload = {
       owner_id: userId,
@@ -438,9 +490,7 @@ export const saveUserProfile = createServerFn({ method: "POST" })
     };
 
     if (existing) {
-      if (existing.created_by_id !== userId && existing.owner_id !== userId) {
-        throw new Error("Forbidden: You do not own this profile record.");
-      }
+      assertRecordOwnedByUser(existing, userId, "Profile");
       return await base44.entities.UserProfile.update(existing.id, payload);
     }
     return await base44.entities.UserProfile.create(payload);
@@ -461,7 +511,9 @@ export const getOpportunityDetail = createServerFn({ method: "GET" })
       { created_by_id: userId },
       { sort: "-created_date", limit: 1 }
     );
-    const rawProfile = profilesPage?.items?.[0] || null;
+    const rawProfile = (profilesPage?.items || []).find(
+      (p) => p.created_by_id === userId && (!p.owner_id || p.owner_id === userId)
+    ) || null;
     const profile = rawProfile
       ? {
           ...rawProfile,
@@ -484,8 +536,8 @@ export const getOpportunityDetail = createServerFn({ method: "GET" })
       { id: data.opportunityId, created_by_id: userId },
       { limit: 1 }
     );
-    const opportunity = oppPage?.items?.[0] || null;
-    if (!opportunity) {
+    const rawOpp = oppPage?.items?.[0] || null;
+    if (!rawOpp || rawOpp.created_by_id !== userId || (rawOpp.owner_id && rawOpp.owner_id !== userId)) {
       return {
         isExample: false,
         profile,
@@ -498,26 +550,38 @@ export const getOpportunityDetail = createServerFn({ method: "GET" })
 
     const [evidencePage, savedPage, feedbackPage] = await Promise.all([
       base44.entities.EvidenceItem.filter(
-        { created_by_id: userId, opportunity_id: opportunity.id },
+        { created_by_id: userId, opportunity_id: rawOpp.id },
         { sort: "-created_date", limit: 20 }
       ),
       base44.entities.SavedOpportunity.filter(
-        { created_by_id: userId, opportunity_id: opportunity.id },
-        { limit: 1 }
+        { created_by_id: userId, opportunity_id: rawOpp.id },
+        { sort: "-created_date", limit: 5 }
       ),
       base44.entities.OpportunityFeedback.filter(
-        { created_by_id: userId, opportunity_id: opportunity.id },
-        { limit: 1 }
+        { created_by_id: userId, opportunity_id: rawOpp.id },
+        { sort: "-created_date", limit: 5 }
       ),
     ]);
+
+    const evidenceItems = (evidencePage?.items || []).filter(
+      (e) => e.created_by_id === userId && (!e.owner_id || e.owner_id === userId)
+    );
+    const savedRecord =
+      (savedPage?.items || []).find(
+        (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
+      ) || null;
+    const feedbackRecord =
+      (feedbackPage?.items || []).find(
+        (f) => f.created_by_id === userId && (!f.owner_id || f.owner_id === userId)
+      ) || null;
 
     return {
       isExample: false,
       profile,
-      opportunity,
-      evidenceItems: evidencePage?.items || [],
-      savedRecord: savedPage?.items?.[0] || null,
-      feedbackRecord: feedbackPage?.items?.[0] || null,
+      opportunity: rawOpp,
+      evidenceItems,
+      savedRecord,
+      feedbackRecord,
     };
   });
 
@@ -526,25 +590,27 @@ export const saveOpportunityForUser = createServerFn({ method: "POST" })
   .validator(
     z.object({
       opportunity_id: z.string().min(1).max(120),
-      business_name: z.string().min(1).max(200),
+      qualification_notes: z.string().max(1000).optional(),
+      review_stage: z.enum(["saved", "researching", "qualified", "archived"]).optional(),
+      // Optional legacy fields ignored in favor of authoritative Opportunity record
+      business_name: z.string().max(200).optional(),
       business_category: z.string().max(160).optional(),
-      location: z.string().min(1).max(200),
+      location: z.string().max(200).optional(),
       website_url: z.string().max(500).nullable().optional(),
-      signal_type: z.string().max(160),
+      signal_type: z.string().max(160).optional(),
       signal_summary: z.string().max(1000).optional(),
-      source_title: z.string().max(300),
-      source_url: z.string().min(1).max(500),
-      supporting_excerpt: z.string().max(1200),
+      source_title: z.string().max(300).optional(),
+      source_url: z.string().max(500).optional(),
+      supporting_excerpt: z.string().max(1200).optional(),
       publication_date: z.string().max(80).nullable().optional(),
       event_date: z.string().max(120).nullable().optional(),
-      retrieval_date: z.string().max(80),
+      retrieval_date: z.string().max(80).optional(),
       recency_basis: z.string().max(80).optional(),
       verification_status: z.string().max(80).optional(),
       verification_notes: z.string().max(600).optional(),
-      evidence_status: z.string().max(80),
-      service_fit_inference: z.string().max(1500),
+      evidence_status: z.string().max(80).optional(),
+      service_fit_inference: z.string().max(1500).optional(),
       inferred_service_categories: z.array(z.string()).max(20).optional(),
-      qualification_notes: z.string().max(1000).optional(),
     })
   )
   .handler(async ({ data, context }) => {
@@ -555,49 +621,120 @@ export const saveOpportunityForUser = createServerFn({ method: "POST" })
       throw new Error("Example results are for preview only and are not saved to live records.");
     }
 
-    const ownedOpp = await base44.entities.Opportunity.filter(
-      { id: data.opportunity_id, created_by_id: userId },
-      { limit: 1 }
+    const [ownedOppPage, profilePage, existingSavedPage] = await Promise.all([
+      base44.entities.Opportunity.filter(
+        { id: data.opportunity_id, created_by_id: userId },
+        { limit: 1 }
+      ),
+      base44.entities.UserProfile.filter(
+        { created_by_id: userId },
+        { sort: "-created_date", limit: 1 }
+      ),
+      base44.entities.SavedOpportunity.filter(
+        { created_by_id: userId, opportunity_id: data.opportunity_id },
+        { sort: "-created_date", limit: 10 }
+      ),
+    ]);
+
+    const canonicalOpp = ownedOppPage?.items?.[0];
+    assertRecordOwnedByUser(canonicalOpp, userId, "Opportunity");
+
+    const rawProfile = (profilePage?.items || []).find(
+      (p) => p.created_by_id === userId && (!p.owner_id || p.owner_id === userId)
     );
-    if (!ownedOpp?.items?.[0]) {
-      throw new Error("Opportunity not found in your account.");
+    const selectedServices = normalizeServicesList(rawProfile?.selected_services || []);
+    const serviceDescription = rawProfile?.service_description || "";
+
+    const existingList = (existingSavedPage?.items || []).filter(
+      (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
+    );
+    const primaryExisting = existingList[0] || null;
+    const extraDuplicates = existingList.slice(1);
+
+    // Clean up any accidental duplicates if present
+    for (const dup of extraDuplicates) {
+      await base44.entities.SavedOpportunity.delete(dup.id);
+    }
+
+    // Factual fields and verification_status ALWAYS come from the canonical server Opportunity record
+    const payload = {
+      owner_id: userId,
+      opportunity_id: canonicalOpp.id,
+      business_name: canonicalOpp.business_name,
+      business_category: canonicalOpp.business_category || "",
+      location: canonicalOpp.location,
+      website_url: canonicalOpp.website_url || "",
+      signal_type: canonicalOpp.signal_type,
+      signal_summary: canonicalOpp.signal_summary || "",
+      source_title: canonicalOpp.source_title,
+      source_url: canonicalOpp.source_url,
+      supporting_excerpt: canonicalOpp.supporting_excerpt,
+      publication_date: canonicalOpp.publication_date || "",
+      event_date: canonicalOpp.event_date || "",
+      retrieval_date: canonicalOpp.retrieval_date,
+      recency_basis: canonicalOpp.recency_basis || "unverified_date",
+      verification_status: canonicalOpp.verification_status || "needs_review",
+      verification_notes: canonicalOpp.verification_notes || "",
+      evidence_status: canonicalOpp.evidence_status || "unverified",
+      service_fit_inference:
+        data.service_fit_inference ||
+        buildServiceFitHypothesis(canonicalOpp, selectedServices, serviceDescription) ||
+        canonicalOpp.service_fit_inference,
+      inferred_service_categories:
+        selectedServices.length > 0
+          ? selectedServices
+          : normalizeServicesList(canonicalOpp.inferred_service_categories || []),
+      qualification_notes:
+        data.qualification_notes !== undefined
+          ? data.qualification_notes.trim()
+          : primaryExisting?.qualification_notes || "",
+      review_stage: data.review_stage || primaryExisting?.review_stage || "saved",
+    };
+
+    if (primaryExisting) {
+      assertRecordOwnedByUser(primaryExisting, userId, "Saved lead");
+      return await base44.entities.SavedOpportunity.update(primaryExisting.id, payload);
+    }
+    return await base44.entities.SavedOpportunity.create(payload);
+  });
+
+export const unsaveOpportunityForUser = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .validator(
+    z.object({
+      opportunity_id: z.string().min(1).max(120),
+    })
+  )
+  .handler(async ({ data, context }) => {
+    const base44 = context.getBase44();
+    const userId = context.user.id;
+
+    if (data.opportunity_id.startsWith("demo-")) {
+      return { deleted: false, alreadyUnsaved: true };
     }
 
     const existingPage = await base44.entities.SavedOpportunity.filter(
       { created_by_id: userId, opportunity_id: data.opportunity_id },
-      { limit: 1 }
+      { limit: 10 }
     );
-    const existing = existingPage?.items?.[0];
+    const ownedMatches = (existingPage?.items || []).filter(
+      (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
+    );
 
-    const payload = {
-      owner_id: userId,
-      opportunity_id: data.opportunity_id,
-      business_name: data.business_name,
-      business_category: data.business_category || "",
-      location: data.location,
-      website_url: data.website_url || "",
-      signal_type: data.signal_type,
-      signal_summary: data.signal_summary || "",
-      source_title: data.source_title,
-      source_url: data.source_url,
-      supporting_excerpt: data.supporting_excerpt,
-      publication_date: data.publication_date || "",
-      event_date: data.event_date || "",
-      retrieval_date: data.retrieval_date,
-      recency_basis: data.recency_basis || "unverified_date",
-      verification_status: data.verification_status || "needs_review",
-      verification_notes: data.verification_notes || "",
-      evidence_status: data.evidence_status,
-      service_fit_inference: data.service_fit_inference,
-      inferred_service_categories: normalizeServicesList(data.inferred_service_categories || []),
-      qualification_notes: data.qualification_notes || "",
-      review_stage: "saved",
-    };
-
-    if (existing) {
-      return await base44.entities.SavedOpportunity.update(existing.id, payload);
+    if (ownedMatches.length === 0) {
+      return { deleted: false, alreadyUnsaved: true, opportunity_id: data.opportunity_id };
     }
-    return await base44.entities.SavedOpportunity.create(payload);
+
+    for (const item of ownedMatches) {
+      await base44.entities.SavedOpportunity.delete(item.id);
+    }
+
+    return {
+      deleted: true,
+      alreadyUnsaved: false,
+      opportunity_id: data.opportunity_id,
+      removedCount: ownedMatches.length,
+    };
   });
 
 export const updateSavedOpportunityItem = createServerFn({ method: "POST" })
@@ -618,13 +755,13 @@ export const updateSavedOpportunityItem = createServerFn({ method: "POST" })
       { limit: 1 }
     );
     const existing = existingPage?.items?.[0];
-    if (!existing) {
-      throw new Error("Saved lead not found or not owned by current user.");
-    }
+    assertRecordOwnedByUser(existing, userId, "Saved lead");
 
     const patch = {};
     if (data.review_stage !== undefined) patch.review_stage = data.review_stage;
-    if (data.qualification_notes !== undefined) patch.qualification_notes = data.qualification_notes;
+    if (data.qualification_notes !== undefined) {
+      patch.qualification_notes = data.qualification_notes.trim();
+    }
 
     return await base44.entities.SavedOpportunity.update(existing.id, patch);
   });
@@ -642,8 +779,9 @@ export const deleteSavedOpportunityItem = createServerFn({ method: "POST" })
     );
     const existing = existingPage?.items?.[0];
     if (!existing) {
-      throw new Error("Saved lead not found or not owned by current user.");
+      return { deleted: false, alreadyUnsaved: true, id: data.id };
     }
+    assertRecordOwnedByUser(existing, userId, "Saved lead");
 
     await base44.entities.SavedOpportunity.delete(existing.id);
     return { deleted: true, id: existing.id };
@@ -654,8 +792,15 @@ export const recordOpportunityFeedback = createServerFn({ method: "POST" })
   .validator(
     z.object({
       opportunity_id: z.string().min(1).max(120),
-      business_name: z.string().min(1).max(200),
-      verdict: z.enum(["not_relevant", "weak_evidence", "already_client", "out_of_territory"]),
+      business_name: z.string().min(1).max(200).optional(),
+      verdict: z.enum([
+        "relevant",
+        "not_relevant",
+        "weak_evidence",
+        "already_client",
+        "out_of_territory",
+      ]),
+      reason_category: z.string().max(120).optional(),
       reason_note: z.string().max(500).optional(),
     })
   )
@@ -667,23 +812,75 @@ export const recordOpportunityFeedback = createServerFn({ method: "POST" })
       throw new Error("Example results are for preview only and do not write live feedback.");
     }
 
-    const existingPage = await base44.entities.OpportunityFeedback.filter(
-      { created_by_id: userId, opportunity_id: data.opportunity_id },
-      { limit: 1 }
-    );
-    const existing = existingPage?.items?.[0];
+    // Verify ownership of the underlying Opportunity before allowing feedback read/write
+    const [oppPage, existingPage] = await Promise.all([
+      base44.entities.Opportunity.filter(
+        { id: data.opportunity_id, created_by_id: userId },
+        { limit: 1 }
+      ),
+      base44.entities.OpportunityFeedback.filter(
+        { created_by_id: userId, opportunity_id: data.opportunity_id },
+        { sort: "-created_date", limit: 10 }
+      ),
+    ]);
 
+    const canonicalOpp = oppPage?.items?.[0];
+    assertRecordOwnedByUser(canonicalOpp, userId, "Opportunity");
+
+    const existingList = (existingPage?.items || []).filter(
+      (f) => f.created_by_id === userId && (!f.owner_id || f.owner_id === userId)
+    );
+    const primaryExisting = existingList[0] || null;
+    const extraDuplicates = existingList.slice(1);
+
+    for (const dup of extraDuplicates) {
+      await base44.entities.OpportunityFeedback.delete(dup.id);
+    }
+
+    // Relevance feedback NEVER modifies Opportunity.verification_status or EvidenceItem.verification_status
     const payload = {
       owner_id: userId,
-      opportunity_id: data.opportunity_id,
-      business_name: data.business_name,
+      opportunity_id: canonicalOpp.id,
+      business_name: canonicalOpp.business_name,
       verdict: data.verdict,
+      reason_category: data.reason_category?.trim() || "",
       reason_note: data.reason_note?.trim() || "",
       recorded_at: new Date().toISOString(),
     };
 
-    if (existing) {
-      return await base44.entities.OpportunityFeedback.update(existing.id, payload);
+    if (primaryExisting) {
+      assertRecordOwnedByUser(primaryExisting, userId, "Feedback");
+      return await base44.entities.OpportunityFeedback.update(primaryExisting.id, payload);
     }
     return await base44.entities.OpportunityFeedback.create(payload);
+  });
+
+export const clearOpportunityFeedback = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .validator(
+    z.object({
+      opportunity_id: z.string().min(1).max(120),
+    })
+  )
+  .handler(async ({ data, context }) => {
+    const base44 = context.getBase44();
+    const userId = context.user.id;
+
+    if (data.opportunity_id.startsWith("demo-")) {
+      return { cleared: false };
+    }
+
+    const existingPage = await base44.entities.OpportunityFeedback.filter(
+      { created_by_id: userId, opportunity_id: data.opportunity_id },
+      { limit: 10 }
+    );
+    const ownedList = (existingPage?.items || []).filter(
+      (f) => f.created_by_id === userId && (!f.owner_id || f.owner_id === userId)
+    );
+
+    for (const item of ownedList) {
+      await base44.entities.OpportunityFeedback.delete(item.id);
+    }
+
+    return { cleared: ownedList.length > 0, opportunity_id: data.opportunity_id };
   });

@@ -7,7 +7,8 @@
       "description": "Authenticated user ID derived on the server"
     },
     "opportunity_id": {
-      "type": "string"
+      "type": "string",
+      "description": "Target Opportunity ID"
     },
     "business_name": {
       "type": "string"
@@ -15,17 +16,25 @@
     "verdict": {
       "type": "string",
       "enum": [
+        "relevant",
         "not_relevant",
         "weak_evidence",
         "already_client",
         "out_of_territory"
-      ]
+      ],
+      "description": "User relevance rating for this opportunity"
+    },
+    "reason_category": {
+      "type": "string",
+      "description": "Optional concise reason tag selected by the user"
     },
     "reason_note": {
-      "type": "string"
+      "type": "string",
+      "description": "Optional user-supplied explanation for the relevance rating"
     },
     "recorded_at": {
-      "type": "string"
+      "type": "string",
+      "description": "ISO timestamp when feedback was created or last updated"
     }
   },
   "required": [

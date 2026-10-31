@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import OpportunityCard from "@/components/OpportunityCard";
 import {
@@ -11,11 +11,37 @@ import {
   getWorkspaceBootstrap,
   runLeadDiscoverySearch,
   saveOpportunityForUser,
+  unsaveOpportunityForUser,
   recordOpportunityFeedback,
+  clearOpportunityFeedback,
 } from "@/lib/server-fns";
+import { trackLeadsEvent } from "@/lib/telemetry";
 
 export const Route = createFileRoute("/_authed/")({
   ssr: false,
+  validateSearch: (search) => {
+    const out = {};
+    if (typeof search?.category === "string" && search.category.trim()) {
+      out.category = search.category.trim().slice(0, 120);
+    }
+    if (typeof search?.location === "string" && search.location.trim()) {
+      out.location = search.location.trim().slice(0, 120);
+    }
+    const winNum = Number(search?.window);
+    if (winNum === 30 || winNum === 90 || winNum === 180) {
+      out.window = winNum;
+    }
+    if (typeof search?.searchId === "string" && search.searchId.trim()) {
+      out.searchId = search.searchId.trim().slice(0, 120);
+    }
+    if (search?.examples === "1" || search?.examples === true) {
+      out.examples = "1";
+    }
+    if (search?.showDismissed === "1" || search?.showDismissed === true) {
+      out.showDismissed = "1";
+    }
+    return out;
+  },
   loader: () => getWorkspaceBootstrap(),
   head: () => ({
     meta: [
@@ -28,31 +54,55 @@ export const Route = createFileRoute("/_authed/")({
 
 function DiscoverScreen() {
   const loaderData = Route.useLoaderData();
+  const searchParams = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
 
   const runSearchFn = useServerFn(runLeadDiscoverySearch);
   const saveOppFn = useServerFn(saveOpportunityForUser);
+  const unsaveOppFn = useServerFn(unsaveOpportunityForUser);
   const feedbackFn = useServerFn(recordOpportunityFeedback);
+  const clearFeedbackFn = useServerFn(clearOpportunityFeedback);
 
   const profile = loaderData?.profile;
   const selectedServices = normalizeServicesList(profile?.selected_services || []);
   const serviceDescription = profile?.service_description || "";
-  const latestSearchFromLoader = loaderData?.latestLiveSearch || null;
+  const recentSearches = loaderData?.recentSearches || [];
+  const allUserOpportunities = loaderData?.allUserOpportunities || [];
 
-  // Use existing search filters if present; otherwise default to the explicitly labeled test query (Restaurants in Miami, 90 days)
+  // Resolve requested searchId from URL params or fall back to latest live search
+  const matchedSearchFromUrl = searchParams.searchId
+    ? recentSearches.find((s) => s.id === searchParams.searchId)
+    : null;
+  const initialSearch = matchedSearchFromUrl || loaderData?.latestLiveSearch || null;
+
+  const resolveOpportunitiesForSearch = (searchObj) => {
+    if (!searchObj) return [];
+    const targetId = searchObj.cached_from_search_id || searchObj.id;
+    const matches = allUserOpportunities.filter((o) => o.search_id === targetId);
+    if (matches.length > 0) return matches;
+    if (searchObj.id === loaderData?.latestLiveSearch?.id) {
+      return loaderData?.latestOpportunities || [];
+    }
+    return [];
+  };
+
   const [businessCategory, setBusinessCategory] = useState(
-    latestSearchFromLoader?.business_category || "Restaurants"
+    searchParams.category || initialSearch?.business_category || "Restaurants"
   );
   const [locationQuery, setLocationQuery] = useState(
-    latestSearchFromLoader?.location_query || "Miami, FL, USA"
+    searchParams.location || initialSearch?.location_query || "Miami, FL, USA"
   );
   const [timeWindowDays, setTimeWindowDays] = useState(
-    latestSearchFromLoader?.time_window_days || profile?.default_time_window_days || 90
+    searchParams.window ||
+      initialSearch?.time_window_days ||
+      profile?.default_time_window_days ||
+      90
   );
 
-  const [activeSearch, setActiveSearch] = useState(latestSearchFromLoader);
-  const [liveOpportunities, setLiveOpportunities] = useState(
-    loaderData?.latestOpportunities || []
+  const [activeSearch, setActiveSearch] = useState(initialSearch);
+  const [liveOpportunities, setLiveOpportunities] = useState(() =>
+    resolveOpportunitiesForSearch(initialSearch)
   );
   const [quota, setQuota] = useState(
     loaderData?.quota || {
@@ -69,18 +119,69 @@ function DiscoverScreen() {
   const [actionBanner, setActionBanner] = useState("");
   const [busyOppId, setBusyOppId] = useState(null);
 
-  // Separately labeled Example results toggle (never counted in live usage metrics)
-  const [showExamples, setShowExamples] = useState(false);
+  const [showExamples, setShowExamples] = useState(searchParams.examples === "1");
+  const [showDismissed, setShowDismissed] = useState(searchParams.showDismissed === "1");
   const [dismissedExampleIds, setDismissedExampleIds] = useState([]);
+
+  // Keep local opportunities in sync when loaderData refreshes after save/feedback actions
+  useEffect(() => {
+    if (activeSearch) {
+      const targetId = activeSearch.cached_from_search_id || activeSearch.id;
+      const freshMatches = (loaderData?.allUserOpportunities || []).filter(
+        (o) => o.search_id === targetId
+      );
+      if (freshMatches.length > 0) {
+        setLiveOpportunities(freshMatches);
+      }
+    }
+  }, [loaderData?.allUserOpportunities, activeSearch?.id]);
+
+  // Persist current filter and view state in URL search params so round-trips to details survive
+  const syncFilterUrlParams = (overrides = {}) => {
+    const nextCat = overrides.category !== undefined ? overrides.category : businessCategory;
+    const nextLoc = overrides.location !== undefined ? overrides.location : locationQuery;
+    const nextWin = overrides.window !== undefined ? overrides.window : timeWindowDays;
+    const nextSearchId =
+      overrides.searchId !== undefined ? overrides.searchId : activeSearch?.id;
+    const nextExamples =
+      overrides.examples !== undefined ? overrides.examples : showExamples;
+    const nextShowDismissed =
+      overrides.showDismissed !== undefined ? overrides.showDismissed : showDismissed;
+
+    navigate({
+      search: {
+        category: nextCat?.trim() || undefined,
+        location: nextLoc?.trim() || undefined,
+        window: nextWin || undefined,
+        searchId: nextSearchId || undefined,
+        examples: nextExamples ? "1" : undefined,
+        showDismissed: nextShowDismissed ? "1" : undefined,
+      },
+      replace: true,
+    });
+  };
 
   const savedOppIds = new Set(
     (loaderData?.savedOpportunities || []).map((s) => s.opportunity_id)
   );
+  const feedbackByOppId = new Map(
+    (loaderData?.feedbackRecords || []).map((f) => [f.opportunity_id, f])
+  );
   const dismissedOppIds = new Set(
     (loaderData?.feedbackRecords || [])
-      .filter((f) => f.verdict === "not_relevant")
+      .filter((f) => f.verdict && f.verdict !== "relevant")
       .map((f) => f.opportunity_id)
   );
+
+  const detailSearchParams = {
+    from: "discover",
+    category: businessCategory.trim() || undefined,
+    location: locationQuery.trim() || undefined,
+    window: timeWindowDays,
+    searchId: activeSearch?.id || undefined,
+    examples: showExamples ? "1" : undefined,
+    showDismissed: showDismissed ? "1" : undefined,
+  };
 
   const executeDiscoverySearch = async (forceRetry = false) => {
     if (isSearching) return;
@@ -96,6 +197,11 @@ function DiscoverScreen() {
     setActionBanner("");
     setShowExamples(false);
 
+    trackLeadsEvent("search_started", {
+      time_window_days: timeWindowDays,
+      surface: "discover",
+    });
+
     try {
       const res = await runSearchFn({
         data: {
@@ -106,20 +212,54 @@ function DiscoverScreen() {
         },
       });
 
-      if (res?.search) {
-        setActiveSearch(res.search);
+      const returnedSearch = res?.search || null;
+      const returnedOpps = res?.opportunities || [];
+
+      if (returnedSearch) {
+        setActiveSearch(returnedSearch);
       }
-      setLiveOpportunities(res?.opportunities || []);
+      setLiveOpportunities(returnedOpps);
       if (res?.quota) {
         setQuota(res.quota);
       }
       if (res?.fromCache) {
-        setFromCacheInfo(res.cachedAt || res?.search?.completed_at || res?.search?.executed_at);
+        setFromCacheInfo(
+          res.cachedAt || returnedSearch?.completed_at || returnedSearch?.executed_at
+        );
       } else {
         setFromCacheInfo(null);
       }
+
+      if (returnedSearch?.status === "failed") {
+        trackLeadsEvent("search_failed", {
+          time_window_days: timeWindowDays,
+          surface: "discover",
+        });
+      } else {
+        trackLeadsEvent("search_completed", {
+          time_window_days: timeWindowDays,
+          results_count: returnedOpps.length,
+          verified_count: returnedSearch?.verified_count ?? 0,
+          needs_review_count: returnedSearch?.needs_review_count ?? 0,
+          from_cache: Boolean(res?.fromCache),
+          surface: "discover",
+        });
+      }
+
+      syncFilterUrlParams({
+        category: cat,
+        location: loc,
+        window: timeWindowDays,
+        searchId: returnedSearch?.id,
+        examples: false,
+      });
+
       await router.invalidate();
     } catch (err) {
+      trackLeadsEvent("search_failed", {
+        time_window_days: timeWindowDays,
+        surface: "discover",
+      });
       setRequestError(
         err?.message || "Could not run live search. Please check your parameters and retry."
       );
@@ -136,30 +276,39 @@ function DiscoverScreen() {
       await saveOppFn({
         data: {
           opportunity_id: opp.id,
-          business_name: opp.business_name,
-          business_category: opp.business_category || "",
-          location: opp.location,
-          website_url: opp.website_url || null,
-          signal_type: opp.signal_type,
-          signal_summary: opp.signal_summary || "",
-          source_title: opp.source_title,
-          source_url: opp.source_url,
-          supporting_excerpt: opp.supporting_excerpt,
-          publication_date: opp.publication_date || null,
-          event_date: opp.event_date || null,
-          retrieval_date: opp.retrieval_date,
-          recency_basis: opp.recency_basis || "unverified_date",
-          verification_status: opp.verification_status || "needs_review",
-          verification_notes: opp.verification_notes || "",
-          evidence_status: opp.evidence_status || "unverified",
           service_fit_inference: fitText,
           inferred_service_categories: selectedServices,
         },
       });
+      trackLeadsEvent(
+        "opportunity_saved",
+        {
+          verification_status: opp.verification_status || "needs_review",
+          action: "saved",
+          surface: "discover_card",
+        },
+        { opportunityId: opp.id }
+      );
       await router.invalidate();
-      setActionBanner(`Saved "${opp.business_name}" to your Saved leads.`);
+      setActionBanner(`Saved "${opp.business_name}" to Saved leads.`);
     } catch (err) {
       setActionBanner(err?.message || "Could not save lead.");
+    } finally {
+      setBusyOppId(null);
+    }
+  };
+
+  const handleUnsaveOpportunity = async (opp) => {
+    setBusyOppId(opp.id);
+    setActionBanner("");
+    try {
+      await unsaveOppFn({
+        data: { opportunity_id: opp.id },
+      });
+      await router.invalidate();
+      setActionBanner(`Removed "${opp.business_name}" from Saved leads.`);
+    } catch (err) {
+      setActionBanner(err?.message || "Could not remove saved lead.");
     } finally {
       setBusyOppId(null);
     }
@@ -174,9 +323,20 @@ function DiscoverScreen() {
           opportunity_id: opp.id,
           business_name: opp.business_name,
           verdict: "not_relevant",
-          reason_note: "Marked not relevant from Find leads",
+          reason_category: "Not a fit for my services",
+          reason_note: "Dismissed from Find leads",
         },
       });
+      trackLeadsEvent(
+        "relevance_feedback_recorded",
+        {
+          verdict: "not_relevant",
+          verification_status: opp.verification_status || "needs_review",
+          has_reason_note: true,
+          surface: "discover_card",
+        },
+        { opportunityId: opp.id }
+      );
       await router.invalidate();
       setActionBanner(`Marked "${opp.business_name}" as not relevant.`);
     } catch (err) {
@@ -186,16 +346,31 @@ function DiscoverScreen() {
     }
   };
 
-  // Filter out dismissed opportunities from active view
-  const visibleLiveOpps = liveOpportunities.filter((o) => !dismissedOppIds.has(o.id));
-  const verifiedOpps = visibleLiveOpps.filter((o) => o.verification_status === "verified");
-  const needsReviewOpps = visibleLiveOpps.filter((o) => o.verification_status !== "verified");
+  const handleRestoreOpportunity = async (opp) => {
+    setBusyOppId(opp.id);
+    setActionBanner("");
+    try {
+      await clearFeedbackFn({
+        data: { opportunity_id: opp.id },
+      });
+      await router.invalidate();
+      setActionBanner(`Restored "${opp.business_name}" to active results.`);
+    } catch (err) {
+      setActionBanner(err?.message || "Could not restore lead.");
+    } finally {
+      setBusyOppId(null);
+    }
+  };
+
+  const dismissedLiveOpps = liveOpportunities.filter((o) => dismissedOppIds.has(o.id));
+  const activeLiveOpps = liveOpportunities.filter((o) => !dismissedOppIds.has(o.id));
+  const verifiedOpps = activeLiveOpps.filter((o) => o.verification_status === "verified");
+  const needsReviewOpps = activeLiveOpps.filter((o) => o.verification_status !== "verified");
 
   const visibleExamples = showExamples
     ? EXAMPLE_OPPORTUNITIES.filter((item) => !dismissedExampleIds.includes(item.id)).slice(0, 5)
     : [];
 
-  // Derive current explicit UI state: not_configured, searching, failed, empty, partial, complete
   const currentSearchStatus = isSearching
     ? "searching"
     : requestError || activeSearch?.status === "failed"
@@ -294,7 +469,11 @@ function DiscoverScreen() {
                 type="text"
                 disabled={isSearching}
                 value={businessCategory}
-                onChange={(e) => setBusinessCategory(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setBusinessCategory(val);
+                  syncFilterUrlParams({ category: val });
+                }}
                 placeholder="e.g., Restaurants, Physical therapy, Dental clinics, Retail"
                 className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50"
               />
@@ -309,7 +488,11 @@ function DiscoverScreen() {
                 type="text"
                 disabled={isSearching}
                 value={locationQuery}
-                onChange={(e) => setLocationQuery(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setLocationQuery(val);
+                  syncFilterUrlParams({ location: val });
+                }}
                 placeholder="e.g., Miami, FL, USA"
                 className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50"
               />
@@ -325,7 +508,10 @@ function DiscoverScreen() {
                     key={days}
                     type="button"
                     disabled={isSearching}
-                    onClick={() => setTimeWindowDays(days)}
+                    onClick={() => {
+                      setTimeWindowDays(days);
+                      syncFilterUrlParams({ window: days });
+                    }}
                     className={`h-8 rounded text-xs font-medium transition-colors ${
                       timeWindowDays === days
                         ? "bg-white text-blue-700 shadow-2xs border border-slate-200"
@@ -363,7 +549,11 @@ function DiscoverScreen() {
             <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
-                onClick={() => setShowExamples((prev) => !prev)}
+                onClick={() => {
+                  const next = !showExamples;
+                  setShowExamples(next);
+                  syncFilterUrlParams({ examples: next });
+                }}
                 className="px-3.5 py-2 rounded-md text-xs font-medium border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 {showExamples ? "Hide example results" : "View example results"}
@@ -492,7 +682,7 @@ function DiscoverScreen() {
                 <p className="text-slate-600">{activeSearch.honest_status_reason}</p>
               </div>
 
-              <div className="text-[11px] text-slate-500 shrink-0 flex flex-col sm:items-end">
+              <div className="text-[11px] text-slate-500 shrink-0 flex flex-col sm:items-end gap-1">
                 {fromCacheInfo ? (
                   <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
                     24h private cache · Retrieved{" "}
@@ -510,6 +700,22 @@ function DiscoverScreen() {
                       : ""}
                   </span>
                 )}
+
+                {dismissedLiveOpps.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = !showDismissed;
+                      setShowDismissed(next);
+                      syncFilterUrlParams({ showDismissed: next });
+                    }}
+                    className="text-blue-700 hover:underline font-medium"
+                  >
+                    {showDismissed
+                      ? `Hide dismissed (${dismissedLiveOpps.length})`
+                      : `Show dismissed (${dismissedLiveOpps.length})`}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -526,7 +732,7 @@ function DiscoverScreen() {
 
               {verifiedOpps.length === 0 ? (
                 <div className="bg-white rounded-lg border border-slate-200 p-4 text-xs text-slate-600">
-                  No candidates in this run passed full automated page verification. Review the candidates below manually.
+                  No active candidates in this view are marked Verified.
                 </div>
               ) : (
                 verifiedOpps.map((opp) => (
@@ -536,9 +742,12 @@ function DiscoverScreen() {
                     selectedServices={selectedServices}
                     serviceDescription={serviceDescription}
                     isSaved={savedOppIds.has(opp.id)}
-                    isDismissed={dismissedOppIds.has(opp.id)}
+                    isDismissed={false}
+                    feedbackVerdict={feedbackByOppId.get(opp.id)?.verdict || null}
                     isBusy={busyOppId === opp.id}
+                    detailSearchParams={detailSearchParams}
                     onSave={handleSaveOpportunity}
+                    onUnsave={handleUnsaveOpportunity}
                     onDismiss={handleDismissOpportunity}
                   />
                 ))
@@ -564,10 +773,44 @@ function DiscoverScreen() {
                     selectedServices={selectedServices}
                     serviceDescription={serviceDescription}
                     isSaved={savedOppIds.has(opp.id)}
-                    isDismissed={dismissedOppIds.has(opp.id)}
+                    isDismissed={false}
+                    feedbackVerdict={feedbackByOppId.get(opp.id)?.verdict || null}
                     isBusy={busyOppId === opp.id}
+                    detailSearchParams={detailSearchParams}
                     onSave={handleSaveOpportunity}
+                    onUnsave={handleUnsaveOpportunity}
                     onDismiss={handleDismissOpportunity}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Optional Dismissed Section so users can inspect or restore dismissed items */}
+            {showDismissed && dismissedLiveOpps.length > 0 && (
+              <div className="space-y-3 pt-3 border-t border-slate-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-semibold text-slate-700">
+                    Dismissed opportunities ({dismissedLiveOpps.length})
+                  </h2>
+                  <span className="text-xs text-slate-500">
+                    Marked as not relevant — click Restore or open details to update your rating
+                  </span>
+                </div>
+
+                {dismissedLiveOpps.map((opp) => (
+                  <OpportunityCard
+                    key={opp.id}
+                    opp={opp}
+                    selectedServices={selectedServices}
+                    serviceDescription={serviceDescription}
+                    isSaved={savedOppIds.has(opp.id)}
+                    isDismissed={true}
+                    feedbackVerdict={feedbackByOppId.get(opp.id)?.verdict || "not_relevant"}
+                    isBusy={busyOppId === opp.id}
+                    detailSearchParams={detailSearchParams}
+                    onSave={handleSaveOpportunity}
+                    onUnsave={handleUnsaveOpportunity}
+                    onRestore={handleRestoreOpportunity}
                   />
                 ))}
               </div>
@@ -597,7 +840,10 @@ function DiscoverScreen() {
             </div>
             <button
               type="button"
-              onClick={() => setShowExamples(false)}
+              onClick={() => {
+                setShowExamples(false);
+                syncFilterUrlParams({ examples: false });
+              }}
               className="text-xs font-medium text-slate-600 hover:text-slate-900 shrink-0 underline"
             >
               Close examples
@@ -612,6 +858,7 @@ function DiscoverScreen() {
                 selectedServices={selectedServices}
                 serviceDescription={serviceDescription}
                 isExample={true}
+                detailSearchParams={detailSearchParams}
                 onDismiss={(item) =>
                   setDismissedExampleIds((prev) => [...prev, item.id])
                 }
