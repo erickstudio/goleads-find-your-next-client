@@ -9,6 +9,7 @@ import {
 } from "@/lib/server-fns";
 import { usePreferences } from "@/lib/PreferencesContext";
 import { trackLeadsEvent } from "@/lib/telemetry";
+import { safePublicUrl } from "@/lib/public-url";
 
 export const Route = createFileRoute("/_authed/saved")({
   ssr: false,
@@ -270,7 +271,7 @@ function SavedOpportunitiesScreen() {
                       {item.business_category && <span>· {item.business_category}</span>}
                       <span>·</span>
                       <a
-                        href={item.source_url}
+                        href={safePublicUrl(item.source_url)}
                         target="_blank"
                         rel="noreferrer"
                         onClick={() => handleSourceOpen(item)}
@@ -325,7 +326,7 @@ function SavedOpportunitiesScreen() {
                         {t("saved.originalEvidenceTitle")}
                       </span>
                       <a
-                        href={item.source_url}
+                        href={safePublicUrl(item.source_url)}
                         target="_blank"
                         rel="noreferrer"
                         onClick={() => handleSourceOpen(item)}

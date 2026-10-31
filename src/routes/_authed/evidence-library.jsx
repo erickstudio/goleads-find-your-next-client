@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { formatRecencyBasisLabel } from "@/lib/leads-constants";
 import { getExtendedWorkspaceData } from "@/lib/workspace-pages-fns";
 import { usePreferences } from "@/lib/PreferencesContext";
+import { safePublicUrl } from "@/lib/public-url";
 
 export const Route = createFileRoute("/_authed/evidence-library")({
   ssr: false,
@@ -213,7 +214,7 @@ function EvidenceLibraryPage() {
 
                   <div className="flex items-center gap-2 shrink-0">
                     <a
-                      href={ev.source_url}
+                      href={safePublicUrl(ev.source_url)}
                       target="_blank"
                       rel="noreferrer"
                       className="px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-foreground border border-border hover:bg-secondary/80"

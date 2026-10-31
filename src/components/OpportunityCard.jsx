@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { safePublicUrl } from "@/lib/public-url";
 import {
   buildServiceFitHypothesis,
   formatRecencyBasisLabel,
@@ -104,7 +105,7 @@ export default function OpportunityCard({
             <span>·</span>
             {opp.website_url ? (
               <a
-                href={opp.website_url}
+                href={safePublicUrl(opp.website_url)}
                 target="_blank"
                 rel="noreferrer"
                 className="text-primary hover:underline font-medium"
@@ -173,7 +174,7 @@ export default function OpportunityCard({
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
             <span className="font-medium text-foreground">{t("card.recoveredEvidenceTitle")}</span>
             <a
-              href={opp.source_url}
+              href={safePublicUrl(opp.source_url)}
               target="_blank"
               rel="noreferrer"
               onClick={handleSourceClick}

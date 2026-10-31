@@ -115,7 +115,10 @@ export const initiateTestPilotCheckout = createServerFn({ method: "POST" })
       };
     }
 
-    const origin = data.returnOrigin || "http://localhost:5173";
+    // Only this app's explicit origin is allowed. Untrusted return URLs fall back here,
+    // including requests made from preview; no wildcard platform domains are trusted.
+    const appOrigin = "https://go-leads-magic-flow.base44.app";
+    const origin = data.returnOrigin === appOrigin ? data.returnOrigin : appOrigin;
     const successUrl = `${origin}/pilot?checkout=return&session_id={CHECKOUT_SESSION_ID}`;
     const cancelUrl = `${origin}/pilot?checkout=canceled&session_id={CHECKOUT_SESSION_ID}`;
 

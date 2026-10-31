@@ -21,6 +21,7 @@ import {
 import { buildOutreachDraft } from "@/lib/i18n";
 import { usePreferences } from "@/lib/PreferencesContext";
 import { trackLeadsEvent } from "@/lib/telemetry";
+import { safePublicUrl } from "@/lib/public-url";
 
 export const Route = createFileRoute("/_authed/opportunities/$opportunityId")({
   ssr: false,
@@ -391,7 +392,7 @@ function OpportunityDetailScreen() {
               {opp.business_category && <span>· {opp.business_category}</span>}
               {opp.website_url ? (
                 <a
-                  href={opp.website_url}
+                  href={safePublicUrl(opp.website_url)}
                   target="_blank"
                   rel="noreferrer"
                   className="text-primary hover:underline font-medium"
@@ -460,7 +461,7 @@ function OpportunityDetailScreen() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
                   <span className="font-medium text-foreground">{ev.source_title}</span>
                   <a
-                    href={ev.source_url}
+                    href={safePublicUrl(ev.source_url)}
                     target="_blank"
                     rel="noreferrer"
                     onClick={handleSourceOpen}
