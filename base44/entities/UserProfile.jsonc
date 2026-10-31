@@ -1,0 +1,97 @@
+{
+  "name": "UserProfile",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string",
+      "description": "Authenticated user ID derived on the server"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Authenticated user email derived on the server"
+    },
+    "selected_services": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "web_design_seo",
+          "ecommerce",
+          "automation_crm"
+        ]
+      },
+      "description": "Service categories offered by the user"
+    },
+    "agency_or_freelancer_name": {
+      "type": "string",
+      "description": "Optional working name or practice label"
+    },
+    "default_time_window_days": {
+      "type": "number",
+      "enum": [
+        30,
+        90,
+        180
+      ],
+      "default": 90
+    },
+    "onboarding_completed": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "owner_id",
+    "selected_services"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

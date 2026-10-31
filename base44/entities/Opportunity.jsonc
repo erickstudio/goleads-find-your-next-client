@@ -1,0 +1,137 @@
+{
+  "name": "Opportunity",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string",
+      "description": "Authenticated user ID derived on the server"
+    },
+    "search_id": {
+      "type": "string",
+      "description": "ID of the LeadSearch that surfaced this opportunity"
+    },
+    "business_name": {
+      "type": "string"
+    },
+    "business_category": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "website_url": {
+      "type": "string",
+      "description": "Known website URL if verified, or empty if unknown"
+    },
+    "signal_type": {
+      "type": "string",
+      "description": "Opening or expansion signal classification"
+    },
+    "signal_summary": {
+      "type": "string",
+      "description": "Factual summary of opening or expansion event"
+    },
+    "source_title": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "supporting_excerpt": {
+      "type": "string"
+    },
+    "publication_date": {
+      "type": "string",
+      "description": "Date source was published, when available"
+    },
+    "event_date": {
+      "type": "string",
+      "description": "Planned or actual opening/expansion date when stated (never conflated with discovery date)"
+    },
+    "retrieval_date": {
+      "type": "string",
+      "description": "Date record was retrieved/discovered"
+    },
+    "evidence_status": {
+      "type": "string",
+      "enum": [
+        "verified_excerpt",
+        "corroborated_permit",
+        "partial_date_verification",
+        "unverified"
+      ]
+    },
+    "inferred_service_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "service_fit_inference": {
+      "type": "string",
+      "description": "Clearly labeled commercial hypothesis separate from verified facts"
+    }
+  },
+  "required": [
+    "owner_id",
+    "business_name",
+    "location",
+    "signal_type",
+    "source_title",
+    "source_url",
+    "supporting_excerpt",
+    "retrieval_date",
+    "evidence_status",
+    "service_fit_inference"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

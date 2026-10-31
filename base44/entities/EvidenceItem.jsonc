@@ -1,0 +1,100 @@
+{
+  "name": "EvidenceItem",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string",
+      "description": "Authenticated user ID derived on the server"
+    },
+    "opportunity_id": {
+      "type": "string",
+      "description": "Parent Opportunity ID"
+    },
+    "source_title": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "supporting_excerpt": {
+      "type": "string"
+    },
+    "publication_date": {
+      "type": "string"
+    },
+    "event_date": {
+      "type": "string"
+    },
+    "retrieval_date": {
+      "type": "string"
+    },
+    "evidence_status": {
+      "type": "string",
+      "enum": [
+        "verified_excerpt",
+        "corroborated_permit",
+        "partial_date_verification",
+        "unverified"
+      ]
+    }
+  },
+  "required": [
+    "owner_id",
+    "opportunity_id",
+    "source_title",
+    "source_url",
+    "supporting_excerpt",
+    "retrieval_date",
+    "evidence_status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

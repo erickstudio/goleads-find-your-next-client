@@ -1,0 +1,133 @@
+{
+  "name": "SavedOpportunity",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string",
+      "description": "Authenticated user ID derived on the server"
+    },
+    "opportunity_id": {
+      "type": "string",
+      "description": "Opportunity ID"
+    },
+    "business_name": {
+      "type": "string"
+    },
+    "business_category": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "website_url": {
+      "type": "string"
+    },
+    "signal_type": {
+      "type": "string"
+    },
+    "signal_summary": {
+      "type": "string"
+    },
+    "source_title": {
+      "type": "string"
+    },
+    "source_url": {
+      "type": "string"
+    },
+    "supporting_excerpt": {
+      "type": "string"
+    },
+    "publication_date": {
+      "type": "string"
+    },
+    "event_date": {
+      "type": "string"
+    },
+    "retrieval_date": {
+      "type": "string"
+    },
+    "evidence_status": {
+      "type": "string"
+    },
+    "service_fit_inference": {
+      "type": "string"
+    },
+    "inferred_service_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "qualification_notes": {
+      "type": "string",
+      "description": "Private research notes added by the user"
+    },
+    "review_stage": {
+      "type": "string",
+      "enum": [
+        "saved",
+        "researching",
+        "qualified",
+        "archived"
+      ],
+      "default": "saved"
+    }
+  },
+  "required": [
+    "owner_id",
+    "opportunity_id",
+    "business_name",
+    "location",
+    "source_url"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}
