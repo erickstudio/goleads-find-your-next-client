@@ -71,6 +71,18 @@
       "type": "string",
       "description": "Private research notes added by the user"
     },
+    "outreach_draft": {
+      "type": "string",
+      "description": "Personalized outreach message draft saved by the user"
+    },
+    "outreach_draft_language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "es"
+      ],
+      "description": "Language of the saved outreach draft"
+    },
     "review_stage": {
       "type": "string",
       "enum": [

@@ -468,38 +468,51 @@ function DiscoverScreen() {
       )}
 
       {/* LeadSearch Parameter Strategy Agent */}
-      <AgentChatPanel
-        agentName="search_strategist"
-        badgeLabel={t("discover.agentBadge")}
-        title={t("discover.agentTitle")}
-        subtitle={t("discover.agentSubtitle")}
-        conversationTitle={t("discover.agentConvTitle")}
-        contextPreamble={`Preferred response language: ${lang === "es" ? "Spanish (Español)" : "English"}. Current user services: ${
-          selectedServices.length > 0 ? selectedServices.join(", ") : "None configured yet"
-        }. Service description: ${serviceDescription || "Not set"}. Current form inputs: Business category="${businessCategory}", Location="${locationQuery}", Time window=${timeWindowDays} days.`}
-        starterPrompts={[
-          {
-            label: t("discover.agentPrompt1Label"),
-            prompt: t("discover.agentPrompt1Text"),
-          },
-          {
-            label: t("discover.agentPrompt2Label", {
-              category: businessCategory,
-              location: locationQuery,
-            }),
-            prompt: t("discover.agentPrompt2Text", {
-              category: businessCategory,
-              location: locationQuery,
-              days: timeWindowDays,
-            }),
-          },
-          {
-            label: t("discover.agentPrompt3Label"),
-            prompt: t("discover.agentPrompt3Text"),
-          },
-        ]}
-        placeholder={t("discover.agentPlaceholder")}
-      />
+      {profile?.enable_search_strategist !== false ? (
+        <AgentChatPanel
+          agentName="search_strategist"
+          badgeLabel={t("discover.agentBadge")}
+          title={t("discover.agentTitle")}
+          subtitle={t("discover.agentSubtitle")}
+          conversationTitle={t("discover.agentConvTitle")}
+          contextPreamble={`Preferred response language: ${lang === "es" ? "Spanish (Español)" : "English"}. Current user services: ${
+            selectedServices.length > 0 ? selectedServices.join(", ") : "None configured yet"
+          }. Service description: ${serviceDescription || "Not set"}. Current form inputs: Business category="${businessCategory}", Location="${locationQuery}", Time window=${timeWindowDays} days.`}
+          starterPrompts={[
+            {
+              label: t("discover.agentPrompt1Label"),
+              prompt: t("discover.agentPrompt1Text"),
+            },
+            {
+              label: t("discover.agentPrompt2Label", {
+                category: businessCategory,
+                location: locationQuery,
+              }),
+              prompt: t("discover.agentPrompt2Text", {
+                category: businessCategory,
+                location: locationQuery,
+                days: timeWindowDays,
+              }),
+            },
+            {
+              label: t("discover.agentPrompt3Label"),
+              prompt: t("discover.agentPrompt3Text"),
+            },
+          ]}
+          placeholder={t("discover.agentPlaceholder")}
+        />
+      ) : (
+        <div className="bg-card rounded-lg border border-border px-4 py-2.5 flex items-center justify-between text-xs text-muted-foreground">
+          <span>
+            {lang === "es"
+              ? "El asistente Estratega de Búsqueda está desactivado."
+              : "Search Strategist AI agent is currently disabled."}
+          </span>
+          <Link to="/agent-settings" className="text-primary hover:underline font-medium">
+            {lang === "es" ? "Activar en Ajustes de agentes" : "Enable in Agent Settings"}
+          </Link>
+        </div>
+      )}
 
       {/* Search Form */}
       <section

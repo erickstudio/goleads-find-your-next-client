@@ -59,6 +59,16 @@
       ],
       "description": "Preferred color theme mode (light, dark, or system)"
     },
+    "enable_search_strategist": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the Search Strategist AI agent is enabled in the workspace"
+    },
+    "enable_evidence_analyst": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether the Evidence & Relevance Analyst AI agent is enabled in the workspace"
+    },
     "onboarding_completed": {
       "type": "boolean",
       "default": false

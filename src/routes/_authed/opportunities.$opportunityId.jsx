@@ -498,42 +498,55 @@ function OpportunityDetailScreen() {
 
         {/* Evidence & Relevance Analyst Agent */}
         <div className="pt-4 border-t border-border">
-          <AgentChatPanel
-            agentName="evidence_analyst"
-            badgeLabel={t("detail.agentBadge")}
-            title={t("detail.agentTitle")}
-            subtitle={t("detail.agentSubtitle")}
-            conversationTitle={`Evidence Analysis: ${opp.business_name}`}
-            contextPreamble={`Preferred UI response language: ${lang === "es" ? "Spanish (Español)" : "English"}. Preferred outreach draft language (kept separate from UI): ${outreachLang === "es" ? "Spanish (Español)" : "English"}. Opportunity ID: ${opp.id}. Business: ${opp.business_name} (${opp.business_category || "Uncategorized"}) in ${opp.location}. Signal: ${opp.signal_type} — ${opp.signal_summary}. Verification status: ${opp.verification_status} (${opp.verification_notes || "no notes"}). Recency basis: ${opp.recency_basis}. User services: ${
-              selectedServices.length > 0 ? selectedServices.join(", ") : "Not configured"
-            }. Evidence items: ${JSON.stringify(
-              evidenceList.map((e) => ({
-                source_title: e.source_title,
-                source_url: e.source_url,
-                supporting_excerpt: e.supporting_excerpt,
-                publication_date: e.publication_date,
-                event_date: e.event_date,
-                retrieval_date: e.retrieval_date,
-                verification_status: e.verification_status,
-                evidence_status: e.evidence_status,
-              }))
-            )}`}
-            starterPrompts={[
-              {
-                label: t("detail.agentPrompt1Label"),
-                prompt: `Interpret the EvidenceItem data for ${opp.business_name} and summarize why this opportunity is relevant to my services, separating verified facts from hypotheses.`,
-              },
-              {
-                label: t("detail.agentPrompt2Label"),
-                prompt: `Break down the publication_date, event_date, retrieval_date, and verification_status for ${opp.business_name}. What is confirmed and what still needs manual verification?`,
-              },
-              {
-                label: t("detail.agentPrompt3Label"),
-                prompt: `Based strictly on the verified EvidenceItem excerpt for ${opp.business_name}, suggest a concise, factual outreach angle in ${outreachLang === "es" ? "Spanish" : "English"} tailored to my services without overclaiming.`,
-              },
-            ]}
-            placeholder={t("detail.agentPlaceholder", { name: opp.business_name })}
-          />
+          {profile?.enable_evidence_analyst !== false ? (
+            <AgentChatPanel
+              agentName="evidence_analyst"
+              badgeLabel={t("detail.agentBadge")}
+              title={t("detail.agentTitle")}
+              subtitle={t("detail.agentSubtitle")}
+              conversationTitle={`Evidence Analysis: ${opp.business_name}`}
+              contextPreamble={`Preferred UI response language: ${lang === "es" ? "Spanish (Español)" : "English"}. Preferred outreach draft language (kept separate from UI): ${outreachLang === "es" ? "Spanish (Español)" : "English"}. Opportunity ID: ${opp.id}. Business: ${opp.business_name} (${opp.business_category || "Uncategorized"}) in ${opp.location}. Signal: ${opp.signal_type} — ${opp.signal_summary}. Verification status: ${opp.verification_status} (${opp.verification_notes || "no notes"}). Recency basis: ${opp.recency_basis}. User services: ${
+                selectedServices.length > 0 ? selectedServices.join(", ") : "Not configured"
+              }. Evidence items: ${JSON.stringify(
+                evidenceList.map((e) => ({
+                  source_title: e.source_title,
+                  source_url: e.source_url,
+                  supporting_excerpt: e.supporting_excerpt,
+                  publication_date: e.publication_date,
+                  event_date: e.event_date,
+                  retrieval_date: e.retrieval_date,
+                  verification_status: e.verification_status,
+                  evidence_status: e.evidence_status,
+                }))
+              )}`}
+              starterPrompts={[
+                {
+                  label: t("detail.agentPrompt1Label"),
+                  prompt: `Interpret the EvidenceItem data for ${opp.business_name} and summarize why this opportunity is relevant to my services, separating verified facts from hypotheses.`,
+                },
+                {
+                  label: t("detail.agentPrompt2Label"),
+                  prompt: `Break down the publication_date, event_date, retrieval_date, and verification_status for ${opp.business_name}. What is confirmed and what still needs manual verification?`,
+                },
+                {
+                  label: t("detail.agentPrompt3Label"),
+                  prompt: `Based strictly on the verified EvidenceItem excerpt for ${opp.business_name}, suggest a concise, factual outreach angle in ${outreachLang === "es" ? "Spanish" : "English"} tailored to my services without overclaiming.`,
+                },
+              ]}
+              placeholder={t("detail.agentPlaceholder", { name: opp.business_name })}
+            />
+          ) : (
+            <div className="bg-secondary/40 rounded-lg border border-border px-4 py-2.5 flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                {lang === "es"
+                  ? "El Analista de Evidencia y Relevancia está desactivado."
+                  : "Evidence & Relevance Analyst AI agent is currently disabled."}
+              </span>
+              <Link to="/agent-settings" className="text-primary hover:underline font-medium">
+                {lang === "es" ? "Activar en Ajustes de agentes" : "Enable in Agent Settings"}
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Possible Service Fit (Hypothesis) */}
