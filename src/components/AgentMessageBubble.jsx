@@ -1,8 +1,10 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { ChevronDown, ChevronRight, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { usePreferences } from "@/lib/PreferencesContext";
 
 function FunctionDisplay({ toolCall }) {
+  const { t } = usePreferences();
   const [expanded, setExpanded] = useState(false);
 
   const status = toolCall?.status || "pending";
@@ -27,10 +29,10 @@ function FunctionDisplay({ toolCall }) {
   const hideDetails = Boolean(projection?.hide_details && projection?.details_redacted);
 
   const statusLabel = isRunning
-    ? projection?.active_label || `Running ${toolCall?.name || "tool"}…`
+    ? projection?.active_label || t("agent.runningTool", { name: toolCall?.name || "tool" })
     : isFailed
-    ? projection?.error_label || `Failed ${toolCall?.name || "tool"}`
-    : projection?.label || `Checked ${toolCall?.name || "data"}`;
+    ? projection?.error_label || t("agent.failedTool", { name: toolCall?.name || "tool" })
+    : projection?.label || t("agent.checkedTool", { name: toolCall?.name || "data" });
 
   let parsedArgs = toolCall?.arguments_string;
   if (typeof parsedArgs === "string") {
@@ -42,7 +44,7 @@ function FunctionDisplay({ toolCall }) {
   }
 
   return (
-    <div className="mt-2 rounded border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] text-slate-700">
+    <div className="mt-2 rounded border border-border bg-secondary/60 px-2.5 py-1.5 text-[11px] text-foreground">
       <button
         type="button"
         onClick={() => !hideDetails && setExpanded((prev) => !prev)}
@@ -50,26 +52,26 @@ function FunctionDisplay({ toolCall }) {
       >
         <span className="inline-flex items-center gap-1.5">
           {isRunning ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
           ) : isFailed ? (
-            <AlertCircle className="h-3.5 w-3.5 text-red-600" />
+            <AlertCircle className="h-3.5 w-3.5 text-destructive" />
           ) : (
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
           )}
           <span>{statusLabel}</span>
         </span>
         {!hideDetails && (
-          <span className="text-slate-400">
+          <span className="text-muted-foreground">
             {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           </span>
         )}
       </button>
 
       {!hideDetails && expanded && (
-        <div className="mt-2 space-y-1.5 border-t border-slate-200 pt-1.5 font-mono text-[10px] text-slate-600">
+        <div className="mt-2 space-y-1.5 border-t border-border pt-1.5 font-mono text-[10px] text-muted-foreground">
           {parsedArgs !== undefined && (
             <div>
-              <div className="font-semibold text-slate-700">Parameters:</div>
+              <div className="font-semibold text-foreground">{t("agent.parameters")}</div>
               <pre className="overflow-x-auto whitespace-pre-wrap">
                 {typeof parsedArgs === "string" ? parsedArgs : JSON.stringify(parsedArgs, null, 2)}
               </pre>
@@ -77,7 +79,7 @@ function FunctionDisplay({ toolCall }) {
           )}
           {parsedResults !== undefined && (
             <div>
-              <div className="font-semibold text-slate-700">Result:</div>
+              <div className="font-semibold text-foreground">{t("agent.result")}</div>
               <pre className="max-h-40 overflow-y-auto overflow-x-auto whitespace-pre-wrap">
                 {typeof parsedResults === "string"
                   ? parsedResults
@@ -99,15 +101,15 @@ export default function AgentMessageBubble({ message }) {
       <div
         className={`max-w-[90%] rounded-lg px-3.5 py-2.5 text-xs leading-relaxed ${
           isUser
-            ? "bg-blue-600 text-white"
-            : "bg-white border border-slate-200 text-slate-800"
+            ? "bg-primary text-primary-foreground"
+            : "bg-card border border-border text-foreground"
         }`}
       >
         {message?.content &&
           (isUser ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
           ) : (
-            <div className="prose prose-xs max-w-none text-slate-800 prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0.5 prose-strong:text-slate-900">
+            <div className="prose prose-xs max-w-none text-foreground prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0.5 prose-strong:text-foreground">
               <ReactMarkdown>{message.content}</ReactMarkdown>
             </div>
           ))}

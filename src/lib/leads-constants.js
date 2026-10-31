@@ -67,9 +67,18 @@ export function normalizeServicesList(rawList) {
 }
 
 /**
- * Human-readable label for recency basis.
+ * Human-readable label for recency basis (bilingual: en / es).
  */
-export function formatRecencyBasisLabel(recencyBasis) {
+export function formatRecencyBasisLabel(recencyBasis, lang = "en") {
+  if (lang === "es") {
+    if (recencyBasis === "announcement_date") {
+      return "Vigencia basada en fecha del anuncio";
+    }
+    if (recencyBasis === "event_date") {
+      return "Vigencia basada en fecha del evento";
+    }
+    return "Fecha de vigencia sin verificar";
+  }
   if (recencyBasis === "announcement_date") {
     return "Recency based on announcement date";
   }
@@ -84,9 +93,34 @@ export function formatRecencyBasisLabel(recencyBasis) {
  * actual custom services and optional description, without overclaiming verified need,
  * contacts, technical defects, budgets, or buying intent.
  */
-export function buildServiceFitHypothesis(opportunity, selectedServices = [], serviceDescription = "") {
+export function buildServiceFitHypothesis(
+  opportunity,
+  selectedServices = [],
+  serviceDescription = "",
+  lang = "en"
+) {
   const cleanServices = normalizeServicesList(selectedServices);
   const desc = (serviceDescription || "").trim();
+
+  if (lang === "es") {
+    if (cleanServices.length > 0) {
+      const servicesText = cleanServices.join(", ");
+      const signalContext = opportunity?.signal_type
+        ? `durante un evento de "${opportunity.signal_type}"`
+        : "al abrir o expandir operaciones";
+      const descClause = desc
+        ? ` Según la descripción de tu oferta (${desc}), este momento puede ser relevante para evaluar.`
+        : "";
+      return `Hipótesis para ${servicesText}: Los negocios ${signalContext} suelen evaluar proveedores externos y soporte operativo al habilitar una nueva sede o ampliar capacidad.${descClause} La evidencia pública de apertura o expansión no confirma presupuesto, defectos técnicos ni intención activa de compra.`;
+    }
+    if (opportunity?.service_fit_inference) {
+      return opportunity.service_fit_inference.replace(
+        /^INFERENCE \(Not a verified fact\):\s*/i,
+        "Hipótesis: "
+      );
+    }
+    return "Hipótesis: Los negocios en apertura o expansión suelen evaluar servicios profesionales externos durante su lanzamiento o crecimiento, aunque los anuncios públicos no confirman presupuesto ni intención activa de compra.";
+  }
 
   if (cleanServices.length > 0) {
     const servicesText = cleanServices.join(", ");

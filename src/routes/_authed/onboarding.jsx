@@ -1,15 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { SERVICE_EXAMPLES, normalizeServicesList } from "@/lib/leads-constants";
 import { getWorkspaceBootstrap, saveUserProfile } from "@/lib/server-fns";
+import { usePreferences } from "@/lib/PreferencesContext";
 
 export const Route = createFileRoute("/_authed/onboarding")({
   ssr: false,
   loader: () => getWorkspaceBootstrap(),
   head: () => ({
     meta: [
-      { title: "Your services — Leads AI" },
+      { title: "Your services — goleads.app" },
       { name: "description", content: "Add and edit the business services you offer." },
     ],
   }),
@@ -21,6 +22,16 @@ function ServicesScreen() {
   const navigate = useNavigate();
   const router = useRouter();
   const saveProfileFn = useServerFn(saveUserProfile);
+  const {
+    lang,
+    setLang,
+    outreachLang,
+    setOutreachLang,
+    theme,
+    setTheme,
+    syncFromProfile,
+    t,
+  } = usePreferences();
 
   const initialServices = normalizeServicesList(data?.profile?.selected_services || []);
 
@@ -38,12 +49,22 @@ function ServicesScreen() {
   const [errorMsg, setErrorMsg] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
 
+  useEffect(() => {
+    if (data?.profile) {
+      syncFromProfile(data.profile);
+    }
+  }, [data?.profile?.id]);
+
+  useEffect(() => {
+    document.title = t("onboarding.pageTitle");
+  }, [lang, t]);
+
   const addServiceName = (rawName) => {
     const trimmed = (rawName || "").trim();
     if (!trimmed) return;
     const next = normalizeServicesList([...services, trimmed]);
     if (next.length === services.length) {
-      setStatusMsg(`"${trimmed}" is already in your list.`);
+      setStatusMsg(t("onboarding.alreadyInListMsg", { service: trimmed }));
       return;
     }
     setServices(next);
@@ -69,7 +90,6 @@ function ServicesScreen() {
   const commitEdit = (idx) => {
     const trimmed = editingValue.trim();
     if (!trimmed) {
-      // If emptied during edit, remove the item
       setServices((prev) => prev.filter((_, i) => i !== idx));
       setEditingIndex(null);
       setEditingValue("");
@@ -93,13 +113,12 @@ function ServicesScreen() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    // Include any pending text typed into the add box if the user hasn't clicked Add yet
     const pendingList = newServiceInput.trim()
       ? normalizeServicesList([...services, newServiceInput.trim()])
       : normalizeServicesList(services);
 
     if (pendingList.length === 0) {
-      setErrorMsg("Please add at least one service you offer.");
+      setErrorMsg(t("onboarding.validationMinOne"));
       return;
     }
 
@@ -112,14 +131,17 @@ function ServicesScreen() {
           selected_services: pendingList,
           service_description: serviceDescription.trim(),
           default_time_window_days: defaultWindow,
+          ui_language: lang,
+          outreach_language: outreachLang,
+          theme_preference: theme,
         },
       });
       setServices(pendingList);
       setNewServiceInput("");
       await router.invalidate();
-      setStatusMsg("Your services have been saved.");
+      setStatusMsg(t("onboarding.savedSuccessMsg"));
     } catch (err) {
-      setErrorMsg(err?.message || "Could not save your services.");
+      setErrorMsg(err?.message || t("onboarding.saveErrorFallback"));
     } finally {
       setIsSaving(false);
     }
@@ -129,24 +151,32 @@ function ServicesScreen() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Your services</h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Add one or more services you sell and describe your work in plain language.
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {t("onboarding.heading")}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {t("onboarding.subheading")}
           </p>
         </div>
         <Link
           to="/"
-          className="text-xs font-medium text-blue-700 hover:underline shrink-0"
+          className="text-xs font-medium text-primary hover:underline shrink-0"
         >
-          Back to Find leads
+          {t("onboarding.backToDiscover")}
         </Link>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white rounded-lg border border-slate-200 p-5 sm:p-6 space-y-6">
+      <form
+        onSubmit={handleSave}
+        className="bg-card text-card-foreground rounded-lg border border-border p-5 sm:p-6 space-y-6"
+      >
         {/* Add custom service input */}
         <div className="space-y-2">
-          <label htmlFor="custom-service-input" className="block text-sm font-medium text-slate-800">
-            Services you offer
+          <label
+            htmlFor="custom-service-input"
+            className="block text-sm font-medium text-foreground"
+          >
+            {t("onboarding.servicesOfferedLabel")}
           </label>
           <div className="flex gap-2">
             <input
@@ -155,21 +185,23 @@ function ServicesScreen() {
               value={newServiceInput}
               onChange={(e) => setNewServiceInput(e.target.value)}
               onKeyDown={handleAddInputKeyDown}
-              placeholder="e.g., Commercial photography, Bookkeeping, Recruiting"
-              className="flex-1 h-10 px-3 rounded-md border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              placeholder={t("onboarding.serviceInputPlaceholder")}
+              className="flex-1 h-10 px-3 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <button
               type="button"
               onClick={() => addServiceName(newServiceInput)}
-              className="px-4 h-10 rounded-md text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="px-4 h-10 rounded-md text-sm font-medium bg-secondary text-foreground border border-border hover:bg-secondary/80 transition-colors focus:outline-none focus:ring-2 focus:ring-ring shrink-0"
             >
-              Add service
+              {t("onboarding.addServiceBtn")}
             </button>
           </div>
 
           {/* Optional examples */}
           <div className="flex flex-wrap items-center gap-1.5 pt-1">
-            <span className="text-xs text-slate-500 mr-1">Examples:</span>
+            <span className="text-xs text-muted-foreground mr-1">
+              {t("onboarding.examplesLabel")}
+            </span>
             {SERVICE_EXAMPLES.map((example) => {
               const isAdded = services.some(
                 (s) => s.toLowerCase() === example.toLowerCase()
@@ -180,10 +212,10 @@ function ServicesScreen() {
                   type="button"
                   disabled={isAdded}
                   onClick={() => addServiceName(example)}
-                  className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors ${
+                  className={`px-2.5 py-1 rounded text-xs font-medium border transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
                     isAdded
-                      ? "bg-slate-100 text-slate-400 border-slate-200 cursor-default"
-                      : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+                      ? "bg-secondary/50 text-muted-foreground/50 border-border cursor-default"
+                      : "bg-background text-foreground border-border hover:bg-secondary"
                   }`}
                 >
                   + {example}
@@ -195,15 +227,15 @@ function ServicesScreen() {
 
         {/* Active services list with inline edit & remove */}
         <div className="space-y-2">
-          <div className="text-xs font-medium text-slate-600">
-            Active services ({services.length})
+          <div className="text-xs font-medium text-muted-foreground">
+            {t("onboarding.activeServicesCount", { count: services.length })}
           </div>
           {services.length === 0 ? (
-            <div className="p-4 rounded-md bg-slate-50 border border-slate-200 text-xs text-slate-500">
-              No services added yet. Enter any service above or pick an example.
+            <div className="p-4 rounded-md bg-secondary/40 border border-border text-xs text-muted-foreground">
+              {t("onboarding.noServicesYet")}
             </div>
           ) : (
-            <ul className="divide-y divide-slate-200 border border-slate-200 rounded-md bg-slate-50/50">
+            <ul className="divide-y divide-border border border-border rounded-md bg-secondary/30">
               {services.map((service, idx) => (
                 <li
                   key={`${service}-${idx}`}
@@ -213,7 +245,7 @@ function ServicesScreen() {
                     <div className="flex items-center gap-2 flex-1">
                       <input
                         type="text"
-                        aria-label={`Edit service ${service}`}
+                        aria-label={`${t("common.edit")} ${service}`}
                         value={editingValue}
                         onChange={(e) => setEditingValue(e.target.value)}
                         onKeyDown={(e) => {
@@ -222,40 +254,40 @@ function ServicesScreen() {
                             commitEdit(idx);
                           }
                         }}
-                        className="flex-1 h-8 px-2.5 rounded border border-slate-300 bg-white text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        className="flex-1 h-8 px-2.5 rounded border border-input bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                       <button
                         type="button"
                         onClick={() => commitEdit(idx)}
-                        className="px-2.5 py-1 rounded text-xs font-medium bg-blue-600 text-white hover:bg-blue-700"
+                        className="px-2.5 py-1 rounded text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
                       >
-                        Done
+                        {t("common.done")}
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditingIndex(null)}
-                        className="px-2 py-1 rounded text-xs text-slate-600 hover:text-slate-900"
+                        className="px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground"
                       >
-                        Cancel
+                        {t("common.cancel")}
                       </button>
                     </div>
                   ) : (
                     <>
-                      <span className="font-medium text-slate-900">{service}</span>
+                      <span className="font-medium text-foreground">{service}</span>
                       <div className="flex items-center gap-2 shrink-0">
                         <button
                           type="button"
                           onClick={() => startEditing(idx)}
-                          className="text-xs font-medium text-blue-700 hover:underline px-1.5 py-0.5"
+                          className="text-xs font-medium text-primary hover:underline px-1.5 py-0.5"
                         >
-                          Edit
+                          {t("common.edit")}
                         </button>
                         <button
                           type="button"
                           onClick={() => removeService(idx)}
-                          className="text-xs font-medium text-slate-500 hover:text-red-700 px-1.5 py-0.5"
+                          className="text-xs font-medium text-muted-foreground hover:text-destructive px-1.5 py-0.5"
                         >
-                          Remove
+                          {t("common.remove")}
                         </button>
                       </div>
                     </>
@@ -268,72 +300,184 @@ function ServicesScreen() {
 
         {/* Optional plain-language description */}
         <div className="space-y-1.5">
-          <label htmlFor="service-description" className="block text-sm font-medium text-slate-800">
-            What do you sell? <span className="text-xs font-normal text-slate-500">(Optional)</span>
+          <label
+            htmlFor="service-description"
+            className="block text-sm font-medium text-foreground"
+          >
+            {t("onboarding.whatDoYouSellLabel")}{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              {t("onboarding.optionalLabel")}
+            </span>
           </label>
           <textarea
             id="service-description"
             rows={3}
             value={serviceDescription}
             onChange={(e) => setServiceDescription(e.target.value)}
-            placeholder="Describe what you offer and the types of opening or expanding businesses you work best with..."
-            className="w-full p-3 rounded-md border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+            placeholder={t("onboarding.whatDoYouSellPlaceholder")}
+            className="w-full p-3 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
-          <p className="text-xs text-slate-500">
-            Used to explain how a newly opening or expanding business might fit your offer.
+          <p className="text-xs text-muted-foreground">
+            {t("onboarding.whatDoYouSellHint")}
           </p>
         </div>
 
         {/* Default time window */}
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-slate-800">
-            Default search time window
+          <label className="block text-sm font-medium text-foreground">
+            {t("onboarding.defaultWindowLabel")}
           </label>
-          <div className="inline-grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-md border border-slate-200">
+          <div className="inline-grid grid-cols-3 gap-1 bg-secondary p-1 rounded-md border border-border">
             {[30, 90, 180].map((days) => (
               <button
                 key={days}
                 type="button"
                 onClick={() => setDefaultWindow(days)}
-                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
                   defaultWindow === days
-                    ? "bg-white text-blue-700 shadow-2xs border border-slate-200"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-card text-primary shadow-2xs border border-border"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {days} days
+                {t("discover.daysOption", { days })}
               </button>
             ))}
           </div>
         </div>
 
+        {/* Language & Appearance Preferences (Preserves Unsaved Form State on Switch) */}
+        <div className="space-y-4 pt-4 border-t border-border">
+          <h2 className="text-sm font-semibold text-foreground">
+            {t("onboarding.preferencesSectionTitle")}
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Interface Language */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-foreground">
+                {t("onboarding.uiLanguageLabel")}
+              </label>
+              <div className="grid grid-cols-2 gap-1 bg-secondary p-1 rounded-md border border-border">
+                {[
+                  { code: "en", label: "English" },
+                  { code: "es", label: "Español" },
+                ].map((opt) => (
+                  <button
+                    key={opt.code}
+                    type="button"
+                    onClick={() => setLang(opt.code)}
+                    aria-pressed={lang === opt.code}
+                    className={`py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
+                      lang === opt.code
+                        ? "bg-card text-primary border border-border"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {t("onboarding.uiLanguageHint")}
+              </p>
+            </div>
+
+            {/* Outreach Draft Language (Kept separate from UI language) */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-foreground">
+                {t("onboarding.outreachLanguageLabel")}
+              </label>
+              <div className="grid grid-cols-2 gap-1 bg-secondary p-1 rounded-md border border-border">
+                {[
+                  { code: "en", label: "English" },
+                  { code: "es", label: "Español" },
+                ].map((opt) => (
+                  <button
+                    key={opt.code}
+                    type="button"
+                    onClick={() => setOutreachLang(opt.code)}
+                    aria-pressed={outreachLang === opt.code}
+                    className={`py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
+                      outreachLang === opt.code
+                        ? "bg-card text-primary border border-border"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {t("onboarding.outreachLanguageHint")}
+              </p>
+            </div>
+
+            {/* Theme Mode */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-medium text-foreground">
+                {t("onboarding.themeModeLabel")}
+              </label>
+              <div className="grid grid-cols-3 gap-1 bg-secondary p-1 rounded-md border border-border">
+                {[
+                  { id: "light", label: t("nav.themeLight") },
+                  { id: "dark", label: t("nav.themeDark") },
+                  { id: "system", label: t("nav.themeSystem") },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setTheme(opt.id)}
+                    aria-pressed={theme === opt.id}
+                    className={`py-1.5 rounded text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
+                      theme === opt.id
+                        ? "bg-card text-primary border border-border"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                {t("onboarding.themeModeHint")}
+              </p>
+            </div>
+          </div>
+        </div>
+
         {errorMsg && (
-          <div role="alert" className="p-3 rounded-md bg-red-50 border border-red-200 text-xs text-red-800">
+          <div
+            role="alert"
+            className="p-3 rounded-md bg-destructive/15 border border-destructive/30 text-xs text-destructive"
+          >
             {errorMsg}
           </div>
         )}
 
         {statusMsg && (
-          <div role="status" className="p-3 rounded-md bg-emerald-50 border border-emerald-200 text-xs text-emerald-800">
+          <div
+            role="status"
+            className="p-3 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-700 dark:text-emerald-300"
+          >
             {statusMsg}
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border">
           <button
             type="submit"
             disabled={isSaving}
-            className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            {isSaving ? "Saving…" : "Save services"}
+            {isSaving ? t("common.saving") : t("onboarding.saveServicesBtn")}
           </button>
 
           <button
             type="button"
             onClick={() => navigate({ to: "/" })}
-            className="px-3 py-2 rounded-md text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            className="px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            Go to Find leads
+            {t("onboarding.goToFindLeadsBtn")}
           </button>
         </div>
       </form>

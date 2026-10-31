@@ -522,6 +522,9 @@ export const saveUserProfile = createServerFn({ method: "POST" })
       service_description: z.string().max(600).optional(),
       agency_or_freelancer_name: z.string().max(120).optional(),
       default_time_window_days: z.union([z.literal(30), z.literal(90), z.literal(180)]).optional(),
+      ui_language: z.enum(["en", "es"]).optional(),
+      outreach_language: z.enum(["en", "es"]).optional(),
+      theme_preference: z.enum(["light", "dark", "system"]).optional(),
     })
   )
   .handler(async ({ data, context }) => {
@@ -549,6 +552,10 @@ export const saveUserProfile = createServerFn({ method: "POST" })
       service_description: data.service_description?.trim() || "",
       agency_or_freelancer_name: data.agency_or_freelancer_name?.trim() || "",
       default_time_window_days: data.default_time_window_days || 90,
+      ui_language: data.ui_language || existing?.ui_language || "en",
+      outreach_language:
+        data.outreach_language || existing?.outreach_language || data.ui_language || "en",
+      theme_preference: data.theme_preference || existing?.theme_preference || "system",
       onboarding_completed: true,
     };
 
@@ -557,6 +564,49 @@ export const saveUserProfile = createServerFn({ method: "POST" })
       return await base44.entities.UserProfile.update(existing.id, payload);
     }
     return await base44.entities.UserProfile.create(payload);
+  });
+
+export const updateUserPreferences = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .validator(
+    z.object({
+      ui_language: z.enum(["en", "es"]).optional(),
+      outreach_language: z.enum(["en", "es"]).optional(),
+      theme_preference: z.enum(["light", "dark", "system"]).optional(),
+    })
+  )
+  .handler(async ({ data, context }) => {
+    const base44 = context.getBase44();
+    const userId = context.user.id;
+    const userEmail = context.user.email || "";
+
+    const existingPage = await base44.entities.UserProfile.filter(
+      { created_by_id: userId },
+      { sort: "-created_date", limit: 5 }
+    );
+    const existing = (existingPage?.items || []).find(
+      (p) => p.created_by_id === userId && (!p.owner_id || p.owner_id === userId)
+    );
+
+    if (existing) {
+      assertRecordOwnedByUser(existing, userId, "Profile");
+      const patch = {};
+      if (data.ui_language) patch.ui_language = data.ui_language;
+      if (data.outreach_language) patch.outreach_language = data.outreach_language;
+      if (data.theme_preference) patch.theme_preference = data.theme_preference;
+      return await base44.entities.UserProfile.update(existing.id, patch);
+    }
+
+    // Create a minimal profile record if none exists yet so preferences persist server-side
+    return await base44.entities.UserProfile.create({
+      owner_id: userId,
+      owner_email: userEmail,
+      selected_services: [],
+      ui_language: data.ui_language || "en",
+      outreach_language: data.outreach_language || data.ui_language || "en",
+      theme_preference: data.theme_preference || "system",
+      onboarding_completed: false,
+    });
   });
 
 export const getOpportunityDetail = createServerFn({ method: "GET" })

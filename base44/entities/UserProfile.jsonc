@@ -34,6 +34,31 @@
       ],
       "default": 90
     },
+    "ui_language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "es"
+      ],
+      "description": "Preferred interface language (en or es)"
+    },
+    "outreach_language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "es"
+      ],
+      "description": "Preferred outreach draft language, kept separate from UI language"
+    },
+    "theme_preference": {
+      "type": "string",
+      "enum": [
+        "light",
+        "dark",
+        "system"
+      ],
+      "description": "Preferred color theme mode (light, dark, or system)"
+    },
     "onboarding_completed": {
       "type": "boolean",
       "default": false

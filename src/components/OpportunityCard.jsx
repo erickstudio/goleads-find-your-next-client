@@ -3,6 +3,7 @@ import {
   buildServiceFitHypothesis,
   formatRecencyBasisLabel,
 } from "@/lib/leads-constants";
+import { usePreferences } from "@/lib/PreferencesContext";
 import { trackLeadsEvent } from "@/lib/telemetry";
 
 export default function OpportunityCard({
@@ -20,14 +21,15 @@ export default function OpportunityCard({
   onDismiss,
   onRestore,
 }) {
+  const { lang, t } = usePreferences();
   const isVerified = opp.verification_status === "verified";
-  const fitText = buildServiceFitHypothesis(opp, selectedServices, serviceDescription);
-  const recencyLabel = formatRecencyBasisLabel(opp.recency_basis);
+  const fitText = buildServiceFitHypothesis(opp, selectedServices, serviceDescription, lang);
+  const recencyLabel = formatRecencyBasisLabel(opp.recency_basis, lang);
 
   const formattedRetrieval = opp.retrieval_date
     ? opp.retrieval_date.replace("T", " ").slice(0, 16) +
       (opp.retrieval_date.includes("T") ? " UTC" : "")
-    : "Not stated";
+    : t("common.notStated");
 
   const handleSourceClick = () => {
     trackLeadsEvent(
@@ -43,8 +45,10 @@ export default function OpportunityCard({
 
   return (
     <article
-      className={`bg-white rounded-lg border p-5 space-y-3.5 transition-colors ${
-        isVerified ? "border-slate-200" : "border-amber-200 bg-amber-50/10"
+      className={`bg-card text-card-foreground rounded-lg border p-5 space-y-3.5 transition-colors ${
+        isVerified
+          ? "border-border hover:border-primary/40"
+          : "border-amber-500/40 bg-amber-500/5"
       }`}
     >
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
@@ -53,43 +57,43 @@ export default function OpportunityCard({
             <span
               className={`px-2 py-0.5 rounded text-xs font-semibold border ${
                 isVerified
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                  : "bg-amber-50 text-amber-900 border-amber-300"
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                  : "bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/35"
               }`}
             >
-              {isVerified ? "Verified" : "Needs review"}
+              {isVerified ? t("common.verified") : t("common.needsReview")}
             </span>
 
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200">
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/15 text-primary border border-primary/30">
               {opp.signal_type}
             </span>
 
-            <span className="px-2 py-0.5 rounded text-xs text-slate-600 bg-slate-100 border border-slate-200">
+            <span className="px-2 py-0.5 rounded text-xs text-muted-foreground bg-secondary border border-border">
               {recencyLabel}
             </span>
 
             {feedbackVerdict === "relevant" && (
-              <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-900 border border-emerald-200">
-                Rated relevant
+              <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                {t("card.ratedRelevant")}
               </span>
             )}
 
             {isDismissed && (
-              <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-300">
-                Dismissed (Not relevant)
+              <span className="px-2 py-0.5 rounded text-xs font-medium bg-secondary text-muted-foreground border border-border">
+                {t("card.dismissedBadge")}
               </span>
             )}
 
             {isExample && (
-              <span className="px-2 py-0.5 rounded text-xs font-medium text-slate-600 bg-slate-100 border border-slate-300">
-                Example result — Not live data
+              <span className="px-2 py-0.5 rounded text-xs font-medium text-muted-foreground bg-secondary border border-border">
+                {t("common.exampleBadge")}
               </span>
             )}
           </div>
 
-          <h3 className="text-base font-semibold text-slate-900">{opp.business_name}</h3>
+          <h3 className="text-base font-semibold text-foreground">{opp.business_name}</h3>
 
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-600">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span>{opp.location}</span>
             {opp.business_category && (
               <>
@@ -103,12 +107,12 @@ export default function OpportunityCard({
                 href={opp.website_url}
                 target="_blank"
                 rel="noreferrer"
-                className="text-blue-700 hover:underline font-medium"
+                className="text-primary hover:underline font-medium"
               >
-                Website
+                {t("common.website")}
               </a>
             ) : (
-              <span className="text-slate-500">Website unknown</span>
+              <span className="text-muted-foreground/80">{t("common.websiteUnknown")}</span>
             )}
           </div>
         </div>
@@ -119,14 +123,14 @@ export default function OpportunityCard({
               type="button"
               disabled={isBusy}
               onClick={() => (isSaved && onUnsave ? onUnsave(opp) : onSave?.(opp))}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
                 isSaved
-                  ? "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100"
-                  : "bg-white text-slate-800 border-slate-300 hover:bg-slate-50"
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
+                  : "bg-card text-foreground border-border hover:bg-secondary"
               }`}
-              title={isSaved ? "Click to remove from Saved leads" : "Save to your leads list"}
+              title={isSaved ? t("card.unsaveTitle") : t("card.saveTitle")}
             >
-              {isSaved ? "Saved · Unsave" : "Save lead"}
+              {isSaved ? t("card.savedUnsaveBtn") : t("card.saveLeadBtn")}
             </button>
           )}
 
@@ -134,9 +138,9 @@ export default function OpportunityCard({
             to="/opportunities/$opportunityId"
             params={{ opportunityId: opp.id }}
             search={detailSearchParams}
-            className="px-3 py-1.5 rounded-md text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 transition-colors"
+            className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            View details
+            {t("card.viewDetailsBtn")}
           </Link>
 
           {isDismissed && onRestore ? (
@@ -144,9 +148,9 @@ export default function OpportunityCard({
               type="button"
               disabled={isBusy}
               onClick={() => onRestore(opp)}
-              className="px-2.5 py-1.5 rounded-md text-xs font-medium text-blue-700 hover:bg-blue-50 border border-blue-200 transition-colors"
+              className="px-2.5 py-1.5 rounded-md text-xs font-medium text-primary hover:bg-primary/10 border border-primary/30 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              Restore
+              {t("common.restore")}
             </button>
           ) : (
             onDismiss && (
@@ -154,50 +158,63 @@ export default function OpportunityCard({
                 type="button"
                 disabled={isBusy}
                 onClick={() => onDismiss(opp)}
-                className="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                className="px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                Not relevant
+                {t("card.notRelevantBtn")}
               </button>
             )
           )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-slate-100">
-        {/* Source Evidence Column */}
-        <div className="md:col-span-7 bg-slate-50 rounded-md p-3 border border-slate-200/80 space-y-1.5">
-          <div className="flex items-center justify-between gap-2 text-xs">
-            <span className="font-medium text-slate-800">Recovered source evidence</span>
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-border/70">
+        {/* Source Evidence Column — keeps supporting_excerpt in original language */}
+        <div className="md:col-span-7 bg-secondary/50 rounded-md p-3 border border-border space-y-1.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <span className="font-medium text-foreground">{t("card.recoveredEvidenceTitle")}</span>
             <a
               href={opp.source_url}
               target="_blank"
               rel="noreferrer"
               onClick={handleSourceClick}
-              className="text-blue-700 hover:underline font-medium truncate max-w-[260px]"
+              className="text-primary hover:underline font-medium truncate max-w-[260px]"
               title={opp.source_title}
             >
               {opp.source_title}
             </a>
           </div>
 
-          <p className="text-xs text-slate-800 leading-relaxed">{opp.signal_summary}</p>
+          <p className="text-xs text-foreground/90 leading-relaxed">{opp.signal_summary}</p>
 
           {opp.supporting_excerpt && (
-            <blockquote className="text-xs italic text-slate-600 border-l-2 border-slate-300 pl-2.5 py-0.5">
-              {opp.supporting_excerpt}
-            </blockquote>
+            <div className="space-y-1">
+              <span className="inline-block text-[10px] font-mono text-muted-foreground">
+                {t("common.originalLanguageBadge")}
+              </span>
+              <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/50 pl-2.5 py-0.5">
+                {opp.supporting_excerpt}
+              </blockquote>
+            </div>
           )}
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 pt-1">
-            <span>Published: {opp.publication_date || "Not stated"}</span>
-            <span>Event date: {opp.event_date || "Not stated"}</span>
-            <span>Retrieved: {formattedRetrieval}</span>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-muted-foreground pt-1">
+            <span>
+              {t("common.published")}: {opp.publication_date || t("common.notStated")}
+            </span>
+            <span>
+              {t("common.eventDate")}: {opp.event_date || t("common.notStated")}
+            </span>
+            <span>
+              {t("common.retrieved")}: {formattedRetrieval}
+            </span>
           </div>
 
           {opp.verification_notes && (
             <p
               className={`text-[11px] pt-1 ${
-                isVerified ? "text-emerald-800" : "text-amber-900 font-medium"
+                isVerified
+                  ? "text-emerald-700 dark:text-emerald-300"
+                  : "text-amber-800 dark:text-amber-300 font-medium"
               }`}
             >
               {opp.verification_notes}
@@ -206,14 +223,14 @@ export default function OpportunityCard({
         </div>
 
         {/* Service Fit Hypothesis Column */}
-        <div className="md:col-span-5 bg-blue-50/40 rounded-md p-3 border border-blue-200/70 space-y-1.5">
+        <div className="md:col-span-5 bg-accent/60 rounded-md p-3 border border-primary/25 space-y-1.5">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-blue-950">Possible service fit</span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-900">
-              Hypothesis
+            <span className="font-medium text-foreground">{t("card.possibleServiceFitTitle")}</span>
+            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30">
+              {t("common.hypothesisBadge")}
             </span>
           </div>
-          <p className="text-xs text-slate-700 leading-relaxed">{fitText}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{fitText}</p>
         </div>
       </div>
     </article>

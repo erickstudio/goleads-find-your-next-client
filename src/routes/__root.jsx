@@ -3,22 +3,25 @@ import { DefaultCatchBoundary } from "@/components/DefaultCatchBoundary";
 import { NotFound } from "@/components/NotFound";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/AuthContext";
+import { PreferencesProvider } from "@/lib/PreferencesContext";
 import { Base44Scripts } from "base44:document";
 import appCss from "@/index.css?url";
 
+const THEME_INIT_SCRIPT = `(function(){try{var m=localStorage.getItem("goleads_theme_preference")||"system";var d=m==="dark"||(m==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;if(d){r.classList.add("dark");r.style.colorScheme="dark";r.dataset.theme="dark";}else{r.classList.remove("dark");r.style.colorScheme="light";r.dataset.theme="light";}r.dataset.themeMode=m;var l=localStorage.getItem("goleads_ui_language");if(l==="es"||l==="en"){r.lang=l;}}catch(e){}})();`;
+
 export const Route = createRootRoute({
-  // Per-page <title>/meta come from each route's head(); this is the shared base.
   head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Base44 App" },
-      { name: "description", content: "A full-stack Base44 app built with TanStack Start." },
+      { title: "goleads.app — Verified B2B Lead Discovery" },
+      {
+        name: "description",
+        content:
+          "goleads.app — Discover growing businesses with verified public opening and expansion signals.",
+      },
     ],
-    // No icon link: the platform adds the app's logo when serving.
-    links: [
-      { rel: "stylesheet", href: appCss },
-    ],
+    links: [{ rel: "stylesheet", href: appCss }],
   }),
   errorComponent: DefaultCatchBoundary,
   notFoundComponent: () => <NotFound />,
@@ -29,22 +32,23 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-background text-foreground">
-        <Outlet />
-      </div>
-      <Toaster />
+      <PreferencesProvider>
+        <div className="min-h-screen bg-background text-foreground">
+          <Outlet />
+        </div>
+        <Toaster />
+      </PreferencesProvider>
     </AuthProvider>
   );
 }
 
-// The document. There is no index.html: the server renders <html> from here.
 function RootDocument({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <HeadContent />
       </head>
-      {/* data-react-root: the builder's preview bridge looks for #root and falls back to this. */}
       <body data-react-root="true">
         {children}
         <Base44Scripts />

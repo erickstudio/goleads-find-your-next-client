@@ -1,39 +1,43 @@
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/lib/AuthContext";
+import { usePreferences } from "@/lib/PreferencesContext";
+import BrandWordmark from "@/components/BrandWordmark";
+import PreferenceControls from "@/components/PreferenceControls";
 
 export default function AppShell({ children, user }) {
   const location = useLocation();
   const { logout } = useAuth();
+  const { t } = usePreferences();
   const pathname = location.pathname;
 
   const navItems = [
-    { to: "/", label: "Find leads", active: pathname === "/" },
-    { to: "/saved", label: "Saved leads", active: pathname.startsWith("/saved") },
-    { to: "/onboarding", label: "Your services", active: pathname.startsWith("/onboarding") },
-    { to: "/pilot", label: "Pilot offer", active: pathname.startsWith("/pilot") },
+    { to: "/", label: t("nav.findLeads"), active: pathname === "/" },
+    { to: "/saved", label: t("nav.savedLeads"), active: pathname.startsWith("/saved") },
+    { to: "/onboarding", label: t("nav.yourServices"), active: pathname.startsWith("/onboarding") },
+    { to: "/pilot", label: t("nav.pilotOffer"), active: pathname.startsWith("/pilot") },
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAFC] text-[#0F172A]">
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
+    <div className="min-h-screen flex flex-col bg-background text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border bg-card/95 backdrop-blur-xs">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-5 min-w-0">
             <Link
               to="/"
-              className="font-semibold tracking-tight text-slate-900 text-base focus:outline-none focus:ring-2 focus:ring-blue-600 rounded px-1"
+              className="inline-flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ring rounded px-1 py-0.5 shrink-0"
             >
-              Leads AI
+              <BrandWordmark size="md" />
             </Link>
 
-            <nav aria-label="Main navigation" className="hidden sm:flex items-center gap-1">
+            <nav aria-label={t("nav.mainAria")} className="hidden md:flex items-center gap-1">
               {navItems.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+                  className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring whitespace-nowrap ${
                     item.active
-                      ? "bg-blue-50 text-blue-700"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                      ? "bg-primary/15 text-primary border border-primary/30"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/80"
                   }`}
                 >
                   {item.label}
@@ -42,35 +46,36 @@ export default function AppShell({ children, user }) {
             </nav>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <PreferenceControls compact />
             {user?.email && (
-              <span className="hidden md:inline text-xs text-slate-500 truncate max-w-[200px]">
+              <span className="hidden lg:inline text-xs font-mono text-muted-foreground truncate max-w-[180px]">
                 {user.email}
               </span>
             )}
             <button
               type="button"
               onClick={() => logout()}
-              className="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="px-2.5 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary border border-transparent hover:border-border transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              Sign out
+              {t("nav.signOut")}
             </button>
           </div>
         </div>
 
         {/* Mobile navigation */}
         <nav
-          aria-label="Mobile navigation"
-          className="sm:hidden border-t border-slate-200 bg-white px-4 py-1.5 flex items-center gap-1 overflow-x-auto"
+          aria-label={t("nav.mobileAria")}
+          className="md:hidden border-t border-border bg-card px-4 py-1.5 flex items-center gap-1 overflow-x-auto"
         >
           {navItems.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium whitespace-nowrap transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
                 item.active
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-slate-600 hover:bg-slate-100"
+                  ? "bg-primary/15 text-primary border border-primary/30"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
               }`}
             >
               {item.label}
@@ -83,10 +88,10 @@ export default function AppShell({ children, user }) {
         {children}
       </main>
 
-      <footer className="border-t border-slate-200 bg-white mt-12">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-slate-500">
-          <span>Leads AI</span>
-          <span>Public opening and expansion sources are separated from service-fit estimates.</span>
+      <footer className="border-t border-border bg-card mt-12">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs text-muted-foreground">
+          <BrandWordmark size="sm" />
+          <span>{t("brand.footerTagline")}</span>
         </div>
       </footer>
     </div>

@@ -16,6 +16,7 @@ import {
   recordOpportunityFeedback,
   clearOpportunityFeedback,
 } from "@/lib/server-fns";
+import { usePreferences } from "@/lib/PreferencesContext";
 import { trackLeadsEvent } from "@/lib/telemetry";
 
 export const Route = createFileRoute("/_authed/")({
@@ -46,7 +47,7 @@ export const Route = createFileRoute("/_authed/")({
   loader: () => getWorkspaceBootstrap(),
   head: () => ({
     meta: [
-      { title: "Find leads — Leads AI" },
+      { title: "Find leads — goleads.app" },
       { name: "description", content: "Find growing businesses with verified opening or expansion signals." },
     ],
   }),
@@ -58,6 +59,7 @@ function DiscoverScreen() {
   const searchParams = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const router = useRouter();
+  const { lang, outreachLang, syncFromProfile, t } = usePreferences();
 
   const runSearchFn = useServerFn(runLeadDiscoverySearch);
   const saveOppFn = useServerFn(saveOpportunityForUser);
@@ -71,7 +73,16 @@ function DiscoverScreen() {
   const recentSearches = loaderData?.recentSearches || [];
   const allUserOpportunities = loaderData?.allUserOpportunities || [];
 
-  // Resolve requested searchId from URL params or fall back to latest live search
+  useEffect(() => {
+    if (profile) {
+      syncFromProfile(profile);
+    }
+  }, [profile?.id]);
+
+  useEffect(() => {
+    document.title = t("discover.pageTitle");
+  }, [lang, t]);
+
   const matchedSearchFromUrl = searchParams.searchId
     ? recentSearches.find((s) => s.id === searchParams.searchId)
     : null;
@@ -124,7 +135,6 @@ function DiscoverScreen() {
   const [showDismissed, setShowDismissed] = useState(searchParams.showDismissed === "1");
   const [dismissedExampleIds, setDismissedExampleIds] = useState([]);
 
-  // Keep local opportunities in sync when loaderData refreshes after save/feedback actions
   useEffect(() => {
     if (activeSearch) {
       const targetId = activeSearch.cached_from_search_id || activeSearch.id;
@@ -137,7 +147,6 @@ function DiscoverScreen() {
     }
   }, [loaderData?.allUserOpportunities, activeSearch?.id]);
 
-  // Persist current filter and view state in URL search params so round-trips to details survive
   const syncFilterUrlParams = (overrides = {}) => {
     const nextCat = overrides.category !== undefined ? overrides.category : businessCategory;
     const nextLoc = overrides.location !== undefined ? overrides.location : locationQuery;
@@ -189,7 +198,7 @@ function DiscoverScreen() {
     const cat = businessCategory.trim();
     const loc = locationQuery.trim();
     if (!cat || !loc) {
-      setRequestError("Please enter both a business category and a city/country.");
+      setRequestError(t("discover.validationMissingFields"));
       return;
     }
 
@@ -262,7 +271,7 @@ function DiscoverScreen() {
         surface: "discover",
       });
       setRequestError(
-        err?.message || "Could not run live search. Please check your parameters and retry."
+        err?.message || t("discover.failedFallbackBody")
       );
     } finally {
       setIsSearching(false);
@@ -273,7 +282,7 @@ function DiscoverScreen() {
     setBusyOppId(opp.id);
     setActionBanner("");
     try {
-      const fitText = buildServiceFitHypothesis(opp, selectedServices, serviceDescription);
+      const fitText = buildServiceFitHypothesis(opp, selectedServices, serviceDescription, lang);
       await saveOppFn({
         data: {
           opportunity_id: opp.id,
@@ -291,7 +300,7 @@ function DiscoverScreen() {
         { opportunityId: opp.id }
       );
       await router.invalidate();
-      setActionBanner(`Saved "${opp.business_name}" to Saved leads.`);
+      setActionBanner(t("discover.savedBanner", { name: opp.business_name }));
     } catch (err) {
       setActionBanner(err?.message || "Could not save lead.");
     } finally {
@@ -307,7 +316,7 @@ function DiscoverScreen() {
         data: { opportunity_id: opp.id },
       });
       await router.invalidate();
-      setActionBanner(`Removed "${opp.business_name}" from Saved leads.`);
+      setActionBanner(t("discover.unsavedBanner", { name: opp.business_name }));
     } catch (err) {
       setActionBanner(err?.message || "Could not remove saved lead.");
     } finally {
@@ -339,7 +348,7 @@ function DiscoverScreen() {
         { opportunityId: opp.id }
       );
       await router.invalidate();
-      setActionBanner(`Marked "${opp.business_name}" as not relevant.`);
+      setActionBanner(t("discover.dismissedBanner", { name: opp.business_name }));
     } catch (err) {
       setActionBanner(err?.message || "Could not record feedback.");
     } finally {
@@ -355,7 +364,7 @@ function DiscoverScreen() {
         data: { opportunity_id: opp.id },
       });
       await router.invalidate();
-      setActionBanner(`Restored "${opp.business_name}" to active results.`);
+      setActionBanner(t("discover.restoredBanner", { name: opp.business_name }));
     } catch (err) {
       setActionBanner(err?.message || "Could not restore lead.");
     } finally {
@@ -386,37 +395,40 @@ function DiscoverScreen() {
   return (
     <div className="space-y-6">
       {/* Workspace Heading & Custom Services Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            Find your next opportunity
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+            {t("discover.heading")}
           </h1>
-          <p className="text-sm text-slate-600 mt-0.5">
-            Discover businesses with public opening or expansion announcements and verify their sources.
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {t("discover.subheading")}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-xs text-slate-500 mr-1">Your services:</span>
+          <span className="text-xs text-muted-foreground mr-1">{t("discover.yourServicesLabel")}</span>
           {selectedServices.length > 0 ? (
             selectedServices.map((service) => (
               <span
                 key={service}
-                className="px-2.5 py-1 rounded text-xs font-medium bg-white border border-slate-200 text-slate-800"
+                className="px-2.5 py-1 rounded text-xs font-medium bg-card border border-border text-foreground"
               >
                 {service}
               </span>
             ))
           ) : (
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-50 text-amber-900 border border-amber-200">
-              Not configured yet
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/35">
+              {t("discover.notConfiguredYet")}
             </span>
           )}
+          <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-secondary text-muted-foreground border border-border">
+            {t("discover.outreachLanguageIndicator")} {outreachLang.toUpperCase()}
+          </span>
           <Link
             to="/onboarding"
-            className="px-2.5 py-1 rounded text-xs font-medium text-blue-700 hover:bg-blue-50 transition-colors"
+            className="px-2.5 py-1 rounded text-xs font-medium text-primary hover:bg-primary/10 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            {selectedServices.length > 0 ? "Edit" : "Add services"}
+            {selectedServices.length > 0 ? t("discover.editServices") : t("discover.addServices")}
           </Link>
         </div>
       </div>
@@ -425,28 +437,32 @@ function DiscoverScreen() {
       {selectedServices.length === 0 && (
         <div
           role="status"
-          className="bg-amber-50/80 border border-amber-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-amber-950"
+          className="bg-amber-500/10 border border-amber-500/35 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-foreground"
         >
           <div>
-            <strong className="font-semibold">Service profile not configured:</strong> You can run a live search now, or add the custom services you sell so service-fit hypotheses are tailored to your business.
+            <strong className="font-semibold text-amber-800 dark:text-amber-300">
+              {t("discover.unconfiguredBannerTitle")}
+            </strong>{" "}
+            {t("discover.unconfiguredBannerBody")}
           </div>
           <Link
             to="/onboarding"
-            className="px-3 py-1.5 rounded-md font-medium bg-amber-900 text-white hover:bg-amber-800 shrink-0 text-center"
+            className="px-3 py-1.5 rounded-md font-medium bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 text-center focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            Configure services
+            {t("discover.configureServicesBtn")}
           </Link>
         </div>
       )}
 
       {/* Optional service description summary if set */}
       {serviceDescription && (
-        <div className="text-xs text-slate-600 bg-white border border-slate-200 rounded-md px-3.5 py-2 flex items-center justify-between gap-2">
+        <div className="text-xs text-muted-foreground bg-card border border-border rounded-md px-3.5 py-2 flex items-center justify-between gap-2">
           <span className="truncate">
-            <strong className="font-medium text-slate-800">Offer summary:</strong> {serviceDescription}
+            <strong className="font-medium text-foreground">{t("discover.offerSummaryLabel")}</strong>{" "}
+            {serviceDescription}
           </span>
-          <Link to="/onboarding" className="text-blue-700 hover:underline shrink-0 font-medium">
-            Edit
+          <Link to="/onboarding" className="text-primary hover:underline shrink-0 font-medium">
+            {t("discover.editServices")}
           </Link>
         </div>
       )}
@@ -454,34 +470,42 @@ function DiscoverScreen() {
       {/* LeadSearch Parameter Strategy Agent */}
       <AgentChatPanel
         agentName="search_strategist"
-        badgeLabel="Search Strategist Agent"
-        title="Need help choosing high-signal search parameters?"
-        subtitle="Ask the Search Strategist agent to suggest specific business sectors, target cities, and 30/90/180-day windows tailored to your services."
-        conversationTitle="LeadSearch Strategy Advisor"
-        contextPreamble={`Current user services: ${
+        badgeLabel={t("discover.agentBadge")}
+        title={t("discover.agentTitle")}
+        subtitle={t("discover.agentSubtitle")}
+        conversationTitle={t("discover.agentConvTitle")}
+        contextPreamble={`Preferred response language: ${lang === "es" ? "Spanish (Español)" : "English"}. Current user services: ${
           selectedServices.length > 0 ? selectedServices.join(", ") : "None configured yet"
         }. Service description: ${serviceDescription || "Not set"}. Current form inputs: Business category="${businessCategory}", Location="${locationQuery}", Time window=${timeWindowDays} days.`}
         starterPrompts={[
           {
-            label: "Suggest 3 high-signal sectors for my services",
-            prompt:
-              "Based on my configured services, suggest 3 specific business categories, locations, and time windows (30, 90, or 180 days) that frequently publish opening or expansion announcements.",
+            label: t("discover.agentPrompt1Label"),
+            prompt: t("discover.agentPrompt1Text"),
           },
           {
-            label: `Refine "${businessCategory}" in ${locationQuery}`,
-            prompt: `How can I refine my LeadSearch parameters for "${businessCategory}" in "${locationQuery}" (${timeWindowDays} days) to uncover higher-quality opening or expansion prospects?`,
+            label: t("discover.agentPrompt2Label", {
+              category: businessCategory,
+              location: locationQuery,
+            }),
+            prompt: t("discover.agentPrompt2Text", {
+              category: businessCategory,
+              location: locationQuery,
+              days: timeWindowDays,
+            }),
           },
           {
-            label: "Compare 30 vs. 90 vs. 180-day windows",
-            prompt:
-              "Which time window (30, 90, or 180 days) works best for my services and target sectors, and why?",
+            label: t("discover.agentPrompt3Label"),
+            prompt: t("discover.agentPrompt3Text"),
           },
         ]}
-        placeholder="Ask for category ideas, regional targeting, or time-window advice…"
+        placeholder={t("discover.agentPlaceholder")}
       />
 
       {/* Search Form */}
-      <section aria-label="Search criteria" className="bg-white rounded-lg border border-slate-200 p-5 space-y-4">
+      <section
+        aria-label={t("discover.searchCriteriaAria")}
+        className="bg-card text-card-foreground rounded-lg border border-border p-5 space-y-4"
+      >
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -491,8 +515,8 @@ function DiscoverScreen() {
         >
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
             <div className="md:col-span-5">
-              <label htmlFor="business-category" className="block text-xs font-medium text-slate-700 mb-1">
-                Business category / sector
+              <label htmlFor="business-category" className="block text-xs font-medium text-foreground mb-1">
+                {t("discover.categoryLabel")}
               </label>
               <input
                 id="business-category"
@@ -504,14 +528,14 @@ function DiscoverScreen() {
                   setBusinessCategory(val);
                   syncFilterUrlParams({ category: val });
                 }}
-                placeholder="e.g., Restaurants, Physical therapy, Dental clinics, Retail"
-                className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50"
+                placeholder={t("discover.categoryPlaceholder")}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
               />
             </div>
 
             <div className="md:col-span-4">
-              <label htmlFor="city-country" className="block text-xs font-medium text-slate-700 mb-1">
-                City / country
+              <label htmlFor="city-country" className="block text-xs font-medium text-foreground mb-1">
+                {t("discover.locationLabel")}
               </label>
               <input
                 id="city-country"
@@ -523,16 +547,16 @@ function DiscoverScreen() {
                   setLocationQuery(val);
                   syncFilterUrlParams({ location: val });
                 }}
-                placeholder="e.g., Miami, FL, USA"
-                className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:bg-slate-50"
+                placeholder={t("discover.locationPlaceholder")}
+                className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
               />
             </div>
 
             <div className="md:col-span-3">
-              <label className="block text-xs font-medium text-slate-700 mb-1">
-                Time window
+              <label className="block text-xs font-medium text-foreground mb-1">
+                {t("discover.timeWindowLabel")}
               </label>
-              <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-md border border-slate-200">
+              <div className="grid grid-cols-3 gap-1 bg-secondary p-1 rounded-md border border-border">
                 {[30, 90, 180].map((days) => (
                   <button
                     key={days}
@@ -542,35 +566,38 @@ function DiscoverScreen() {
                       setTimeWindowDays(days);
                       syncFilterUrlParams({ window: days });
                     }}
-                    className={`h-8 rounded text-xs font-medium transition-colors ${
+                    className={`h-8 rounded text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
                       timeWindowDays === days
-                        ? "bg-white text-blue-700 shadow-2xs border border-slate-200"
-                        : "text-slate-600 hover:text-slate-900"
+                        ? "bg-card text-primary shadow-2xs border border-border"
+                        : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {days} days
+                    {t("discover.daysOption", { days })}
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-slate-100">
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-medium">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
-                Live web search & source check active
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border/70">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                {t("discover.liveSearchBadge")}
               </span>
               <span>
-                {quota.remainingToday} of {quota.maxDaily} new daily searches left
+                {t("discover.quotaRemaining", {
+                  remaining: quota.remainingToday,
+                  max: quota.maxDaily,
+                })}
               </span>
               <span>·</span>
-              <span>Up to {quota.maxResultsPerSearch} results/search</span>
+              <span>{t("discover.maxResultsNote", { max: quota.maxResultsPerSearch })}</span>
               {isDefaultTestQuery && (
                 <>
                   <span>·</span>
-                  <span className="text-slate-500">
-                    Starter test query (editable to any market)
+                  <span className="text-muted-foreground/80">
+                    {t("discover.starterQueryNote")}
                   </span>
                 </>
               )}
@@ -584,17 +611,17 @@ function DiscoverScreen() {
                   setShowExamples(next);
                   syncFilterUrlParams({ examples: next });
                 }}
-                className="px-3.5 py-2 rounded-md text-xs font-medium border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-colors"
+                className="px-3.5 py-2 rounded-md text-xs font-medium border border-border bg-card text-foreground hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                {showExamples ? "Hide example results" : "View example results"}
+                {showExamples ? t("discover.hideExamplesBtn") : t("discover.viewExamplesBtn")}
               </button>
 
               <button
                 type="submit"
                 disabled={isSearching}
-                className="px-4 py-2 rounded-md text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                {isSearching ? "Searching & verifying…" : "Find leads"}
+                {isSearching ? t("discover.searchingBtn") : t("discover.findLeadsBtn")}
               </button>
             </div>
           </div>
@@ -604,15 +631,15 @@ function DiscoverScreen() {
       {actionBanner && (
         <div
           role="status"
-          className="px-4 py-2.5 rounded-md bg-blue-50 border border-blue-200 text-xs text-blue-900 flex items-center justify-between"
+          className="px-4 py-2.5 rounded-md bg-primary/15 border border-primary/30 text-xs text-foreground flex items-center justify-between"
         >
           <span>{actionBanner}</span>
           <button
             type="button"
             onClick={() => setActionBanner("")}
-            className="text-blue-700 hover:underline font-medium ml-4"
+            className="text-primary hover:underline font-medium ml-4"
           >
-            Dismiss
+            {t("common.dismiss")}
           </button>
         </div>
       )}
@@ -621,38 +648,42 @@ function DiscoverScreen() {
       {currentSearchStatus === "searching" && (
         <section
           aria-live="polite"
-          className="bg-white rounded-lg border border-blue-200 p-6 text-center space-y-2"
+          className="bg-card rounded-lg border border-primary/40 p-6 text-center space-y-2"
         >
-          <div className="inline-block w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <h2 className="text-sm font-semibold text-slate-900">
-            Searching live announcements and verifying source pages…
+          <div className="inline-block w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          <h2 className="text-sm font-semibold text-foreground">
+            {t("discover.searchingTitle")}
           </h2>
-          <p className="text-xs text-slate-600 max-w-lg mx-auto">
-            Looking for up to 5 unique businesses in <strong>{businessCategory}</strong> ({locationQuery}) within the last {timeWindowDays} days and checking recovered source content for business identity, location, event, and date.
+          <p className="text-xs text-muted-foreground max-w-lg mx-auto">
+            {t("discover.searchingBody", {
+              category: businessCategory,
+              location: locationQuery,
+              days: timeWindowDays,
+            })}
           </p>
         </section>
       )}
 
-      {/* STATE 2: FAILED (distinct from empty, with explicit Retry action) */}
+      {/* STATE 2: FAILED */}
       {currentSearchStatus === "failed" && !showExamples && (
         <section
           role="alert"
-          className="bg-red-50/70 rounded-lg border border-red-200 p-5 space-y-3"
+          className="bg-destructive/10 rounded-lg border border-destructive/35 p-5 space-y-3"
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-900 border border-red-300">
-                  Search failed
+                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-destructive/20 text-destructive border border-destructive/40">
+                  {t("discover.failedBadge")}
                 </span>
-                <h2 className="text-sm font-semibold text-red-950">
-                  Live retrieval did not complete
+                <h2 className="text-sm font-semibold text-foreground">
+                  {t("discover.failedTitle")}
                 </h2>
               </div>
-              <p className="text-xs text-red-900 leading-relaxed">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 {requestError ||
                   activeSearch?.honest_status_reason ||
-                  "The search provider encountered an error. An error is not an empty search, and no results were fabricated."}
+                  t("discover.failedFallbackBody")}
               </p>
             </div>
 
@@ -660,26 +691,30 @@ function DiscoverScreen() {
               type="button"
               disabled={isSearching}
               onClick={() => executeDiscoverySearch(true)}
-              className="px-3.5 py-2 rounded-md text-xs font-medium bg-red-800 text-white hover:bg-red-900 shrink-0"
+              className="px-3.5 py-2 rounded-md text-xs font-medium bg-destructive text-destructive-foreground hover:bg-destructive/90 shrink-0 focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              Retry search
+              {t("discover.retrySearchBtn")}
             </button>
           </div>
         </section>
       )}
 
-      {/* STATE 3: EMPTY (successful search with 0 substantiated results) */}
+      {/* STATE 3: EMPTY */}
       {currentSearchStatus === "empty" && !showExamples && (
-        <section className="bg-white rounded-lg border border-slate-200 p-6 text-center space-y-2">
-          <span className="inline-block px-2.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-            Empty result — 0 verified matches
+        <section className="bg-card rounded-lg border border-border p-6 text-center space-y-2">
+          <span className="inline-block px-2.5 py-0.5 rounded text-xs font-medium bg-secondary text-muted-foreground border border-border">
+            {t("discover.emptyBadge")}
           </span>
-          <h2 className="text-sm font-semibold text-slate-900">
-            No substantiated opening or expansion events found
+          <h2 className="text-sm font-semibold text-foreground">
+            {t("discover.emptyTitle")}
           </h2>
-          <p className="text-xs text-slate-600 max-w-lg mx-auto leading-relaxed">
+          <p className="text-xs text-muted-foreground max-w-lg mx-auto leading-relaxed">
             {activeSearch?.honest_status_reason ||
-              `No public announcements with verifiable source evidence were found for "${activeSearch?.business_category}" in "${activeSearch?.location_query}" within the last ${activeSearch?.time_window_days} days. Results are never padded with unverified directories.`}
+              t("discover.emptyFallbackBody", {
+                category: activeSearch?.business_category || businessCategory,
+                location: activeSearch?.location_query || locationQuery,
+                days: activeSearch?.time_window_days || timeWindowDays,
+              })}
           </p>
         </section>
       )}
@@ -689,42 +724,44 @@ function DiscoverScreen() {
         !showExamples &&
         activeSearch && (
           <section aria-label="Live search results" className="space-y-5">
-            {/* Search Status Summary Bar */}
-            <div className="bg-white rounded-lg border border-slate-200 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="bg-card rounded-lg border border-border px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
               <div className="space-y-0.5">
                 <div className="flex flex-wrap items-center gap-2">
                   <span
                     className={`px-2 py-0.5 rounded font-semibold border ${
                       currentSearchStatus === "completed"
-                        ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                        : "bg-amber-50 text-amber-900 border-amber-300"
+                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                        : "bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/35"
                     }`}
                   >
                     {currentSearchStatus === "completed"
-                      ? "Complete — Verified sources"
-                      : "Partial — Includes candidates needing review"}
+                      ? t("discover.completeBadge")
+                      : t("discover.partialBadge")}
                   </span>
-                  <span className="font-medium text-slate-900">
-                    {activeSearch.business_category} · {activeSearch.location_query} · Last{" "}
-                    {activeSearch.time_window_days} days
+                  <span className="font-medium text-foreground">
+                    {activeSearch.business_category} · {activeSearch.location_query} ·{" "}
+                    {t("discover.lastDaysLabel", { days: activeSearch.time_window_days })}
                   </span>
                 </div>
-                <p className="text-slate-600">{activeSearch.honest_status_reason}</p>
+                <p className="text-muted-foreground">{activeSearch.honest_status_reason}</p>
               </div>
 
-              <div className="text-[11px] text-slate-500 shrink-0 flex flex-col sm:items-end gap-1">
+              <div className="text-[11px] font-mono text-muted-foreground shrink-0 flex flex-col sm:items-end gap-1">
                 {fromCacheInfo ? (
-                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-                    24h private cache · Retrieved{" "}
-                    {String(fromCacheInfo).replace("T", " ").slice(0, 16)} UTC
+                  <span className="px-2 py-0.5 rounded bg-secondary text-foreground border border-border font-medium">
+                    {t("discover.cacheBadge", {
+                      time: String(fromCacheInfo).replace("T", " ").slice(0, 16),
+                    })}
                   </span>
                 ) : (
                   <span>
-                    Retrieved{" "}
-                    {String(activeSearch.completed_at || activeSearch.executed_at || "")
-                      .replace("T", " ")
-                      .slice(0, 16)}{" "}
-                    UTC
+                    {t("discover.retrievedAtLabel", {
+                      time: String(
+                        activeSearch.completed_at || activeSearch.executed_at || ""
+                      )
+                        .replace("T", " ")
+                        .slice(0, 16),
+                    })}
                     {activeSearch.duration_ms
                       ? ` · ${(activeSearch.duration_ms / 1000).toFixed(1)}s`
                       : ""}
@@ -739,11 +776,11 @@ function DiscoverScreen() {
                       setShowDismissed(next);
                       syncFilterUrlParams({ showDismissed: next });
                     }}
-                    className="text-blue-700 hover:underline font-medium"
+                    className="text-primary hover:underline font-sans font-medium"
                   >
                     {showDismissed
-                      ? `Hide dismissed (${dismissedLiveOpps.length})`
-                      : `Show dismissed (${dismissedLiveOpps.length})`}
+                      ? t("discover.hideDismissedBtn", { count: dismissedLiveOpps.length })
+                      : t("discover.showDismissedBtn", { count: dismissedLiveOpps.length })}
                   </button>
                 )}
               </div>
@@ -751,18 +788,18 @@ function DiscoverScreen() {
 
             {/* Verified Opportunities Section */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-slate-900">
-                  Verified opportunities ({verifiedOpps.length})
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                <h2 className="text-sm font-semibold text-foreground">
+                  {t("discover.verifiedSectionTitle", { count: verifiedOpps.length })}
                 </h2>
-                <span className="text-xs text-slate-500">
-                  Identity, location, event, and recency confirmed against recovered page content
+                <span className="text-xs text-muted-foreground">
+                  {t("discover.verifiedSectionSub")}
                 </span>
               </div>
 
               {verifiedOpps.length === 0 ? (
-                <div className="bg-white rounded-lg border border-slate-200 p-4 text-xs text-slate-600">
-                  No active candidates in this view are marked Verified.
+                <div className="bg-card rounded-lg border border-border p-4 text-xs text-muted-foreground">
+                  {t("discover.noVerifiedInView")}
                 </div>
               ) : (
                 verifiedOpps.map((opp) => (
@@ -784,15 +821,15 @@ function DiscoverScreen() {
               )}
             </div>
 
-            {/* Needs Review Section (kept strictly separate from Verified) */}
+            {/* Needs Review Section */}
             {needsReviewOpps.length > 0 && (
-              <div className="space-y-3 pt-3 border-t border-slate-200">
+              <div className="space-y-3 pt-3 border-t border-border">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                  <h2 className="text-sm font-semibold text-amber-950">
-                    Needs review ({needsReviewOpps.length})
+                  <h2 className="text-sm font-semibold text-amber-800 dark:text-amber-300">
+                    {t("discover.needsReviewSectionTitle", { count: needsReviewOpps.length })}
                   </h2>
-                  <span className="text-xs text-amber-900">
-                    Excluded from verified results — source blocked automated page recovery or recency date requires manual check
+                  <span className="text-xs text-muted-foreground">
+                    {t("discover.needsReviewSectionSub")}
                   </span>
                 </div>
 
@@ -815,15 +852,15 @@ function DiscoverScreen() {
               </div>
             )}
 
-            {/* Optional Dismissed Section so users can inspect or restore dismissed items */}
+            {/* Dismissed Section */}
             {showDismissed && dismissedLiveOpps.length > 0 && (
-              <div className="space-y-3 pt-3 border-t border-slate-200">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold text-slate-700">
-                    Dismissed opportunities ({dismissedLiveOpps.length})
+              <div className="space-y-3 pt-3 border-t border-border">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <h2 className="text-sm font-semibold text-muted-foreground">
+                    {t("discover.dismissedSectionTitle", { count: dismissedLiveOpps.length })}
                   </h2>
-                  <span className="text-xs text-slate-500">
-                    Marked as not relevant — click Restore or open details to update your rating
+                  <span className="text-xs text-muted-foreground">
+                    {t("discover.dismissedSectionSub")}
                   </span>
                 </div>
 
@@ -848,15 +885,18 @@ function DiscoverScreen() {
           </section>
         )}
 
-      {/* INITIAL READY STATE (when no live search has been run yet) */}
+      {/* INITIAL READY STATE */}
       {!activeSearch && !isSearching && !requestError && !showExamples && (
-        <section className="bg-white rounded-lg border border-slate-200 p-6 text-center space-y-2">
-          <h2 className="text-sm font-semibold text-slate-900">
-            Ready to search live opening and expansion announcements
+        <section className="bg-card rounded-lg border border-border p-6 text-center space-y-2">
+          <h2 className="text-sm font-semibold text-foreground">
+            {t("discover.readyTitle")}
           </h2>
-          <p className="text-xs text-slate-600 max-w-md mx-auto leading-relaxed">
-            Click <strong>Find leads</strong> above to run a live search for{" "}
-            <strong>{businessCategory}</strong> in <strong>{locationQuery}</strong> ({timeWindowDays}-day window), or change the filters to any sector and location.
+          <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+            {t("discover.readyBody", {
+              category: businessCategory,
+              location: locationQuery,
+              days: timeWindowDays,
+            })}
           </p>
         </section>
       )}
@@ -864,9 +904,12 @@ function DiscoverScreen() {
       {/* SEPARATELY LABELED EXAMPLE RESULTS VIEW */}
       {showExamples && (
         <section aria-label="Example results" className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-100 border border-slate-200 rounded-md px-4 py-2.5">
-            <div className="text-xs text-slate-700">
-              <strong className="font-semibold text-slate-900">Example results</strong> — Sample demonstration records shown to preview how sources and service-fit hypotheses appear. Excluded from live usage metrics and saved leads.
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-secondary border border-border rounded-md px-4 py-2.5">
+            <div className="text-xs text-muted-foreground">
+              <strong className="font-semibold text-foreground">
+                {t("discover.examplesBannerTitle")}
+              </strong>{" "}
+              — {t("discover.examplesBannerBody")}
             </div>
             <button
               type="button"
@@ -874,9 +917,9 @@ function DiscoverScreen() {
                 setShowExamples(false);
                 syncFilterUrlParams({ examples: false });
               }}
-              className="text-xs font-medium text-slate-600 hover:text-slate-900 shrink-0 underline"
+              className="text-xs font-medium text-primary hover:underline shrink-0"
             >
-              Close examples
+              {t("discover.closeExamplesBtn")}
             </button>
           </div>
 

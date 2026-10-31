@@ -4,38 +4,72 @@
 
 @layer base {
   :root {
-    --background: 210 33% 98%;
+    --background: 214 33% 98%;
     --foreground: 222 47% 11%;
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
-    --primary: 221 83% 53%;
+    --primary: 217 91% 52%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 214 32% 94%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 214 32% 93%;
+    --secondary-foreground: 222 47% 14%;
     --muted: 214 32% 95%;
-    --muted-foreground: 215 16% 44%;
-    --accent: 214 95% 96%;
-    --accent-foreground: 221 83% 45%;
-    --destructive: 0 84.2% 60.2%;
+    --muted-foreground: 215 20% 38%;
+    --accent: 210 100% 96%;
+    --accent-foreground: 217 91% 42%;
+    --destructive: 0 78% 52%;
     --destructive-foreground: 0 0% 98%;
-    --border: 214 32% 89%;
-    --input: 214 32% 89%;
-    --ring: 221 83% 53%;
-    --radius: 0.625rem;
+    --border: 214 28% 86%;
+    --input: 214 28% 84%;
+    --ring: 217 91% 52%;
+    --radius: 0.5rem;
     --font-heading: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
     --font-body: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
     --font-display: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary: 217 91% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 214 95% 96%;
-    --sidebar-accent-foreground: 221 83% 45%;
-    --sidebar-border: 214 32% 89%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-accent: 210 100% 96%;
+    --sidebar-accent-foreground: 217 91% 42%;
+    --sidebar-border: 214 28% 86%;
+    --sidebar-ring: 217 91% 52%;
+    --surface-elevated: 214 33% 96%;
+    --cyan-accent: 192 91% 38%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+    --card: 222 44% 9%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 44% 10%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 213 94% 58%;
+    --primary-foreground: 222 47% 6%;
+    --secondary: 220 38% 14%;
+    --secondary-foreground: 210 40% 94%;
+    --muted: 220 38% 13%;
+    --muted-foreground: 215 20% 70%;
+    --accent: 216 50% 15%;
+    --accent-foreground: 199 95% 74%;
+    --destructive: 0 72% 58%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217 32% 18%;
+    --input: 217 32% 20%;
+    --ring: 199 95% 60%;
+    --sidebar-background: 222 44% 8%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 213 94% 58%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 216 50% 15%;
+    --sidebar-accent-foreground: 199 95% 74%;
+    --sidebar-border: 217 32% 18%;
+    --sidebar-ring: 199 95% 60%;
+    --surface-elevated: 221 42% 12%;
+    --cyan-accent: 192 95% 58%;
   }
 }
 
@@ -44,7 +78,33 @@
     @apply border-border outline-ring/50;
   }
 
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
-    @apply bg-background text-foreground font-body antialiased selection:bg-blue-600/15 selection:text-blue-950;
+    @apply bg-background text-foreground font-body antialiased selection:bg-primary/20 selection:text-foreground;
+  }
+}
+
+/* Precision geometric grid hairline for high-tech workspace surfaces */
+.goleads-grid-bg {
+  background-image: linear-gradient(to right, hsl(var(--border) / 0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--border) / 0.35) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

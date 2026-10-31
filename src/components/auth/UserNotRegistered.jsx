@@ -1,16 +1,21 @@
 import { UserX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/AuthContext";
+import { usePreferences } from "@/lib/PreferencesContext";
 import { AuthLayout } from "./AuthLayout";
 
-// Signed in to Base44, but not a user of this app (invite-only apps).
 export function UserNotRegistered() {
   const { logout } = useAuth();
+  const { t } = usePreferences();
   return (
-    <AuthLayout icon={UserX} title="Access not granted" subtitle="Your account is not registered for this app.">
-      <p className="mb-6 text-center text-sm text-foreground">Ask the app owner for an invitation, or sign in with a different account.</p>
-      <Button variant="outline" className="h-12 w-full font-medium" onClick={logout}>
-        Sign out
+    <AuthLayout
+      icon={UserX}
+      title={t("auth.notRegisteredTitle")}
+      subtitle={t("auth.notRegisteredSubtitle")}
+    >
+      <p className="mb-6 text-center text-sm text-foreground">{t("auth.notRegisteredBody")}</p>
+      <Button variant="outline" className="h-11 w-full font-medium" onClick={logout}>
+        {t("nav.signOut")}
       </Button>
     </AuthLayout>
   );

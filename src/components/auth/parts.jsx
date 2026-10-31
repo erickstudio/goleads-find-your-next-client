@@ -4,13 +4,12 @@ import { Button } from "@/components/ui/button";
 import { GoogleIcon } from "./GoogleIcon";
 import { base44 } from "@/api/base44Client";
 import { returnToSearch } from "@/lib/authReturnTo";
-
-// Small pieces the auth pages share.
+import { usePreferences } from "@/lib/PreferencesContext";
 
 export function AuthError({ children }) {
   if (!children) return null;
   return (
-    <div role="alert" className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+    <div role="alert" className="mb-4 rounded-lg bg-destructive/15 border border-destructive/30 p-3 text-sm text-destructive">
       {children}
     </div>
   );
@@ -18,7 +17,7 @@ export function AuthError({ children }) {
 
 export function SubmitButton({ busy, busyLabel, children, ...props }) {
   return (
-    <Button type="submit" className="h-12 w-full font-medium" disabled={busy} {...props}>
+    <Button type="submit" className="h-11 w-full font-medium" disabled={busy} {...props}>
       {busy ? (
         <>
           <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" />
@@ -32,28 +31,34 @@ export function SubmitButton({ busy, busyLabel, children, ...props }) {
 }
 
 export function GoogleButton({ returnTo }) {
+  const { t } = usePreferences();
   return (
-    <Button type="button" variant="outline" className="mb-6 h-12 w-full text-sm font-medium" onClick={() => base44.auth.loginWithProvider("google", returnTo)}>
+    <Button
+      type="button"
+      variant="outline"
+      className="mb-6 h-11 w-full text-sm font-medium"
+      onClick={() => base44.auth.loginWithProvider("google", returnTo)}
+    >
       <GoogleIcon className="mr-2 h-5 w-5" />
-      Continue with Google
+      {t("auth.continueWithGoogle")}
     </Button>
   );
 }
 
 export function OrDivider() {
+  const { t } = usePreferences();
   return (
     <div className="relative mb-6">
       <div className="absolute inset-0 flex items-center">
         <div className="w-full border-t border-border" />
       </div>
       <div className="relative flex justify-center text-xs uppercase">
-        <span className="bg-card px-3 text-muted-foreground">or</span>
+        <span className="bg-card px-3 text-muted-foreground">{t("auth.orDivider")}</span>
       </div>
     </div>
   );
 }
 
-// A link between auth screens that carries the way back (?returnTo=) along.
 export function AuthLink({ to, returnTo, className = "font-medium text-primary hover:underline", children }) {
   return (
     <Link to={to} search={returnToSearch(returnTo)} className={className}>

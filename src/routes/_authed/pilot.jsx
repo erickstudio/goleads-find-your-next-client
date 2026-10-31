@@ -6,6 +6,7 @@ import {
   initiateTestPilotCheckout,
   verifyPilotCheckoutSession,
 } from "@/lib/pilot-server-fns";
+import { usePreferences } from "@/lib/PreferencesContext";
 
 export const Route = createFileRoute("/_authed/pilot")({
   ssr: false,
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/_authed/pilot")({
   loader: () => getPilotWorkspaceData(),
   head: () => ({
     meta: [
-      { title: "One-time pilot (Test mode) — Leads AI" },
+      { title: "One-time pilot (Test mode) — goleads.app" },
       {
         name: "description",
         content:
@@ -37,6 +38,7 @@ function PilotOfferScreen() {
   const data = Route.useLoaderData();
   const searchParams = Route.useSearch();
   const router = useRouter();
+  const { lang, t } = usePreferences();
 
   const startCheckoutFn = useServerFn(initiateTestPilotCheckout);
   const verifySessionFn = useServerFn(verifyPilotCheckoutSession);
@@ -53,7 +55,10 @@ function PilotOfferScreen() {
   const [statusBanner, setStatusBanner] = useState("");
   const [bannerTone, setBannerTone] = useState("info");
 
-  // Handle return from Stripe checkout by verifying on the server (never trusting URL flag alone)
+  useEffect(() => {
+    document.title = t("pilot.pageTitle");
+  }, [lang, t]);
+
   useEffect(() => {
     if (!searchParams.checkout || !searchParams.session_id) return;
     let cancelled = false;
@@ -117,29 +122,29 @@ function PilotOfferScreen() {
   return (
     <div className="space-y-6">
       {/* Header & Preparation Mode Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-900 border border-amber-300">
-              Preparation & Review — Live billing disabled
+            <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/35">
+              {t("pilot.prepBadge")}
             </span>
-            <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
-              One-time pilot only (no subscription)
+            <span className="px-2 py-0.5 rounded text-xs font-medium bg-secondary text-muted-foreground border border-border">
+              {t("pilot.oneTimeBadge")}
             </span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
-            One-time paid pilot offer & test-mode access
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+            {t("pilot.heading")}
           </h1>
-          <p className="text-sm text-slate-600 mt-0.5">
-            Review agreed pilot deliverables, undecided commercial terms, and server-verified test payment status before enabling live billing.
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {t("pilot.subheading")}
           </p>
         </div>
 
         <Link
           to="/"
-          className="px-3.5 py-2 rounded-md text-xs font-medium bg-slate-900 text-white hover:bg-slate-800 shrink-0 text-center"
+          className="px-3.5 py-2 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 shrink-0 text-center focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          Back to Find leads
+          {t("pilot.backToDiscover")}
         </Link>
       </div>
 
@@ -148,8 +153,8 @@ function PilotOfferScreen() {
           role="status"
           className={`px-4 py-3 rounded-md border text-xs flex items-center justify-between gap-3 ${
             bannerTone === "success"
-              ? "bg-emerald-50 border-emerald-200 text-emerald-950"
-              : "bg-amber-50 border-amber-200 text-amber-950"
+              ? "bg-emerald-500/15 border-emerald-500/35 text-emerald-800 dark:text-emerald-200"
+              : "bg-amber-500/15 border-amber-500/35 text-amber-900 dark:text-amber-200"
           }`}
         >
           <span>{statusBanner}</span>
@@ -158,37 +163,37 @@ function PilotOfferScreen() {
             onClick={() => setStatusBanner("")}
             className="underline font-medium shrink-0"
           >
-            Dismiss
+            {t("common.dismiss")}
           </button>
         </div>
       )}
 
       {/* Section 1: Pilot Offer Draft (Agreed vs Undecided Terms) */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        <div className="lg:col-span-7 bg-white rounded-lg border border-slate-200 p-5 space-y-4">
+        <div className="lg:col-span-7 bg-card text-card-foreground rounded-lg border border-border p-5 space-y-4">
           <div className="space-y-1">
-            <h2 className="text-base font-semibold text-slate-900">
-              Agreed pilot scope & deliverables
+            <h2 className="text-base font-semibold text-foreground">
+              {t("pilot.agreedScopeTitle")}
             </h2>
-            <p className="text-xs text-slate-600">{offer?.targetCustomer}</p>
+            <p className="text-xs text-muted-foreground">{offer?.targetCustomer}</p>
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Included deliverables
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {t("pilot.includedDeliverablesTitle")}
             </h3>
-            <ul className="space-y-1.5 text-xs text-slate-800 list-disc pl-4">
+            <ul className="space-y-1.5 text-xs text-foreground list-disc pl-4">
               {(offer?.agreedDeliverables || []).map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
           </div>
 
-          <div className="bg-slate-50 rounded-md border border-slate-200 p-3.5 space-y-1.5">
-            <h3 className="text-xs font-semibold text-slate-900">
-              Honest commercial boundaries (What is not guaranteed)
+          <div className="bg-secondary/50 rounded-md border border-border p-3.5 space-y-1.5">
+            <h3 className="text-xs font-semibold text-foreground">
+              {t("pilot.honestBoundariesTitle")}
             </h3>
-            <ul className="space-y-1 text-xs text-slate-600 list-disc pl-4">
+            <ul className="space-y-1 text-xs text-muted-foreground list-disc pl-4">
               {(offer?.explicitDisclaimers || []).map((item) => (
                 <li key={item}>{item}</li>
               ))}
@@ -197,32 +202,32 @@ function PilotOfferScreen() {
         </div>
 
         {/* Undecided Commercial Terms */}
-        <div className="lg:col-span-5 bg-white rounded-lg border border-amber-300 p-5 space-y-4">
+        <div className="lg:col-span-5 bg-card text-card-foreground rounded-lg border border-amber-500/40 p-5 space-y-4">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="text-base font-semibold text-slate-900">
-              Undecided commercial terms
+            <h2 className="text-base font-semibold text-foreground">
+              {t("pilot.undecidedTitle")}
             </h2>
-            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-950 border border-amber-300">
-              Decision required
+            <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/35">
+              {t("pilot.decisionRequiredBadge")}
             </span>
           </div>
-          <p className="text-xs text-slate-600">
-            These 5 commercial decisions are explicitly left open for owner approval and are never invented or charged in live mode:
+          <p className="text-xs text-muted-foreground">
+            {t("pilot.undecidedIntro")}
           </p>
 
           <div className="space-y-2.5">
             {Object.entries(offer?.undecidedTerms || {}).map(([key, term]) => (
               <div
                 key={key}
-                className="p-3 rounded-md bg-amber-50/50 border border-amber-200 space-y-0.5"
+                className="p-3 rounded-md bg-amber-500/10 border border-amber-500/30 space-y-0.5"
               >
                 <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-slate-900">{term.label}</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-900">
+                  <span className="font-semibold text-foreground">{term.label}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-amber-500/20 text-amber-800 dark:text-amber-300">
                     {term.status}
                   </span>
                 </div>
-                <p className="text-xs text-slate-700">{term.detail}</p>
+                <p className="text-xs text-muted-foreground">{term.detail}</p>
               </div>
             ))}
           </div>
@@ -230,30 +235,34 @@ function PilotOfferScreen() {
       </section>
 
       {/* Section 2: In-Product Research Allowance vs Base44 Platform Credits */}
-      <section className="bg-white rounded-lg border border-slate-200 p-5 space-y-3">
-        <h2 className="text-sm font-semibold text-slate-900">
-          In-product research allowance vs. Base44 platform credits
+      <section className="bg-card text-card-foreground rounded-lg border border-border p-5 space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">
+          {t("pilot.allowanceVsCreditsTitle")}
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-          <div className="p-3.5 rounded-md bg-blue-50/40 border border-blue-200 space-y-1">
-            <div className="font-semibold text-blue-950">
-              1. In-product research allowance (Customer-facing)
+          <div className="p-3.5 rounded-md bg-accent/60 border border-primary/25 space-y-1">
+            <div className="font-semibold text-foreground">
+              {t("pilot.inProductTitle")}
             </div>
-            <p className="text-slate-700 leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed">
               {offer?.creditsDistinction?.inProductResearchAllowance}
             </p>
-            <div className="pt-1 text-slate-800 font-medium">
-              Your current allowance: {quota.baseRemainingToday ?? 0} of {quota.maxDaily ?? 3} daily free searches left +{" "}
-              {quota.pilotRemaining ?? 0} verified pilot searches ({quota.pilotGrantedTotal ?? 0} granted,{" "}
-              {quota.pilotUsedTotal ?? 0} used).
+            <div className="pt-1 text-foreground font-medium">
+              {t("pilot.currentAllowanceSummary", {
+                baseRemaining: quota.baseRemainingToday ?? 0,
+                maxDaily: quota.maxDaily ?? 3,
+                pilotRemaining: quota.pilotRemaining ?? 0,
+                pilotGranted: quota.pilotGrantedTotal ?? 0,
+                pilotUsed: quota.pilotUsedTotal ?? 0,
+              })}
             </div>
           </div>
 
-          <div className="p-3.5 rounded-md bg-slate-50 border border-slate-200 space-y-1">
-            <div className="font-semibold text-slate-900">
-              2. Base44 platform credits (Workspace infrastructure)
+          <div className="p-3.5 rounded-md bg-secondary/50 border border-border space-y-1">
+            <div className="font-semibold text-foreground">
+              {t("pilot.platformCreditsTitle")}
             </div>
-            <p className="text-slate-600 leading-relaxed">
+            <p className="text-muted-foreground leading-relaxed">
               {offer?.creditsDistinction?.base44PlatformCredits}
             </p>
           </div>
@@ -261,14 +270,14 @@ function PilotOfferScreen() {
       </section>
 
       {/* Section 3: Test-Mode Payment Integration Status & Server-Verified Access */}
-      <section className="bg-white rounded-lg border border-slate-200 p-5 space-y-4">
+      <section className="bg-card text-card-foreground rounded-lg border border-border p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">
-              Stripe test-mode checkout & server-side verification
+            <h2 className="text-sm font-semibold text-foreground">
+              {t("pilot.stripeSectionTitle")}
             </h2>
-            <p className="text-xs text-slate-600">
-              Pilot search allowance is granted only after server-side Stripe verification or a signature-verified webhook event (`POST /api/stripe-webhook`). Browser redirects alone never unlock access.
+            <p className="text-xs text-muted-foreground">
+              {t("pilot.stripeSectionSub")}
             </p>
           </div>
 
@@ -276,73 +285,82 @@ function PilotOfferScreen() {
             type="button"
             disabled={isBusy}
             onClick={handleStartTestCheckout}
-            className="px-4 py-2 rounded-md text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 shrink-0"
+            className="px-4 py-2 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60 shrink-0 focus:outline-none focus:ring-2 focus:ring-ring"
           >
-            {isBusy ? "Checking…" : "Start test-mode pilot checkout"}
+            {isBusy ? t("pilot.checkingBtn") : t("pilot.startTestCheckoutBtn")}
           </button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-          <div className="p-3 rounded-md bg-slate-50 border border-slate-200">
-            <div className="text-slate-500">Provider in region (PA)</div>
-            <div className="font-semibold text-slate-900 mt-0.5">Stripe (Test Sandbox)</div>
+          <div className="p-3 rounded-md bg-secondary/50 border border-border">
+            <div className="text-muted-foreground">{t("pilot.providerLabel")}</div>
+            <div className="font-semibold text-foreground mt-0.5">
+              {t("pilot.providerValue")}
+            </div>
           </div>
-          <div className="p-3 rounded-md bg-slate-50 border border-slate-200">
-            <div className="text-slate-500">Stripe secret key</div>
-            <div className="font-semibold text-slate-900 mt-0.5">
+          <div className="p-3 rounded-md bg-secondary/50 border border-border">
+            <div className="text-muted-foreground">{t("pilot.secretKeyLabel")}</div>
+            <div className="font-semibold text-foreground mt-0.5">
               {stripeStatus?.hasStripeSecretKey
-                ? `Configured (${stripeStatus.keyMode})`
-                : "Not connected yet"}
+                ? t("pilot.configuredLabel", { mode: stripeStatus.keyMode })
+                : t("pilot.notConnectedYet")}
             </div>
           </div>
-          <div className="p-3 rounded-md bg-slate-50 border border-slate-200">
-            <div className="text-slate-500">Webhook signature secret</div>
-            <div className="font-semibold text-slate-900 mt-0.5">
-              {stripeStatus?.hasWebhookSecret ? "Configured" : "Not connected yet"}
+          <div className="p-3 rounded-md bg-secondary/50 border border-border">
+            <div className="text-muted-foreground">{t("pilot.webhookSecretLabel")}</div>
+            <div className="font-semibold text-foreground mt-0.5">
+              {stripeStatus?.hasWebhookSecret
+                ? t("pilot.configuredSimple")
+                : t("pilot.notConnectedYet")}
             </div>
           </div>
-          <div className="p-3 rounded-md bg-slate-50 border border-slate-200">
-            <div className="text-slate-500">Live billing status</div>
-            <div className="font-semibold text-amber-900 mt-0.5">Disabled for review</div>
+          <div className="p-3 rounded-md bg-secondary/50 border border-border">
+            <div className="text-muted-foreground">{t("pilot.liveBillingStatusLabel")}</div>
+            <div className="font-semibold text-amber-800 dark:text-amber-300 mt-0.5">
+              {t("pilot.disabledForReview")}
+            </div>
           </div>
         </div>
 
         {/* Separated Reporting Counters */}
-        <div className="pt-3 border-t border-slate-100 space-y-2">
-          <h3 className="text-xs font-semibold text-slate-800">
-            Payment & revenue reporting (Strict separation of test vs. production)
+        <div className="pt-3 border-t border-border space-y-2">
+          <h3 className="text-xs font-semibold text-foreground">
+            {t("pilot.reportingTitle")}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <div className="p-3 rounded-md bg-slate-50 border border-slate-200">
-              <div className="text-slate-500">Test-mode transactions</div>
-              <div className="text-sm font-semibold text-slate-900 mt-0.5">
-                {txSummary.testTransactionCount ?? 0} total ({txSummary.testPaidVerifiedCount ?? 0} verified)
+            <div className="p-3 rounded-md bg-secondary/50 border border-border">
+              <div className="text-muted-foreground">{t("pilot.testTxLabel")}</div>
+              <div className="text-sm font-mono font-semibold text-foreground mt-0.5">
+                {t("pilot.testTxValue", {
+                  total: txSummary.testTransactionCount ?? 0,
+                  verified: txSummary.testPaidVerifiedCount ?? 0,
+                })}
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                Counts as $0.00 production revenue
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                {t("pilot.testTxSub")}
               </div>
             </div>
 
-            <div className="p-3 rounded-md bg-slate-50 border border-slate-200">
-              <div className="text-slate-500">Teammate / owner purchases</div>
-              <div className="text-sm font-semibold text-slate-900 mt-0.5">
+            <div className="p-3 rounded-md bg-secondary/50 border border-border">
+              <div className="text-muted-foreground">{t("pilot.teammateTxLabel")}</div>
+              <div className="text-sm font-mono font-semibold text-foreground mt-0.5">
                 {txSummary.teammatePurchaseCount ?? 0}
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                Excluded from external customer metrics
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                {t("pilot.teammateTxSub")}
               </div>
             </div>
 
-            <div className="p-3 rounded-md bg-emerald-50/40 border border-emerald-200">
-              <div className="text-emerald-950 font-medium">
-                External customer production payments
+            <div className="p-3 rounded-md bg-emerald-500/10 border border-emerald-500/30">
+              <div className="text-emerald-800 dark:text-emerald-300 font-medium">
+                {t("pilot.externalTxLabel")}
               </div>
-              <div className="text-sm font-semibold text-emerald-950 mt-0.5">
+              <div className="text-sm font-mono font-semibold text-foreground mt-0.5">
                 {txSummary.externalCustomerProductionCount ?? 0} ($
                 {((txSummary.externalProductionRevenueCents || 0) / 100).toFixed(2)})
               </div>
-              <div className="text-[11px] text-emerald-800 mt-0.5">
-                Only verified live external customer payments count here
+              <div className="text-[11px] text-muted-foreground mt-0.5">
+                {t("pilot.externalTxSub")}
               </div>
             </div>
           </div>
@@ -350,31 +368,32 @@ function PilotOfferScreen() {
 
         {myEnrollments.length > 0 && (
           <div className="pt-2 space-y-2">
-            <h3 className="text-xs font-semibold text-slate-800">
-              Your pilot checkout records ({myEnrollments.length})
+            <h3 className="text-xs font-semibold text-foreground">
+              {t("pilot.enrollmentRecordsTitle", { count: myEnrollments.length })}
             </h3>
             <div className="space-y-2">
               {myEnrollments.map((enr) => (
                 <div
                   key={enr.id}
-                  className="p-3 rounded-md bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
+                  className="p-3 rounded-md bg-secondary/50 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs"
                 >
                   <div className="space-y-0.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-slate-900">
-                        Status: {enr.payment_status}
+                      <span className="font-semibold text-foreground">
+                        {t("pilot.statusPrefix")} {enr.payment_status}
                       </span>
-                      <span className="px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700">
+                      <span className="px-2 py-0.5 rounded bg-card border border-border text-muted-foreground">
                         {enr.payment_classification} ({enr.payment_mode})
                       </span>
-                      <span className="text-slate-600">
-                        Granted allowance: {enr.granted_search_allowance} searches
+                      <span className="text-muted-foreground">
+                        {t("pilot.grantedAllowancePrefix")} {enr.granted_search_allowance}{" "}
+                        {t("pilot.searchesUnit")}
                       </span>
                     </div>
-                    <p className="text-slate-600">{enr.status_note}</p>
+                    <p className="text-muted-foreground">{enr.status_note}</p>
                   </div>
-                  <div className="text-[11px] text-slate-500 shrink-0">
-                    Session: {enr.stripe_checkout_session_id || "n/a"}
+                  <div className="text-[11px] font-mono text-muted-foreground shrink-0">
+                    {t("pilot.sessionPrefix")} {enr.stripe_checkout_session_id || "n/a"}
                   </div>
                 </div>
               ))}
@@ -383,69 +402,71 @@ function PilotOfferScreen() {
         )}
       </section>
 
-      {/* Section 4: Real User Feedback & Resulting Product Improvements (Independent of Payment Status) */}
-      <section className="bg-white rounded-lg border border-slate-200 p-5 space-y-4">
+      {/* Section 4: Real User Feedback & Resulting Product Improvements */}
+      <section className="bg-card text-card-foreground rounded-lg border border-border p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <h2 className="text-sm font-semibold text-slate-900">
-              Recorded user feedback & resulting product improvements
+            <h2 className="text-sm font-semibold text-foreground">
+              {t("pilot.feedbackSectionTitle")}
             </h2>
-            <p className="text-xs text-slate-600">
-              Feedback and product improvements are tracked and shipped for all users independently of payment status.
+            <p className="text-xs text-muted-foreground">
+              {t("pilot.feedbackSectionSub")}
             </p>
           </div>
-          <span className="px-2.5 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-800 border border-blue-200">
-            {feedbackRecords.length} opportunity feedback record{feedbackRecords.length === 1 ? "" : "s"}
+          <span className="px-2.5 py-0.5 rounded text-xs font-medium bg-primary/15 text-primary border border-primary/30">
+            {t("pilot.feedbackRecordsBadge", { count: feedbackRecords.length })}
           </span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-slate-800">
-              Recent recorded relevance feedback
+            <h3 className="text-xs font-semibold text-foreground">
+              {t("pilot.recentFeedbackTitle")}
             </h3>
             {feedbackRecords.length === 0 ? (
-              <p className="text-xs text-slate-500">No feedback recorded yet.</p>
+              <p className="text-xs text-muted-foreground">{t("pilot.noFeedbackYet")}</p>
             ) : (
               feedbackRecords.slice(0, 5).map((fb) => (
                 <div
                   key={fb.id}
-                  className="p-3 rounded-md bg-slate-50 border border-slate-200 text-xs space-y-1"
+                  className="p-3 rounded-md bg-secondary/50 border border-border text-xs space-y-1"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-900">{fb.business_name}</span>
+                    <span className="font-semibold text-foreground">{fb.business_name}</span>
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${
+                      className={`px-1.5 py-0.5 rounded text-[11px] font-medium border ${
                         fb.verdict === "relevant"
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                          : "bg-red-50 text-red-800 border border-red-200"
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                          : "bg-destructive/15 text-destructive border-destructive/30"
                       }`}
                     >
                       {fb.verdict}
                     </span>
                   </div>
                   {fb.reason_category && (
-                    <div className="text-slate-700 font-medium">
-                      Reason: {fb.reason_category}
+                    <div className="text-foreground font-medium">
+                      {t("pilot.reasonPrefix")} {fb.reason_category}
                     </div>
                   )}
-                  {fb.reason_note && <p className="text-slate-600">{fb.reason_note}</p>}
+                  {fb.reason_note && <p className="text-muted-foreground">{fb.reason_note}</p>}
                 </div>
               ))
             )}
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold text-slate-800">
-              Shipped improvements driven by feedback
+            <h3 className="text-xs font-semibold text-foreground">
+              {t("pilot.shippedImprovementsTitle")}
             </h3>
             {documentedImprovements.map((imp) => (
               <div
                 key={imp.id}
-                className="p-3 rounded-md bg-emerald-50/40 border border-emerald-200 text-xs space-y-1"
+                className="p-3 rounded-md bg-emerald-500/10 border border-emerald-500/30 text-xs space-y-1"
               >
-                <div className="font-semibold text-emerald-950">{imp.triggerFeedback}</div>
-                <p className="text-slate-700 leading-relaxed">{imp.resultingChange}</p>
+                <div className="font-semibold text-emerald-800 dark:text-emerald-300">
+                  {imp.triggerFeedback}
+                </div>
+                <p className="text-muted-foreground leading-relaxed">{imp.resultingChange}</p>
               </div>
             ))}
           </div>
