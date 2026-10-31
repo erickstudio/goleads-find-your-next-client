@@ -4,6 +4,7 @@ import { Fragment, useEffect, useState } from "react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Button } from "@/components/ui/button";
 import { getAppParams } from "@/lib/app-params";
+import { usePreferences } from "@/lib/PreferencesContext";
 
 // The /oauth/consent page: app-side OAuth consent for the app's MCP server. The platform redirects
 // AI clients here (base44/mcp/config.json `consent_path`, default /oauth/consent)
@@ -99,6 +100,7 @@ function ToolRow({ title, children }) {
 }
 
 export function ConsentPage() {
+  const { t } = usePreferences();
   // Read raw: the opaque handle must reach the server exactly as the platform sent it.
   const ctx = new URLSearchParams(window.location.search).get("ctx");
   const { appId } = getAppParams();
@@ -111,11 +113,15 @@ export function ConsentPage() {
   const [showAllData, setShowAllData] = useState(false);
 
   useEffect(() => {
+    document.title = `${t("auth.consentTitle")} — goleads.app`;
+  }, [t]);
+
+  useEffect(() => {
     let redirecting = false;
     (async () => {
       try {
         if (!ctx) {
-          setError("This authorization link is invalid or has expired.");
+          setError(t("auth.consentInvalidLink"));
           return;
         }
         // Resolve the handle first: a dead handle must never render approve/deny,
@@ -125,7 +131,7 @@ export function ConsentPage() {
           headers: authHeaders(),
         });
         if (!res.ok) {
-          setError("This authorization link is invalid or has expired.");
+          setError(t("auth.consentInvalidLink"));
           return;
         }
         const data = await res.json();
@@ -138,12 +144,12 @@ export function ConsentPage() {
         }
         setInfo(data);
       } catch {
-        setError("Could not load this authorization request. Please try again.");
+        setError(t("auth.consentLoadError"));
       } finally {
         if (!redirecting) setChecking(false);
       }
     })();
-  }, [ctx, appId]);
+  }, [ctx, appId, t]);
 
   const respond = async (action) => {
     setSubmitting(true);
@@ -191,32 +197,37 @@ export function ConsentPage() {
 
   if (checking) {
     return (
-      <AuthLayout icon={ShieldCheck} title="Authorize access">
+      <AuthLayout icon={ShieldCheck} title={t("auth.consentTitle")}>
         <div className="flex items-center justify-center py-6 text-muted-foreground">
           <Loader2 className="mr-2 h-5 w-5 animate-spin" aria-hidden="true" />
-          Loading…
+          {t("auth.consentLoading")}
         </div>
       </AuthLayout>
     );
   }
 
   const client = info?.client_name || "An AI client";
-  const appName = info?.app_name || "this app";
+  const appName = info?.app_name || "goleads.app";
 
   if (decided) {
-    return <AuthLayout icon={ShieldCheck} title={decided === "approve" ? "Access granted" : "Access denied"} subtitle={`You can return to ${client} and close this window.`} />;
+    return (
+      <AuthLayout
+        icon={ShieldCheck}
+        title={decided === "approve" ? t("auth.consentGrantedTitle") : t("auth.consentDeniedTitle")}
+        subtitle={t("auth.consentReturnSubtitle", { client })}
+      />
+    );
   }
   if (reconnect) {
     return (
-      <AuthLayout icon={ShieldCheck} title="Reconnect required">
+      <AuthLayout icon={ShieldCheck} title={t("auth.consentReconnectTitle")}>
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{reconnect}</div>
       </AuthLayout>
     );
   }
-  // No consent details means nothing trustworthy to approve.
   if (error && !info) {
     return (
-      <AuthLayout icon={ShieldCheck} title="Authorize access">
+      <AuthLayout icon={ShieldCheck} title={t("auth.consentTitle")}>
         <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
       </AuthLayout>
     );
@@ -225,13 +236,19 @@ export function ConsentPage() {
   const tools = Array.isArray(info.tools) ? info.tools : [];
   const { data, agents, actions } = groupTools(tools);
   return (
-    <AuthLayout icon={ShieldCheck} title="Authorize access" subtitle={`${client} wants to access ${appName} on your behalf`}>
+    <AuthLayout
+      icon={ShieldCheck}
+      title={t("auth.consentTitle")}
+      subtitle={t("auth.consentSubtitle", { client, appName })}
+    >
       {error && <div className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-      <p className="mb-3 text-sm font-medium text-foreground">{tools.length ? `${client} will be able to:` : "No tools requested"}</p>
+      <p className="mb-3 text-sm font-medium text-foreground">
+        {tools.length ? t("auth.consentWillBeAbleTo", { client }) : t("auth.consentNoTools")}
+      </p>
       {tools.length > 0 && (
         <div className="space-y-4 text-sm mb-6">
           {data.length > 0 && (
-            <ToolSection title={`Data (${data.length})`}>
+            <ToolSection title={t("auth.consentDataSection", { count: data.length })}>
               {(showAllData ? data : data.slice(0, COLLAPSED_DATA_ROWS)).map(({ entity, operations }) => (
                 <ToolRow key={entity} title={entity}>
                   <OperationSummary operations={operations} />
@@ -244,14 +261,16 @@ export function ConsentPage() {
                     className="text-sm font-medium text-primary hover:underline"
                     onClick={() => setShowAllData((shown) => !shown)}
                   >
-                    {showAllData ? "Show less" : `Show all ${data.length}`}
+                    {showAllData
+                      ? t("auth.consentShowLess")
+                      : t("auth.consentShowAll", { count: data.length })}
                   </button>
                 </li>
               )}
             </ToolSection>
           )}
           {agents.length > 0 && (
-            <ToolSection title="Agents">
+            <ToolSection title={t("auth.consentAgentsSection")}>
               {agents.map((tool) => (
                 <ToolRow key={tool.name} title={tool.agent ? humanize(tool.agent) : tool.title || tool.name}>
                   {tool.description}
@@ -260,7 +279,7 @@ export function ConsentPage() {
             </ToolSection>
           )}
           {actions.length > 0 && (
-            <ToolSection title="Actions">
+            <ToolSection title={t("auth.consentActionsSection")}>
               {actions.map((tool) => (
                 <ToolRow key={tool.name} title={tool.title || tool.name}>
                   {tool.description}
@@ -272,12 +291,12 @@ export function ConsentPage() {
       )}
 
       <div className="flex gap-3">
-        <Button variant="outline" className="h-12 flex-1 font-medium" disabled={submitting} onClick={() => respond("deny")}>
-          Deny
+        <Button variant="outline" className="h-11 flex-1 font-medium" disabled={submitting} onClick={() => respond("deny")}>
+          {t("auth.consentDenyBtn")}
         </Button>
-        <Button className="h-12 flex-1 font-medium" disabled={submitting} onClick={() => respond("approve")}>
+        <Button className="h-11 flex-1 font-medium" disabled={submitting} onClick={() => respond("approve")}>
           {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : null}
-          Approve
+          {t("auth.consentApproveBtn")}
         </Button>
       </div>
     </AuthLayout>
