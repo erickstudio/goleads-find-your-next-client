@@ -7,6 +7,7 @@ import {
   translate,
 } from "@/lib/i18n";
 import { updateUserPreferences } from "@/lib/server-fns";
+import { useAuth } from "@/lib/AuthContext";
 
 const UI_LANG_STORAGE_KEY = "goleads_ui_language";
 const OUTREACH_LANG_STORAGE_KEY = "goleads_outreach_language";
@@ -37,8 +38,9 @@ export function PreferencesProvider({ children }) {
   // Server-safe defaults for SSR match; hydrated immediately on client
   const [lang, setLangState] = useState("en");
   const [outreachLang, setOutreachLangState] = useState("en");
-  const [theme, setThemeState] = useState("system");
-  const [resolvedTheme, setResolvedTheme] = useState("light");
+  const [theme, setThemeState] = useState("dark");
+  const [resolvedTheme, setResolvedTheme] = useState("dark");
+  const { isAuthenticated } = useAuth();
   const [hydrated, setHydrated] = useState(false);
 
   // Hydrate visitor/saved preferences from localStorage or browser language on mount
@@ -61,14 +63,14 @@ export function PreferencesProvider({ children }) {
       // keep initialLang
     }
 
-    let initialTheme = "system";
+    let initialTheme = "dark";
     try {
       const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
       if (savedTheme && SUPPORTED_THEMES.includes(savedTheme)) {
         initialTheme = savedTheme;
       }
     } catch {
-      initialTheme = "system";
+      initialTheme = "dark";
     }
 
     setLangState(initialLang);
@@ -97,12 +99,13 @@ export function PreferencesProvider({ children }) {
   }, [theme]);
 
   const persistToProfileSilently = useCallback(async (patch) => {
+    if (!isAuthenticated) return;
     try {
       await updateUserPreferences({ data: patch });
     } catch {
-      // Visitor may be signed out on auth pages; localStorage still persists choice
+      // Local preferences remain available if a profile save fails.
     }
-  }, []);
+  }, [isAuthenticated]);
 
   const setLang = useCallback(
     (nextLang, options = { syncServer: true }) => {

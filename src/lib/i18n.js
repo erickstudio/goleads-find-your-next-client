@@ -1,11 +1,15 @@
 // Centralized bilingual (English & Spanish) translation dictionary for goleads.app.
 // Zero runtime LLM translation calls; deterministic key lookup with variable interpolation.
 
+import { LAUNCH_COPY, WORKSPACE_COPY } from "@/lib/launch-copy";
+
 export const SUPPORTED_LANGUAGES = ["en", "es"];
 export const SUPPORTED_THEMES = ["light", "dark", "system"];
 
 export const TRANSLATIONS = {
   en: {
+    launch: LAUNCH_COPY.en,
+    workspace: WORKSPACE_COPY.en,
     brand: {
       name: "goleads.app",
       wordmarkTemporaryNotice: "Temporary text wordmark active (awaiting transparent geometric G logo asset)",
@@ -416,6 +420,8 @@ export const TRANSLATIONS = {
     },
   },
   es: {
+    launch: LAUNCH_COPY.es,
+    workspace: WORKSPACE_COPY.es,
     brand: {
       name: "goleads.app",
       wordmarkTemporaryNotice: "Marca de texto temporal activa (pendiente de archivo de logo G geométrico transparente)",

@@ -7,7 +7,7 @@ import { PreferencesProvider } from "@/lib/PreferencesContext";
 import { Base44Scripts } from "base44:document";
 import appCss from "@/index.css?url";
 
-const THEME_INIT_SCRIPT = `(function(){try{var m=localStorage.getItem("goleads_theme_preference")||"system";var d=m==="dark"||(m==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;if(d){r.classList.add("dark");r.style.colorScheme="dark";r.dataset.theme="dark";}else{r.classList.remove("dark");r.style.colorScheme="light";r.dataset.theme="light";}r.dataset.themeMode=m;var l=localStorage.getItem("goleads_ui_language");if(l==="es"||l==="en"){r.lang=l;}}catch(e){}})();`;
+const THEME_INIT_SCRIPT = `(function(){try{var m=localStorage.getItem("goleads_theme_preference")||"dark";var d=m==="dark"||(m==="system"&&window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;if(d){r.classList.add("dark");r.style.colorScheme="dark";r.dataset.theme="dark";}else{r.classList.remove("dark");r.style.colorScheme="light";r.dataset.theme="light";}r.dataset.themeMode=m;var l=localStorage.getItem("goleads_ui_language");if(l==="es"||l==="en"){r.lang=l;}}catch(e){}})();`;
 
 export const Route = createRootRoute({
   head: () => ({
@@ -21,7 +21,7 @@ export const Route = createRootRoute({
           "goleads.app — Discover growing businesses with verified public opening and expansion signals.",
       },
     ],
-    links: [{ rel: "stylesheet", href: appCss }],
+    links: [{ rel: "stylesheet", href: appCss }, { rel: "icon", type: "image/png", href: "https://media.base44.com/images/public/6ae63656edc313a907ad5680/c09d3f492_LogosdeGoLeads.png" }],
   }),
   errorComponent: DefaultCatchBoundary,
   notFoundComponent: () => <NotFound />,

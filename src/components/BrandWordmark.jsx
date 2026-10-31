@@ -1,22 +1,19 @@
-// Temporary text wordmark for goleads.app.
-// Per brand rules: until transparent geometric G logo assets are attached in chat,
-// we render a clean typographic wordmark rather than inventing a logo or using a non-transparent PNG.
+import { Image } from "@/components/ui/image";
+
+const LOGO = "https://media.base44.com/images/public/6ae63656edc313a907ad5680/c09d3f492_LogosdeGoLeads.png";
+const WORDMARK = "https://media.base44.com/images/public/6ae63656edc313a907ad5680/f1161d8c4_GoLeads-wordmark-referencia.png";
 
 export default function BrandWordmark({ size = "md", className = "" }) {
-  const sizeClasses =
-    size === "lg"
-      ? "text-xl sm:text-2xl"
-      : size === "sm"
-      ? "text-sm"
-      : "text-base sm:text-lg";
-
+  const dimensions = size === "lg" ? "h-12 w-44" : size === "sm" ? "h-8 w-28" : "h-10 w-36";
   return (
-    <span
-      className={`inline-flex items-baseline font-heading font-bold tracking-tight select-none ${sizeClasses} ${className}`}
-      aria-label="goleads.app"
-    >
-      <span className="text-foreground">goleads</span>
-      <span className="text-primary font-mono font-semibold">.app</span>
+    <span className={`inline-flex shrink-0 items-center ${dimensions} ${className}`} aria-label="GoLeads">
+      <span className="inline-flex items-center gap-2 dark:hidden">
+        <span className="inline-block h-7 w-11 overflow-hidden rounded-md">
+          <Image src={LOGO} alt="" className="h-full w-full" fittingType="fill" />
+        </span>
+        <span className="font-heading text-xl font-bold tracking-tight text-foreground">GoLeads</span>
+      </span>
+      <Image src={WORDMARK} alt="GoLeads" className="hidden h-full w-full rounded-md dark:block" fittingType="fit" />
     </span>
   );
 }
