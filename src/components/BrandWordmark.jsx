@@ -1,6 +1,6 @@
 import { Image } from "@/components/ui/image";
 
-const LIGHT_LOGO = "https://media.base44.com/images/public/6ae63656edc313a907ad5680/f70357430_logonuevo.png";
+const LIGHT_LOGO = "https://media.base44.com/images/public/6ae63656edc313a907ad5680/2a3764bad_logonuevo1.png";
 const DARK_LOGO = "https://media.base44.com/images/public/6ae63656edc313a907ad5680/f20e12e52_Logotransparten.png";
 
 export default function BrandWordmark({ size = "md", className = "" }) {
