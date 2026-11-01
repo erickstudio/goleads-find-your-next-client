@@ -1,4 +1,4 @@
-import { Search, Bookmark, Send, Library, History, MessageSquare, ChartNoAxesCombined, Gauge, BriefcaseBusiness, Bot, Plug, Settings } from "lucide-react";
+import { Search, Bookmark, Send, Library, History, MessageSquare, ChartNoAxesCombined, Gauge, CreditCard, BriefcaseBusiness, Bot, Plug, Settings } from "lucide-react";
 
 export const workspaceGroups = [
   { key: "prospecting", items: [
@@ -15,6 +15,7 @@ export const workspaceGroups = [
   { key: "account", items: [
     { to: "/dashboard", key: "dashboard", icon: Gauge },
     { to: "/subscription", key: "subscription", icon: Gauge },
+    { to: "/plans", key: "plans", icon: CreditCard },
     { to: "/onboarding", key: "services", icon: BriefcaseBusiness },
     { to: "/agent-settings", key: "agents", icon: Bot },
     { to: "/connect", key: "connect", icon: Plug },

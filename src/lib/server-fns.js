@@ -21,7 +21,12 @@ const CustomServiceSchema = z
 // Per-isolate in-flight deduplication and concurrency guard keyed by userId
 const activeUserSearches = new Map();
 
-export function computeQuotaUsage(searches = [], nowMs = Date.now(), pilotEnrollments = []) {
+export function computeQuotaUsage(
+  searches = [],
+  nowMs = Date.now(),
+  pilotEnrollments = [],
+  paypalSubscriptions = []
+) {
   const windowStartMs = nowMs - SEARCH_LIMITS.cacheTtlMs;
   const quotaSearches = searches.filter((s) => {
     if (s.status === "not_configured" || s.status === "failed") return false;
@@ -31,7 +36,7 @@ export function computeQuotaUsage(searches = [], nowMs = Date.now(), pilotEnroll
     return !Number.isNaN(ts) && ts >= windowStartMs;
   });
 
-  // Only server-verified paid_verified enrollments that have not expired grant pilot search allowance
+  // 1. Server-verified Stripe one-time pilot enrollments that have not expired
   const activeVerifiedEnrollments = (pilotEnrollments || []).filter((e) => {
     if (e.payment_status !== "paid_verified") return false;
     if (e.expires_at_iso) {
@@ -51,6 +56,31 @@ export function computeQuotaUsage(searches = [], nowMs = Date.now(), pilotEnroll
   );
   const pilotRemaining = Math.max(0, pilotGrantedTotal - pilotUsedTotal);
 
+  // 2. Server-verified PayPal subscriptions (active, trialing, or cancelled with paid period still active)
+  const activeVerifiedSubscriptions = (paypalSubscriptions || []).filter((sub) => {
+    if (!["active", "trialing", "cancelled"].includes(sub.status)) return false;
+    if (sub.current_period_end_iso) {
+      const endMs = new Date(sub.current_period_end_iso).getTime();
+      if (!Number.isNaN(endMs) && endMs <= nowMs) return false;
+    } else if (sub.status === "cancelled") {
+      return false;
+    }
+    return (Number(sub.granted_search_allowance) || 0) > 0;
+  });
+
+  const subscriptionGrantedTotal = activeVerifiedSubscriptions.reduce(
+    (sum, s) => sum + Math.max(0, Number(s.granted_search_allowance) || 0),
+    0
+  );
+  const subscriptionUsedTotal = activeVerifiedSubscriptions.reduce(
+    (sum, s) => sum + Math.max(0, Number(s.used_subscription_searches) || 0),
+    0
+  );
+  const subscriptionRemaining = Math.max(
+    0,
+    subscriptionGrantedTotal - subscriptionUsedTotal
+  );
+
   const used = quotaSearches.length;
   const baseRemainingToday = Math.max(0, SEARCH_LIMITS.maxDailyNewSearches - used);
 
@@ -58,10 +88,14 @@ export function computeQuotaUsage(searches = [], nowMs = Date.now(), pilotEnroll
     usedToday: used,
     maxDaily: SEARCH_LIMITS.maxDailyNewSearches,
     baseRemainingToday,
-    pilotGrantedTotal,
-    pilotUsedTotal,
-    pilotRemaining,
-    remainingToday: baseRemainingToday + pilotRemaining,
+    pilotGrantedTotal: pilotGrantedTotal + subscriptionGrantedTotal,
+    pilotUsedTotal: pilotUsedTotal + subscriptionUsedTotal,
+    pilotRemaining: pilotRemaining + subscriptionRemaining,
+    stripePilotRemaining: pilotRemaining,
+    subscriptionGrantedTotal,
+    subscriptionUsedTotal,
+    subscriptionRemaining,
+    remainingToday: baseRemainingToday + pilotRemaining + subscriptionRemaining,
     maxResultsPerSearch: SEARCH_LIMITS.maxResultsPerSearch,
     maxConcurrentSearches: SEARCH_LIMITS.maxConcurrentSearches,
     cacheTtlHours: SEARCH_LIMITS.cacheTtlHours,
@@ -98,7 +132,7 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
     const userId = context.user.id;
     const userEmail = context.user.email || "";
 
-    const [profilesPage, searchesPage, savedPage, feedbackPage, enrollmentsPage] = await Promise.all([
+    const [profilesPage, searchesPage, savedPage, feedbackPage, enrollmentsPage, subsPage] = await Promise.all([
       base44.entities.UserProfile.filter(
         { created_by_id: userId },
         { sort: "-created_date", limit: 1 }
@@ -116,6 +150,10 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
         { sort: "-created_date", limit: 100 }
       ),
       base44.entities.PilotEnrollment.filter(
+        { created_by_id: userId },
+        { sort: "-created_date", limit: 20 }
+      ),
+      base44.entities.PayPalSubscription.filter(
         { created_by_id: userId },
         { sort: "-created_date", limit: 20 }
       ),
@@ -200,7 +238,15 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
     const ownedEnrollments = (enrollmentsPage?.items || []).filter(
       (e) => e.created_by_id === userId && (!e.owner_id || e.owner_id === userId)
     );
-    const quota = computeQuotaUsage(recentSearches, Date.now(), ownedEnrollments);
+    const ownedSubscriptions = (subsPage?.items || []).filter(
+      (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
+    );
+    const quota = computeQuotaUsage(
+      recentSearches,
+      Date.now(),
+      ownedEnrollments,
+      ownedSubscriptions
+    );
 
     return {
       user: {
@@ -266,8 +312,8 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       );
     }
 
-    // 2. Load user profile, recent searches, and pilot enrollments for cache, concurrency, and quota checks
-    const [profilesPage, searchesPage, enrollmentsPage] = await Promise.all([
+    // 2. Load user profile, recent searches, pilot enrollments, and PayPal subscriptions for cache, concurrency, and quota checks
+    const [profilesPage, searchesPage, enrollmentsPage, subsPage] = await Promise.all([
       base44.entities.UserProfile.filter(
         { created_by_id: userId },
         { sort: "-created_date", limit: 1 }
@@ -277,6 +323,10 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
         { sort: "-created_date", limit: 30 }
       ),
       base44.entities.PilotEnrollment.filter(
+        { created_by_id: userId },
+        { sort: "-created_date", limit: 20 }
+      ),
+      base44.entities.PayPalSubscription.filter(
         { created_by_id: userId },
         { sort: "-created_date", limit: 20 }
       ),
@@ -292,6 +342,9 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
     );
     const ownedEnrollments = (enrollmentsPage?.items || []).filter(
       (e) => e.created_by_id === userId && (!e.owner_id || e.owner_id === userId)
+    );
+    const ownedSubscriptions = (subsPage?.items || []).filter(
+      (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
     );
 
     // Check DB-level concurrent search within last 35 seconds
@@ -324,7 +377,12 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       const cachedOpportunities = (cachedOppsPage?.items || []).filter(
         (o) => o.created_by_id === userId && (!o.owner_id || o.owner_id === userId)
       );
-      const quota = computeQuotaUsage(recentSearches, nowMs, ownedEnrollments);
+      const quota = computeQuotaUsage(
+        recentSearches,
+        nowMs,
+        ownedEnrollments,
+        ownedSubscriptions
+      );
 
       return {
         search: cachedSearch,
@@ -335,8 +393,13 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       };
     }
 
-    // 4. Enforce daily limit + verified pilot research allowance
-    const quotaBefore = computeQuotaUsage(recentSearches, nowMs, ownedEnrollments);
+    // 4. Enforce daily limit + verified pilot/subscription research allowance
+    const quotaBefore = computeQuotaUsage(
+      recentSearches,
+      nowMs,
+      ownedEnrollments,
+      ownedSubscriptions
+    );
     if (quotaBefore.remainingToday <= 0) {
       throw new Error(
         `Search allowance reached (${quotaBefore.usedToday} of ${quotaBefore.maxDaily} daily searches used${
@@ -488,28 +551,55 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
           completed_at: completedIso,
         });
 
-        // If base daily searches were already exhausted, deduct 1 search from the active verified pilot enrollment
+        // If base daily searches were already exhausted, deduct 1 search from active PayPal subscription or Stripe pilot
         if (quotaBefore.baseRemainingToday <= 0 && quotaBefore.pilotRemaining > 0) {
-          const activePilot = ownedEnrollments.find(
-            (e) =>
-              e.payment_status === "paid_verified" &&
-              (Number(e.granted_search_allowance) || 0) > (Number(e.used_pilot_searches) || 0)
-          );
-          if (activePilot) {
-            const updatedEnroll = await base44.asServiceRole.entities.PilotEnrollment.update(
-              activePilot.id,
+          const nowCheckMs = Date.now();
+          const activeSub = ownedSubscriptions.find((s) => {
+            if (!["active", "trialing", "cancelled"].includes(s.status)) return false;
+            if (s.current_period_end_iso) {
+              const endMs = new Date(s.current_period_end_iso).getTime();
+              if (!Number.isNaN(endMs) && endMs <= nowCheckMs) return false;
+            } else if (s.status === "cancelled") {
+              return false;
+            }
+            return (
+              (Number(s.granted_search_allowance) || 0) >
+              (Number(s.used_subscription_searches) || 0)
+            );
+          });
+
+          if (activeSub) {
+            const updatedSub = await base44.asServiceRole.entities.PayPalSubscription.update(
+              activeSub.id,
               {
-                used_pilot_searches: (Number(activePilot.used_pilot_searches) || 0) + 1,
+                used_subscription_searches:
+                  (Number(activeSub.used_subscription_searches) || 0) + 1,
               }
             );
-            activePilot.used_pilot_searches = updatedEnroll.used_pilot_searches;
+            activeSub.used_subscription_searches = updatedSub.used_subscription_searches;
+          } else {
+            const activePilot = ownedEnrollments.find(
+              (e) =>
+                e.payment_status === "paid_verified" &&
+                (Number(e.granted_search_allowance) || 0) > (Number(e.used_pilot_searches) || 0)
+            );
+            if (activePilot) {
+              const updatedEnroll = await base44.asServiceRole.entities.PilotEnrollment.update(
+                activePilot.id,
+                {
+                  used_pilot_searches: (Number(activePilot.used_pilot_searches) || 0) + 1,
+                }
+              );
+              activePilot.used_pilot_searches = updatedEnroll.used_pilot_searches;
+            }
           }
         }
 
         const updatedQuota = computeQuotaUsage(
           [updatedSearch, ...recentSearches],
           Date.now(),
-          ownedEnrollments
+          ownedEnrollments,
+          ownedSubscriptions
         );
 
         return {
@@ -1231,289 +1321,7 @@ export const batchRestoreOpportunities = createServerFn({ method: "POST" })
     }
   });
 
-const GOOGLE_SHEETS_CONNECTOR_ID = "6ae79347cd3d8383bd8d098a";
-
-function escapeCsvCell(val) {
-  const s = String(val ?? "").replace(/\r?\n/g, " ").trim();
-  if (s.includes(",") || s.includes('"') || s.includes("\n")) {
-    return `"${s.replace(/"/g, '""')}"`;
-  }
-  return s;
-}
-
-export const getGoogleSheetsConnectionStatus = createServerFn({ method: "GET" })
-  .middleware([requireUser])
-  .handler(async ({ context }) => {
-    const base44 = context.getBase44();
-    const connection = await base44.asServiceRole.connectors
-      .getCurrentAppUserConnection(GOOGLE_SHEETS_CONNECTOR_ID)
-      .catch((error) => {
-        if (error?.status === 404) return null;
-        throw error;
-      });
-
-    if (!connection || !connection.accessToken) {
-      return {
-        connected: false,
-        connectorId: GOOGLE_SHEETS_CONNECTOR_ID,
-      };
-    }
-
-    return {
-      connected: true,
-      connectorId: GOOGLE_SHEETS_CONNECTOR_ID,
-    };
-  });
-
-export const exportLeadsToGoogleSheets = createServerFn({ method: "POST" })
-  .middleware([requireUser])
-  .validator(
-    z.object({
-      source: z.enum(["saved", "discover"]).default("saved"),
-      opportunity_ids: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
-      stage_filter: z.string().max(40).optional(),
-      spreadsheet_title: z.string().trim().max(120).optional(),
-    })
-  )
-  .handler(async ({ data, context }) => {
-    const base44 = context.getBase44();
-    const userId = context.user.id;
-
-    const connection = await base44.asServiceRole.connectors
-      .getCurrentAppUserConnection(GOOGLE_SHEETS_CONNECTOR_ID)
-      .catch((error) => {
-        if (error?.status === 404) return null;
-        throw error;
-      });
-
-    if (!connection || !connection.accessToken) {
-      return {
-        connected: false,
-        connectorId: GOOGLE_SHEETS_CONNECTOR_ID,
-      };
-    }
-
-    const [savedPage, oppsPage, feedbackPage] = await Promise.all([
-      base44.entities.SavedOpportunity.filter(
-        { created_by_id: userId },
-        { sort: "-created_date", limit: 100 }
-      ),
-      base44.entities.Opportunity.filter(
-        { created_by_id: userId },
-        { sort: "-created_date", limit: 100 }
-      ),
-      base44.entities.OpportunityFeedback.filter(
-        { created_by_id: userId },
-        { sort: "-created_date", limit: 100 }
-      ),
-    ]);
-
-    const ownedSaved = deduplicateByOpportunityId(
-      (savedPage?.items || []).filter(
-        (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
-      )
-    );
-    const ownedOpps = (oppsPage?.items || []).filter(
-      (o) => o.created_by_id === userId && (!o.owner_id || o.owner_id === userId)
-    );
-    const ownedFeedback = deduplicateByOpportunityId(
-      (feedbackPage?.items || []).filter(
-        (f) => f.created_by_id === userId && (!f.owner_id || f.owner_id === userId)
-      )
-    );
-
-    const savedByOppId = new Map(ownedSaved.map((s) => [s.opportunity_id, s]));
-    const feedbackByOppId = new Map(ownedFeedback.map((f) => [f.opportunity_id, f]));
-
-    let targetRecords = [];
-    const requestedIds = Array.isArray(data.opportunity_ids)
-      ? new Set(data.opportunity_ids.filter((id) => !id.startsWith("demo-")))
-      : null;
-
-    if (data.source === "saved") {
-      targetRecords = ownedSaved.filter((item) => {
-        if (requestedIds && requestedIds.size > 0 && !requestedIds.has(item.opportunity_id)) {
-          return false;
-        }
-        if (data.stage_filter && data.stage_filter !== "all") {
-          return (item.review_stage || "saved") === data.stage_filter;
-        }
-        return true;
-      });
-    } else {
-      targetRecords = ownedOpps.filter((opp) => {
-        if (requestedIds && requestedIds.size > 0) {
-          return requestedIds.has(opp.id);
-        }
-        return true;
-      });
-    }
-
-    if (targetRecords.length === 0) {
-      throw new Error("No leads matched the current selection to export.");
-    }
-
-    const headers = [
-      "lead_id",
-      "business_name",
-      "business_category",
-      "location",
-      "website_url",
-      "signal_type",
-      "signal_summary",
-      "source_verification_status",
-      "user_commercial_stage",
-      "user_relevance_verdict",
-      "publication_date",
-      "event_date",
-      "source_title",
-      "source_url",
-      "supporting_excerpt",
-      "service_fit_hypothesis",
-      "target_services",
-      "outreach_draft",
-      "qualification_notes",
-      "retrieved_at_utc",
-    ];
-
-    const rows = targetRecords.map((rec) => {
-      const oppId = rec.opportunity_id || rec.id;
-      const savedMatch = savedByOppId.get(oppId);
-      const fbMatch = feedbackByOppId.get(oppId);
-      const servicesArr = Array.isArray(rec.inferred_service_categories)
-        ? rec.inferred_service_categories
-        : Array.isArray(savedMatch?.inferred_service_categories)
-        ? savedMatch.inferred_service_categories
-        : [];
-
-      return [
-        String(oppId || ""),
-        String(rec.business_name || ""),
-        String(rec.business_category || ""),
-        String(rec.location || ""),
-        String(rec.website_url || savedMatch?.website_url || ""),
-        String(rec.signal_type || ""),
-        String(rec.signal_summary || ""),
-        String(rec.verification_status || "needs_review"),
-        String(savedMatch?.review_stage || rec.review_stage || "unsaved"),
-        String(fbMatch?.verdict || "unrated"),
-        String(rec.publication_date || ""),
-        String(rec.event_date || ""),
-        String(rec.source_title || ""),
-        String(rec.source_url || ""),
-        String(rec.supporting_excerpt || ""),
-        String(rec.service_fit_inference || ""),
-        servicesArr.join("; "),
-        String(savedMatch?.outreach_draft || rec.outreach_draft || ""),
-        String(savedMatch?.qualification_notes || rec.qualification_notes || ""),
-        String(rec.retrieval_date || ""),
-      ];
-    });
-
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const title =
-      data.spreadsheet_title ||
-      `GoLeads CRM & MCP Export (${todayStr}) — ${rows.length} leads`;
-
-    const allValues = [headers, ...rows];
-
-    // 1. Try creating via Google Sheets API v4 first
-    const sheetsBody = {
-      properties: { title },
-      sheets: [
-        {
-          properties: {
-            title: "Leads",
-            gridProperties: { frozenRowCount: 1 },
-          },
-          data: [
-            {
-              startRow: 0,
-              startColumn: 0,
-              rowData: allValues.map((row, rowIndex) => ({
-                values: row.map((cell) => ({
-                  userEnteredValue: { stringValue: String(cell ?? "") },
-                  userEnteredFormat:
-                    rowIndex === 0
-                      ? { textFormat: { bold: true } }
-                      : undefined,
-                })),
-              })),
-            },
-          ],
-        },
-      ],
-    };
-
-    const sheetsRes = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${connection.accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(sheetsBody),
-    });
-
-    if (sheetsRes.ok) {
-      const created = await sheetsRes.json();
-      return {
-        connected: true,
-        exportedCount: rows.length,
-        spreadsheetId: created.spreadsheetId,
-        spreadsheetTitle: title,
-        spreadsheetUrl:
-          created.spreadsheetUrl ||
-          `https://docs.google.com/spreadsheets/d/${created.spreadsheetId}/edit`,
-      };
-    }
-
-    // 2. Fallback to Google Drive v3 multipart upload with application/vnd.google-apps.spreadsheet
-    const csvContent = allValues
-      .map((r) => r.map((cell) => escapeCsvCell(cell)).join(","))
-      .join("\r\n");
-
-    const boundary = "goleads_sheets_boundary_" + Date.now();
-    const metadata = {
-      name: title,
-      mimeType: "application/vnd.google-apps.spreadsheet",
-    };
-
-    const multipartBody =
-      `--${boundary}\r\n` +
-      `Content-Type: application/json; charset=UTF-8\r\n\r\n` +
-      `${JSON.stringify(metadata)}\r\n` +
-      `--${boundary}\r\n` +
-      `Content-Type: text/csv; charset=UTF-8\r\n\r\n` +
-      `${csvContent}\r\n` +
-      `--${boundary}--`;
-
-    const driveRes = await fetch(
-      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${connection.accessToken}`,
-          "Content-Type": `multipart/related; boundary=${boundary}`,
-        },
-        body: multipartBody,
-      }
-    );
-
-    if (!driveRes.ok) {
-      const errText = await driveRes.text().catch(() => "");
-      throw new Error(
-        `Google Sheets export failed (${driveRes.status}): ${errText.slice(0, 180)}`
-      );
-    }
-
-    const driveFile = await driveRes.json();
-    return {
-      connected: true,
-      exportedCount: rows.length,
-      spreadsheetId: driveFile.id,
-      spreadsheetTitle: driveFile.name || title,
-      spreadsheetUrl:
-        driveFile.webViewLink ||
-        `https://docs.google.com/spreadsheets/d/${driveFile.id}/edit`,
-    };
-  });
+export {
+  getGoogleSheetsConnectionStatus,
+  exportLeadsToGoogleSheets,
+} from "@/lib/sheets-server-fns";

@@ -66,6 +66,12 @@ function UsageDashboardPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <Link
+            to="/plans"
+            className="px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-foreground border border-border hover:bg-secondary/80"
+          >
+            {isEs ? "Planes y suscripción (PayPal)" : "Plans & Subscription (PayPal)"}
+          </Link>
+          <Link
             to="/pilot"
             className="px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-foreground border border-border hover:bg-secondary/80"
           >
