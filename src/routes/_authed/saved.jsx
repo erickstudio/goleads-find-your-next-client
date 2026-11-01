@@ -22,6 +22,7 @@ import {
   deleteSavedOpportunityItem,
 } from "@/lib/server-fns";
 import GoogleSheetsExportPanel from "@/components/GoogleSheetsExportPanel";
+import ExportSelectionToolbar from "@/components/export/ExportSelectionToolbar";
 import { usePreferences } from "@/lib/PreferencesContext";
 import { trackLeadsEvent } from "@/lib/telemetry";
 import { safePublicUrl } from "@/lib/public-url";
@@ -87,13 +88,18 @@ function SavedOpportunitiesScreen() {
   const [busyId, setBusyId] = useState(null);
   const [editingNotesById, setEditingNotesById] = useState({});
   const [banner, setBanner] = useState("");
+  const [exportSelection, setExportSelection] = useState([]);
 
   const filteredList =
     stageFilter === "all"
       ? savedList
       : savedList.filter((item) => (item.review_stage || "saved") === stageFilter);
 
+  const visibleExportSelection = exportSelection.filter((id) =>
+    filteredList.some((item) => (item.opportunity_id || item.id) === id)
+  );
   const handleSelectStageFilter = (nextStage) => {
+    setExportSelection([]);
     navigate({
       search: nextStage === "all" ? {} : { stage: nextStage },
       replace: true,
@@ -178,9 +184,12 @@ function SavedOpportunitiesScreen() {
       <GoogleSheetsExportPanel
         source="saved"
         records={filteredList}
+        selectedIds={visibleExportSelection}
         stageFilter={stageFilter}
         feedbackByOppId={feedbackByOppId}
       />
+
+      <ExportSelectionToolbar records={filteredList} selectedIds={visibleExportSelection} onChange={setExportSelection} es={lang === "es"} />
 
       {/* Stage Filter Bar */}
       {savedList.length > 0 && (
@@ -303,9 +312,13 @@ function SavedOpportunitiesScreen() {
                       )}
                     </div>
 
-                    <h3 className="text-base font-semibold text-foreground break-words">
-                      {item.business_name}
-                    </h3>
+                    <label className="flex min-h-10 items-start gap-2.5 cursor-pointer">
+                      <input type="checkbox" checked={visibleExportSelection.includes(item.opportunity_id || item.id)} onChange={() => {
+                        const id = item.opportunity_id || item.id;
+                        setExportSelection((previous) => previous.includes(id) ? previous.filter((value) => value !== id) : [...previous, id]);
+                      }} aria-label={lang === "es" ? `Seleccionar ${item.business_name} para exportar` : `Select ${item.business_name} for export`} className="mt-1 h-4 w-4 shrink-0 accent-primary focus-visible:ring-2 focus-visible:ring-ring" />
+                      <h3 className="text-base font-semibold text-foreground break-words">{item.business_name}</h3>
+                    </label>
 
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span>{item.location}</span>

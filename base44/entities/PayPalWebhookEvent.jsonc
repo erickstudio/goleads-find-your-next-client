@@ -1,0 +1,85 @@
+{
+  "name": "PayPalWebhookEvent",
+  "type": "object",
+  "properties": {
+    "paypal_event_id": {
+      "type": "string",
+      "description": "Unique PayPal webhook event ID (WH-...) for idempotent processing"
+    },
+    "event_type": {
+      "type": "string",
+      "description": "PayPal webhook event type (e.g. BILLING.SUBSCRIPTION.ACTIVATED)"
+    },
+    "paypal_subscription_id": {
+      "type": "string",
+      "description": "Associated PayPal subscription ID (I-...)"
+    },
+    "resource_id": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "sandbox",
+        "live"
+      ],
+      "default": "sandbox"
+    },
+    "event_create_time_iso": {
+      "type": "string"
+    },
+    "verification_status": {
+      "type": "string",
+      "description": "PayPal signature verification result (SUCCESS or FAILURE)"
+    },
+    "processing_outcome": {
+      "type": "string",
+      "enum": [
+        "processed_activated",
+        "processed_payment",
+        "processed_cancelled",
+        "processed_suspended",
+        "processed_expired",
+        "processed_payment_failed",
+        "ignored_duplicate",
+        "ignored_out_of_order",
+        "ignored_unhandled",
+        "rejected_signature"
+      ]
+    },
+    "processed_at_iso": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "paypal_event_id",
+    "event_type",
+    "processing_outcome",
+    "processed_at_iso"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

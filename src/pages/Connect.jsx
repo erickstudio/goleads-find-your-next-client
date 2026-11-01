@@ -11,6 +11,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import AppShell from "@/components/AppShell";
+import McpAvailabilityNotice from "@/components/plans/McpAvailabilityNotice";
 import PublicHeader from "@/components/launch/PublicHeader";
 import PublicFooter from "@/components/launch/PublicFooter";
 import { PublicLocaleProvider } from "@/lib/PublicLocaleContext";
@@ -85,8 +86,8 @@ export default function Connect() {
           </h1>
           <p className="text-sm text-muted-foreground">
             {isEs
-              ? "Apunta tu cliente MCP a GoLeads para consultar tus búsquedas, oportunidades verificadas, leads guardados y agentes desde tu asistente favorito."
-              : "Point your MCP client at GoLeads to query your searches, verified opportunities, saved leads, and agents from your favorite AI assistant."}
+              ? "Aprende a configurar un cliente MCP. Las operaciones para consultar tus búsquedas y leads con Pro siguen en preparación."
+              : "Learn how to configure an MCP client. Pro operations for querying your searches and leads are still in preparation."}
           </p>
         </div>
 
@@ -97,6 +98,8 @@ export default function Connect() {
           {isEs ? "Ajustes de agentes" : "Agent settings"}
         </Link>
       </div>
+
+      <McpAvailabilityNotice es={isEs} />
 
       {/* Runtime-resolved MCP server URL */}
       <section className="rounded-xl border border-border bg-card p-5 space-y-3">
@@ -368,8 +371,8 @@ export default function Connect() {
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
             {isEs
-              ? "Cada cliente realiza un paso final en la página de consentimiento de GoLeads: inicias sesión con tu propia cuenta y apruebas los permisos. El asistente actúa únicamente en tu nombre y solo ve tus propios registros."
-              : "Each client completes one final step on GoLeads's consent page: you sign in with your own app account and approve access. The assistant only ever acts as you and only sees your own records."}
+              ? "OAuth identifica tu cuenta de GoLeads, no el email de PayPal. El consentimiento por sí solo no acredita una suscripción Pro. Antes de habilitar operaciones, el servidor deberá comprobar la suscripción vigente y la propiedad de cada registro."
+              : "OAuth identifies your GoLeads account, not your PayPal email. Consent alone does not prove a Pro subscription. Before enabling operations, the server must check subscription validity and ownership of each record."}
           </p>
         </div>
 

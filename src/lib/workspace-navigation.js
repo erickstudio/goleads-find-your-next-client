@@ -14,6 +14,7 @@ export const workspaceGroups = [
   ] },
   { key: "account", items: [
     { to: "/dashboard", key: "dashboard", icon: Gauge },
+    { to: "/subscription", key: "subscription", icon: Gauge },
     { to: "/onboarding", key: "services", icon: BriefcaseBusiness },
     { to: "/agent-settings", key: "agents", icon: Bot },
     { to: "/connect", key: "connect", icon: Plug },

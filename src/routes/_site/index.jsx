@@ -8,6 +8,7 @@ import HowItWorks from "@/components/launch/HowItWorks";
 import EvidenceBenefits from "@/components/launch/EvidenceBenefits";
 import IntegrationStatus from "@/components/launch/IntegrationStatus";
 import LaunchFAQ from "@/components/launch/LaunchFAQ";
+import LaunchPlans from "@/components/launch/LaunchPlans";
 
 export const Route = createFileRoute("/_site/")({
   validateSearch: validateDiscoverySearch,
@@ -19,5 +20,5 @@ export const Route = createFileRoute("/_site/")({
   component: LaunchPage,
 });
 function LaunchPage() {
-  return <><PublicMetadata /><LaunchHero /><ProductPreview /><HowItWorks /><EvidenceBenefits /><IntegrationStatus /><LaunchFAQ /></>;
+  return <><PublicMetadata /><LaunchHero /><ProductPreview /><HowItWorks /><EvidenceBenefits /><IntegrationStatus /><LaunchPlans /><LaunchFAQ /></>;
 }

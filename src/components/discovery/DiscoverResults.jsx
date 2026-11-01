@@ -86,8 +86,9 @@ export default function DiscoverResults({ d }) {
       {/* Google Sheets, CRM & MCP Export Bar */}
       <GoogleSheetsExportPanel
         source="discover"
-        records={d.activeOpportunities}
+        records={[...d.activeLiveOpps, ...(d.showDismissed ? d.dismissedLiveOpps : [])]}
         selectedIds={d.selectedOppIds}
+        savedRecords={d.savedRecords}
         feedbackByOppId={d.feedbackByOppId}
       />
 

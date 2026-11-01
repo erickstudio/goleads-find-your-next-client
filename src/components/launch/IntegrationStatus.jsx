@@ -11,7 +11,7 @@ export default function IntegrationStatus() {
           <p className="text-[11px] font-semibold tracking-widest text-primary">{copy.statusEyebrow}</p>
           <h2 className="mt-4 text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">{copy.statusTitle}</h2>
           <p className="mt-6 text-sm leading-7 text-muted-foreground">{copy.statusNote}</p>
-          <Link to="/app" className="mt-7 inline-flex min-h-11 items-center gap-3 text-sm font-semibold text-primary hover:underline">{copy.cta}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+          <Link to="/register" className="mt-7 inline-flex min-h-11 items-center gap-3 text-sm font-semibold text-primary hover:underline">{copy.cta}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
         </div>
         <div className="divide-y divide-border border-y border-border">
           {copy.statuses.map((item, i) => (

@@ -10,7 +10,7 @@ export default function PublicHeader() {
   const { lang, copy } = usePublicLocale();
   const [open, setOpen] = useState(false);
   const isEs = lang === "es";
-  const hashes = ["how-it-works", "evidence-first", "integrations", "faq"];
+  const hashes = ["how-it-works", "evidence-first", "integrations", "plans", "faq"];
 
   return (
     <header className="relative z-20 border-b border-border/60 bg-background/90">

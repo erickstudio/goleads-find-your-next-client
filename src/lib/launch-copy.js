@@ -6,6 +6,7 @@ export const LAUNCH_COPY = {
       "How it works",
       "Why GoLeads",
       "Integrations",
+      "Plans",
       "FAQ"
     ],
     "signIn": "Sign in",
@@ -14,9 +15,9 @@ export const LAUNCH_COPY = {
     "beta": "FIND LEADS WITH AI",
     "headline": "Find clients",
     "headlineAccent": "for your services.",
-    "intro": "Use AI to find businesses opening or growing. Save the leads that interest you and prepare messages to offer your services.",
-    "cta": "Find clients",
-    "ctaNote": "Add your services and start searching.",
+    "intro": "Finding prospects by hand takes time. GoLeads uses AI to find businesses opening or expanding. Review their sources, save leads, prepare emails and export them for follow-up.",
+    "cta": "Create a free account",
+    "ctaNote": "Add your services and start with the free search allowance.",
     "previewLink": "See an example",
     "audience": "For freelancers, agencies and service providers.",
     "principle": "Search by business category and city. Review the details and decide who to contact.",
@@ -59,8 +60,8 @@ export const LAUNCH_COPY = {
         "body": "Choose a business category, city and time frame. GoLeads searches for opening and expansion announcements."
       },
       {
-        "title": "Save leads and prepare messages",
-        "body": "Review the businesses found, save the ones that interest you and choose the service to offer in your introduction."
+        "title": "Prepare your follow-up",
+        "body": "Review sources, save leads and prepare an email for your chosen service. Export to CSV or authorize Google Sheets. You choose whom to contact and send the message yourself."
       }
     ],
     "benefitsEyebrow": "WHY GOLEADS",
@@ -83,25 +84,17 @@ export const LAUNCH_COPY = {
         "body": "Keep prospects, notes and drafts together so you can return to your work."
       }
     ],
-    "statusEyebrow": "INTEGRATIONS · COMING SOON",
-    "statusTitle": "Connect your work tools.",
-    "statusNote": "We are building these connections so you can export leads and save documents from GoLeads. They are not available in this beta yet.",
+    "statusEyebrow": "INTEGRATIONS · TOOL BY TOOL",
+    "statusTitle": "Take your leads to your next step.",
+    "statusNote": "Signing in with Google and authorizing Google Sheets are separate steps. CSV is a download, not a live CRM sync. No emails are sent automatically.",
     "statuses": [
-      {
-        "name": "Google Sheets",
-        "badge": "In development",
-        "body": "Export selected leads to a spreadsheet in your Google account."
-      },
-      {
-        "name": "Google Drive",
-        "badge": "Coming soon",
-        "body": "Save the documents and proposals you prepare for clients."
-      },
-      {
-        "name": "HubSpot CRM",
-        "badge": "Coming soon",
-        "body": "Send leads to your CRM so your team can continue the sales follow-up."
-      }
+      { "name": "CSV", "badge": "Available", "body": "Download selected leads with their sources, dates, commercial stage and saved email draft when available. Import the file into a compatible CRM yourself." },
+      { "name": "Google Sheets", "badge": "Requires your authorization", "body": "Authorize your own Google account to export selected leads to a new spreadsheet. Connection status and export errors appear in your workspace." },
+      { "name": "AI assistants · MCP", "badge": "Pro · In preparation", "body": "Read the connection guide now. Pro operations are pending subscription verification and server-side access controls." },
+      { "name": "Gmail", "badge": "Pending", "body": "Prepare and copy email text in GoLeads. Gmail sending and Gmail drafts are not connected." },
+      { "name": "Google Drive", "badge": "Pending", "body": "Exporting a spreadsheet is not a general Drive integration. Document management is not connected." },
+      { "name": "Google Calendar", "badge": "Pending", "body": "Calendar access and event creation are not connected." },
+      { "name": "HubSpot CRM", "badge": "Pending", "body": "Direct CRM synchronization is not connected. CSV can be imported separately where supported." }
     ],
     "faqTitle": "Frequently asked questions.",
     "faqs": [
@@ -123,12 +116,14 @@ export const LAUNCH_COPY = {
       },
       {
         "q": "Can I connect Google Sheets or a CRM?",
-        "a": "Google Sheets is the first integration in development. Google Drive and HubSpot are planned for later. Exporting through these connections is not available in this beta yet."
+        "a": "The workspace has CSV download and Google Sheets export with separate authorization for your Google account. Signing in with Google is not enough. Direct CRM synchronization, Gmail, Calendar and general Drive access remain pending."
       },
       {
         "q": "Does the app send emails automatically?",
         "a": "You can currently prepare, edit, save and copy messages. You send them yourself; automatic sending is not available yet."
-      }
+      },
+      { "q": "What does the free account include?", "a": "The current server configuration allows {searches} new searches per rolling {hours} hours and up to {results} businesses per search. Review sources, save leads, prepare emails and export to CSV or authorize Google Sheets. Finding no matches is different from a failed search." },
+      { "q": "Can I subscribe to Pro or use MCP now?", "a": "Pro is in preparation. Its commercial search allowance and PayPal billing terms have not been verified, so it is not for sale. The MCP guide is informational; Pro operations need verified subscription access on the server before activation." }
     ],
     "footer": "Find clients for your services.",
     "privacy": "Privacy",
@@ -218,6 +213,7 @@ export const LAUNCH_COPY = {
       "Cómo funciona",
       "Por qué GoLeads",
       "Integraciones",
+      "Planes",
       "Preguntas"
     ],
     "signIn": "Entrar",
@@ -226,9 +222,9 @@ export const LAUNCH_COPY = {
     "beta": "BUSCA LEADS CON IA",
     "headline": "Encuentra clientes",
     "headlineAccent": "para tus servicios.",
-    "intro": "Busca con IA negocios que abren o crecen. Guarda los leads que te interesan y prepara mensajes para ofrecer tus servicios.",
-    "cta": "Buscar clientes",
-    "ctaNote": "Añade tus servicios y empieza a buscar.",
+    "intro": "Encontrar prospectos manualmente toma tiempo. GoLeads busca con IA negocios que abren o se expanden. Revisa sus fuentes, guarda leads, prepara emails y expórtalos para dar seguimiento.",
+    "cta": "Crear cuenta gratis",
+    "ctaNote": "Añade tus servicios y empieza con el cupo gratuito de búsquedas.",
     "previewLink": "Ver un ejemplo",
     "audience": "Para freelancers, agencias y proveedores de servicios.",
     "principle": "Busca negocios por sector y ciudad. Revisa sus datos y decide a quién contactar.",
@@ -271,8 +267,8 @@ export const LAUNCH_COPY = {
         "body": "Elige el tipo de negocio, la ciudad y el periodo. GoLeads busca anuncios de apertura y expansión."
       },
       {
-        "title": "Guarda leads y prepara mensajes",
-        "body": "Revisa los negocios encontrados, guarda los que te interesan y elige qué servicio ofrecer en tu mensaje de contacto."
+        "title": "Prepara el seguimiento",
+        "body": "Revisa las fuentes, guarda leads y prepara un email para el servicio elegido. Exporta a CSV o autoriza Google Sheets. Tú decides a quién contactar y envías el mensaje."
       }
     ],
     "benefitsEyebrow": "POR QUÉ GOLEADS",
@@ -295,25 +291,17 @@ export const LAUNCH_COPY = {
         "body": "Mantén tus prospectos, notas y borradores en un solo lugar para retomar tu trabajo."
       }
     ],
-    "statusEyebrow": "INTEGRACIONES · PRÓXIMAMENTE",
-    "statusTitle": "Conecta tus herramientas de trabajo.",
-    "statusNote": "Estamos preparando estas conexiones para que puedas exportar leads y guardar documentos desde GoLeads. Todavía no están disponibles en esta beta.",
+    "statusEyebrow": "INTEGRACIONES · ESTADO POR HERRAMIENTA",
+    "statusTitle": "Lleva tus leads al siguiente paso.",
+    "statusNote": "Iniciar sesión con Google y autorizar Google Sheets son pasos separados. CSV es una descarga, no una sincronización con tu CRM. No se envían emails automáticamente.",
     "statuses": [
-      {
-        "name": "Google Sheets",
-        "badge": "En preparación",
-        "body": "Exporta los leads que selecciones a una hoja de cálculo de tu cuenta de Google."
-      },
-      {
-        "name": "Google Drive",
-        "badge": "Próximamente",
-        "body": "Guarda los documentos y propuestas que prepares para tus clientes."
-      },
-      {
-        "name": "HubSpot CRM",
-        "badge": "Próximamente",
-        "body": "Envía tus leads al CRM para continuar el seguimiento comercial con tu equipo."
-      }
+      { "name": "CSV", "badge": "Disponible", "body": "Descarga los leads seleccionados con fuentes, fechas, etapa comercial y borrador de email guardado cuando exista. Importa el archivo por tu cuenta en un CRM compatible." },
+      { "name": "Google Sheets", "badge": "Requiere tu autorización", "body": "Autoriza tu propia cuenta de Google para exportar los leads seleccionados a una hoja nueva. El estado de conexión y los errores de exportación se muestran en tu espacio." },
+      { "name": "Asistentes de IA · MCP", "badge": "Pro · En preparación", "body": "Puedes leer la guía de conexión. Las operaciones Pro están pendientes de verificación de suscripción y controles de acceso en el servidor." },
+      { "name": "Gmail", "badge": "Pendiente", "body": "Prepara y copia el texto de tus emails en GoLeads. El envío y los borradores dentro de Gmail no están conectados." },
+      { "name": "Google Drive", "badge": "Pendiente", "body": "Exportar una hoja no es una integración general con Drive. La gestión de documentos no está conectada." },
+      { "name": "Google Calendar", "badge": "Pendiente", "body": "La consulta de calendarios y la creación de eventos no están conectadas." },
+      { "name": "HubSpot CRM", "badge": "Pendiente", "body": "La sincronización directa con el CRM no está conectada. Puedes importar CSV por separado si tu herramienta lo permite." }
     ],
     "faqTitle": "Preguntas frecuentes.",
     "faqs": [
@@ -335,12 +323,14 @@ export const LAUNCH_COPY = {
       },
       {
         "q": "¿Puedo conectar Google Sheets o un CRM?",
-        "a": "Estamos preparando Google Sheets como primera integración. Google Drive y HubSpot están previstos para después. Estas conexiones todavía no están disponibles para exportar desde esta beta."
+        "a": "El espacio incluye descarga CSV y exportación a Google Sheets con autorización separada de tu cuenta de Google. Iniciar sesión con Google no basta. La sincronización directa con CRM, Gmail, Calendar y el acceso general a Drive siguen pendientes."
       },
       {
         "q": "¿La app envía correos automáticamente?",
         "a": "Actualmente puedes preparar, editar, guardar y copiar tus mensajes. El envío lo haces tú; el envío automático todavía no está disponible."
-      }
+      },
+      { "q": "¿Qué incluye la cuenta gratuita?", "a": "La configuración actual del servidor permite {searches} búsquedas nuevas por cada {hours} horas móviles y hasta {results} negocios por búsqueda. Revisa fuentes, guarda leads, prepara emails y exporta CSV o autoriza Google Sheets. No encontrar coincidencias es distinto de una búsqueda fallida." },
+      { "q": "¿Puedo contratar Pro o usar MCP ya?", "a": "Pro está en preparación. Su cupo comercial y las condiciones de PayPal no están verificados, por lo que no está a la venta. La guía MCP es informativa; las operaciones Pro necesitan acceso por suscripción verificado en el servidor antes de activarse." }
     ],
     "footer": "Encuentra clientes para tus servicios.",
     "privacy": "Privacidad",
@@ -441,6 +431,7 @@ export const WORKSPACE_COPY = {
     "services": "My services",
     "agents": "Assistant settings",
     "connect": "Connect AI (MCP)",
+    "subscription": "Plans & subscription",
     "settings": "Account settings",
     "pilot": "Internal testing",
     "menu": "Open workspace menu",
@@ -466,6 +457,7 @@ export const WORKSPACE_COPY = {
     "services": "Mis servicios",
     "agents": "Ajustes del asistente",
     "connect": "Conectar IA (MCP)",
+    "subscription": "Planes y suscripción",
     "settings": "Ajustes de cuenta",
     "pilot": "Pruebas internas",
     "menu": "Abrir menú del espacio",

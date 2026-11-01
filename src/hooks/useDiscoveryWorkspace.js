@@ -666,6 +666,7 @@ export default function useDiscoveryWorkspace() {
     setSelectedExampleIds,
     syncFilterUrlParams,
     savedOppIds,
+    savedRecords: loaderData?.savedOpportunities || [],
     dismissedOppIds,
     feedbackByOppId,
     detailSearchParams,

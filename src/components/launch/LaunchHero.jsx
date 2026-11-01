@@ -16,7 +16,7 @@ export default function LaunchHero() {
           <div className="max-w-lg pb-1">
             <p className="text-base leading-8 text-muted-foreground sm:text-lg">{copy.intro}</p>
             <div className="mt-7 flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:gap-7">
-              <Link to="/app" className="inline-flex min-h-12 items-center justify-center gap-3 rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{copy.cta}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+              <Link to="/register" className="inline-flex min-h-12 items-center justify-center gap-3 rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{copy.cta}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
               <a href="#product-preview" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground">{copy.previewLink}<ArrowDown className="h-3.5 w-3.5" aria-hidden="true" /></a>
             </div>
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{copy.ctaNote}</p>

@@ -1,0 +1,186 @@
+{
+  "name": "PayPalSubscription",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string",
+      "description": "Authenticated GoLeads user ID derived on the server"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Authenticated GoLeads user email derived on the server"
+    },
+    "enrollment_reference": {
+      "type": "string",
+      "description": "Internal server-generated reference sent to PayPal as custom_id"
+    },
+    "paypal_plan_id": {
+      "type": "string",
+      "description": "Server-selected PayPal Plan ID (P-...)"
+    },
+    "paypal_environment": {
+      "type": "string",
+      "enum": [
+        "sandbox",
+        "live"
+      ],
+      "default": "sandbox"
+    },
+    "paypal_subscription_id": {
+      "type": "string",
+      "description": "PayPal Subscription ID (I-...)"
+    },
+    "subscriber_email": {
+      "type": "string",
+      "description": "PayPal subscriber email returned by PayPal API"
+    },
+    "subscriber_payer_id": {
+      "type": "string",
+      "description": "PayPal subscriber payer_id returned by PayPal API"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending_approval",
+        "approval_pending_verification",
+        "active",
+        "trialing",
+        "cancelled",
+        "suspended",
+        "expired",
+        "payment_failed",
+        "verification_failed"
+      ],
+      "default": "pending_approval"
+    },
+    "paypal_raw_status": {
+      "type": "string",
+      "description": "Raw status reported by PayPal (APPROVAL_PENDING, APPROVED, ACTIVE, SUSPENDED, CANCELLED, EXPIRED)"
+    },
+    "plan_name": {
+      "type": "string",
+      "description": "Plan name retrieved from PayPal API"
+    },
+    "billing_amount": {
+      "type": "string",
+      "description": "Billing cycle amount retrieved from PayPal API"
+    },
+    "billing_currency": {
+      "type": "string",
+      "description": "Billing currency code retrieved from PayPal API"
+    },
+    "billing_interval_unit": {
+      "type": "string",
+      "description": "Billing interval unit (DAY, WEEK, MONTH, YEAR) retrieved from PayPal API"
+    },
+    "billing_interval_count": {
+      "type": "number",
+      "default": 1
+    },
+    "is_trial_period": {
+      "type": "boolean",
+      "default": false
+    },
+    "commercial_limits_status": {
+      "type": "string",
+      "enum": [
+        "configured",
+        "pending_owner_config"
+      ],
+      "default": "pending_owner_config"
+    },
+    "granted_search_allowance": {
+      "type": "number",
+      "default": 0,
+      "description": "In-product live discovery searches granted for the current verified billing cycle"
+    },
+    "used_subscription_searches": {
+      "type": "number",
+      "default": 0,
+      "description": "In-product live discovery searches consumed in the current billing cycle"
+    },
+    "current_cycle_id": {
+      "type": "string",
+      "description": "Unique identifier for the current paid/trial cycle to prevent duplicate renewal credits"
+    },
+    "current_period_start_iso": {
+      "type": "string"
+    },
+    "current_period_end_iso": {
+      "type": "string",
+      "description": "Confirmed end of the paid or trial period; access remains valid until this timestamp even if cancelled"
+    },
+    "cancel_at_period_end": {
+      "type": "boolean",
+      "default": false
+    },
+    "cancelled_at_iso": {
+      "type": "string"
+    },
+    "last_payment_at_iso": {
+      "type": "string"
+    },
+    "last_payment_amount": {
+      "type": "string"
+    },
+    "last_webhook_event_id": {
+      "type": "string"
+    },
+    "last_event_time_iso": {
+      "type": "string",
+      "description": "ISO timestamp of the newest PayPal event applied, guarding against out-of-order delivery"
+    },
+    "status_note": {
+      "type": "string"
+    },
+    "created_at_iso": {
+      "type": "string"
+    },
+    "verified_at_iso": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_id",
+    "enrollment_reference",
+    "paypal_plan_id",
+    "paypal_environment",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

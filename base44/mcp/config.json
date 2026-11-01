@@ -1,3 +1,17 @@
 {
-  "auth": "oauth"
+  "auth": "oauth",
+  "tools": {
+    "entity_overrides": {
+      "EvidenceItem": { "operations": [] },
+      "LeadSearch": { "operations": [] },
+      "Opportunity": { "operations": [] },
+      "OpportunityFeedback": { "operations": [] },
+      "PaymentWebhookEvent": { "operations": [] },
+      "PilotEnrollment": { "operations": [] },
+      "SavedOpportunity": { "operations": [] },
+      "User": { "operations": [] },
+      "UserProfile": { "operations": [] }
+    },
+    "excluded_agents": ["evidence_analyst", "search_strategist"]
+  }
 }
