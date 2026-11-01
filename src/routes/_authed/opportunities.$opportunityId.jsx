@@ -18,6 +18,7 @@ import {
   formatSignalSummary,
   getExcerptSupportTranslation,
   formatVerificationNotes,
+  buildSourceVerificationDetails,
 } from "@/lib/opportunity-copy";
 import {
   getOpportunityDetail,
@@ -222,6 +223,7 @@ function OpportunityDetailScreen() {
   const categoryLabel = formatBusinessCategoryLabel(opp.business_category, lang);
   const summaryText = formatSignalSummary(opp, lang);
   const verificationNotesText = formatVerificationNotes(opp, lang);
+  const sourceDetails = buildSourceVerificationDetails(opp, evidenceList, lang);
 
   const isDraftEdited =
     Boolean(draftText.trim()) &&
@@ -651,13 +653,28 @@ function OpportunityDetailScreen() {
 
           {verificationNotesText && (
             <div
-              className={`p-3 rounded-md border text-xs ${
+              className={`p-3 rounded-md border text-xs space-y-1.5 ${
                 isVerified
                   ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-emerald-200"
                   : "bg-amber-500/10 border-amber-500/35 text-amber-900 dark:text-amber-200"
               }`}
             >
-              <strong>{t("detail.verificationStatusLabel")}</strong> {verificationNotesText}
+              <div>
+                <strong>{t("detail.verificationStatusLabel")}</strong> {verificationNotesText}
+              </div>
+              <div className="font-mono text-[11px] opacity-90">
+                {sourceDetails.lastCheckedLabel}
+              </div>
+              {sourceDetails.alternativeSummary && (
+                <div className="pt-1 border-t border-emerald-500/30 text-[11px]">
+                  {sourceDetails.alternativeSummary}
+                </div>
+              )}
+              {sourceDetails.localSummary && (
+                <div className="pt-1 border-t border-border/60 text-[11px]">
+                  {sourceDetails.localSummary}
+                </div>
+              )}
             </div>
           )}
 

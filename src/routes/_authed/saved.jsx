@@ -14,6 +14,7 @@ import {
   formatSignalSummary,
   getExcerptSupportTranslation,
   formatVerificationNotes,
+  buildSourceVerificationDetails,
 } from "@/lib/opportunity-copy";
 import {
   getWorkspaceBootstrap,
@@ -238,6 +239,7 @@ function SavedOpportunitiesScreen() {
             const summaryText = formatSignalSummary(item, lang);
             const excerptSupportTranslation = getExcerptSupportTranslation(item, lang);
             const verificationNotesText = formatVerificationNotes(item, lang);
+            const sourceDetails = buildSourceVerificationDetails(item, [], lang);
             const effectiveServices =
               profileServices.length > 0
                 ? profileServices
@@ -399,6 +401,9 @@ function SavedOpportunitiesScreen() {
                           ? String(item.retrieval_date).replace("T", " ").slice(0, 16) + " UTC"
                           : t("common.notStated")}
                       </span>
+                    </div>
+                    <div className="text-[11px] font-mono text-muted-foreground pt-0.5">
+                      {sourceDetails.lastCheckedLabel}
                     </div>
                     {verificationNotesText && (
                       <p
