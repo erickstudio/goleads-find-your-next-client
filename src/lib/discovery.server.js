@@ -93,7 +93,14 @@ function decodeHtmlEntities(str) {
 function normalizeDateToYmd(rawDateStr) {
   if (!rawDateStr || typeof rawDateStr !== "string") return null;
   const trimmed = rawDateStr.trim();
-  if (!trimmed || trimmed.toLowerCase() === "null" || trimmed.toLowerCase() === "not stated") {
+  if (
+    !trimmed ||
+    trimmed.toLowerCase() === "null" ||
+    trimmed.toLowerCase() === "not stated" ||
+    trimmed.toLowerCase() === "date not confirmed" ||
+    trimmed.toLowerCase() === "fecha no confirmada" ||
+    /^\d{4}$/.test(trimmed)
+  ) {
     return null;
   }
   const isoPrefix = trimmed.match(/^(\d{4}-\d{2}-\d{2})/);
@@ -101,11 +108,69 @@ function normalizeDateToYmd(rawDateStr) {
     const d = new Date(`${isoPrefix[1]}T00:00:00Z`);
     if (!Number.isNaN(d.getTime())) return isoPrefix[1];
   }
+  // Require an explicit 4-digit year in any non-ISO date string so bare "Oct 26" never defaults to a guessed year
+  if (!/\b(19|20)\d{2}\b/.test(trimmed)) {
+    return null;
+  }
   const parsed = new Date(trimmed);
   if (!Number.isNaN(parsed.getTime())) {
     return parsed.toISOString().slice(0, 10);
   }
   return null;
+}
+
+function stripCopyrightAndBoilerplateYears(text) {
+  if (!text) return "";
+  return String(text)
+    .replace(/(?:copyright|©|&copy;|all rights reserved)[^.\n]{0,120}/gi, " ")
+    .replace(/©\s*[^.\n]{0,120}/gi, " ")
+    .replace(/\b(?:mon|tue|wed|thu|fri|sat|sun|monday|tuesday|wednesday|thursday|friday|saturday|sunday)\s*,?\s+[a-z]+\s+\d{1,2}\s*,\s*\d{4}\s+&#\d+;[^.\n]{0,60}/gi, " ");
+}
+
+const MONTH_NAMES_EN = [
+  "january", "february", "march", "april", "may", "june",
+  "july", "august", "september", "october", "november", "december",
+];
+const MONTH_SHORT_EN = [
+  "jan", "feb", "mar", "apr", "may", "jun",
+  "jul", "aug", "sep", "oct", "nov", "dec",
+];
+const MONTH_NAMES_ES = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio",
+  "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+
+function isYmdExplicitlyInText(ymd, rawText) {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd) || !rawText) return false;
+  const cleaned = stripCopyrightAndBoilerplateYears(rawText).toLowerCase();
+  if (cleaned.includes(ymd)) return true;
+
+  const [yearStr, monthStr, dayStr] = ymd.split("-");
+  const monthIdx = Number(monthStr) - 1;
+  const dayNum = Number(dayStr);
+  if (monthIdx < 0 || monthIdx > 11 || !dayNum) return false;
+
+  const mFullEn = MONTH_NAMES_EN[monthIdx];
+  const mShortEn = MONTH_SHORT_EN[monthIdx];
+  const mFullEs = MONTH_NAMES_ES[monthIdx];
+
+  const patterns = [
+    new RegExp(`\\b${mFullEn}\\s+0?${dayNum}(?:st|nd|rd|th)?\\s*,?\\s*${yearStr}\\b`, "i"),
+    new RegExp(`\\b${mShortEn}\\.?\\s+0?${dayNum}(?:st|nd|rd|th)?\\s*,?\\s*${yearStr}\\b`, "i"),
+    new RegExp(`\\b0?${dayNum}\\s+de\\s+${mFullEs}\\s+(?:de\\s+)?${yearStr}\\b`, "i"),
+    new RegExp(`\\b0?${Number(monthStr)}\\/0?${dayNum}\\/${yearStr}\\b`),
+  ];
+  return patterns.some((re) => re.test(cleaned));
+}
+
+function isRootHomepageUrl(rawUrl) {
+  try {
+    const u = new URL(rawUrl);
+    const p = u.pathname.replace(/\/+$/, "");
+    return p === "" || p === "/index.html" || p === "/home";
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -190,27 +255,6 @@ export async function fetchUntrustedSourcePage(rawUrl) {
       };
     }
 
-    // Extract publication date from JSON-LD or meta tags
-    const pubPatterns = [
-      /"datePublished"\s*:\s*"([^"]+)"/i,
-      /property=["']article:published_time["']\s+content=["']([^"']+)["']/i,
-      /content=["']([^"']+)["']\s+property=["']article:published_time["']/i,
-      /name=["']pubdate["']\s+content=["']([^"']+)["']/i,
-      /name=["']publish-date["']\s+content=["']([^"']+)["']/i,
-      /<time[^>]+datetime=["']([^"']+)["']/i,
-    ];
-    let extractedPubDate = null;
-    for (const pattern of pubPatterns) {
-      const m = rawHtml.match(pattern);
-      if (m && m[1]) {
-        const ymd = normalizeDateToYmd(m[1]);
-        if (ymd) {
-          extractedPubDate = ymd;
-          break;
-        }
-      }
-    }
-
     // Extract meta description
     const descMatch =
       rawHtml.match(/property=["']og:description["']\s+content=["']([^"']+)["']/i) ||
@@ -232,6 +276,32 @@ export async function fetchUntrustedSourcePage(rawUrl) {
         .trim()
     );
 
+    // Extract publication date from JSON-LD or meta tags
+    // On root homepages (e.g. https://glintatx.com/), CMS WebPage datePublished reflects site creation,
+    // not an article publication date, so require explicit visible date in body text on root homepages.
+    const isHomepage = isRootHomepageUrl(finalUrl);
+    const pubPatterns = [
+      /property=["']article:published_time["']\s+content=["']([^"']+)["']/i,
+      /content=["']([^"']+)["']\s+property=["']article:published_time["']/i,
+      /name=["']pubdate["']\s+content=["']([^"']+)["']/i,
+      /name=["']publish-date["']\s+content=["']([^"']+)["']/i,
+      /<time[^>]+datetime=["']([^"']+)["']/i,
+      /"datePublished"\s*:\s*"([^"]+)"/i,
+    ];
+    let extractedPubDate = null;
+    for (const pattern of pubPatterns) {
+      const m = rawHtml.match(pattern);
+      if (m && m[1]) {
+        const ymd = normalizeDateToYmd(m[1]);
+        if (ymd) {
+          if (!isHomepage || isYmdExplicitlyInText(ymd, plainText)) {
+            extractedPubDate = ymd;
+            break;
+          }
+        }
+      }
+    }
+
     if (plainText.length < 160) {
       return {
         ok: false,
@@ -245,6 +315,7 @@ export async function fetchUntrustedSourcePage(rawUrl) {
       ok: true,
       httpStatus: response.status,
       finalUrl,
+      isHomepage,
       extractedTitle,
       extractedPubDate,
       extractedDescription,
@@ -304,24 +375,32 @@ export function verifyCandidateWithRecoveredSource(candidate, recoveredPage, que
   const { locationQuery, timeWindowDays } = queryContext;
 
   if (!recoveredPage?.ok) {
+    const baseReason =
+      recoveredPage?.reason ||
+      "Source content could not be retrieved directly to confirm business identity, location, and event.";
+    const unconfirmedPub = normalizeDateToYmd(candidate.publication_date);
+    const snippetDateNote = unconfirmedPub
+      ? ` Search snippet suggested date ${unconfirmedPub}, which remains unconfirmed until the source is reviewed.`
+      : "";
     return {
       verification_status: "needs_review",
       evidence_status: "unverified",
       recency_basis: "unverified_date",
-      publication_date: normalizeDateToYmd(candidate.publication_date) || "",
-      event_date:
-        candidate.event_date && candidate.event_date !== "null" ? candidate.event_date.trim() : "",
+      // Never display an unverified date when the source page itself could not be recovered
+      publication_date: "",
+      event_date: "",
       supporting_excerpt: (candidate.supporting_excerpt || "").slice(0, 350),
       source_title: candidate.source_title || "Unverified source",
       source_url: safePublicUrl(candidate.source_url) || "",
       http_status: recoveredPage?.httpStatus || 0,
-      verification_notes:
-        recoveredPage?.reason ||
-        "Source content could not be retrieved directly to confirm business identity, location, and event.",
+      verification_notes: `${baseReason}${snippetDateNote}`,
     };
   }
 
   const corpus = `${recoveredPage.extractedTitle} ${recoveredPage.extractedDescription} ${recoveredPage.plainText}`.toLowerCase();
+  const cleanDateCorpus = stripCopyrightAndBoilerplateYears(
+    `${recoveredPage.extractedTitle} ${recoveredPage.extractedDescription} ${recoveredPage.plainText}`
+  );
 
   // 1. Verify Business Identity in recovered source
   const fullBizLower = String(candidate.business_name || "").trim().toLowerCase();
@@ -340,24 +419,61 @@ export function verifyCandidateWithRecoveredSource(candidate, recoveredPage, que
   // 3. Verify Opening / Expansion Event in recovered source
   const eventMatched = EVENT_KEYWORDS.some((kw) => corpus.includes(kw));
 
-  // 4. Verify Publication Date and Event Date strictly from recovered source content
-  // Only trust a publication date if extracted from page metadata OR if the year is explicitly present in recovered page text
+  // 4. Verify Publication Date and Event Date strictly from recovered source content.
+  // Never deduce a date from copyright notices (e.g. "© 2026"), retrieval date, or a bare year on the page.
   const pagePubYmd = recoveredPage.extractedPubDate;
   const candidatePubYmd = normalizeDateToYmd(candidate.publication_date);
-  const candidatePubYearConfirmed =
-    candidatePubYmd && corpus.includes(candidatePubYmd.slice(0, 4));
-  const verifiedPubDate = pagePubYmd || (candidatePubYearConfirmed ? candidatePubYmd : "");
+  const candidatePubExplicitInText =
+    candidatePubYmd && isYmdExplicitlyInText(candidatePubYmd, cleanDateCorpus);
+  const verifiedPubDate =
+    identityMatched && eventMatched
+      ? pagePubYmd || (candidatePubExplicitInText ? candidatePubYmd : "")
+      : "";
 
   const rawEventDate =
     candidate.event_date &&
     String(candidate.event_date).toLowerCase() !== "null" &&
-    String(candidate.event_date).toLowerCase() !== "not stated"
+    String(candidate.event_date).toLowerCase() !== "not stated" &&
+    String(candidate.event_date).toLowerCase() !== "date not confirmed" &&
+    String(candidate.event_date).toLowerCase() !== "fecha no confirmada"
       ? String(candidate.event_date).trim()
       : "";
   const parsedEventYmd = normalizeDateToYmd(rawEventDate);
-  // Event date only counts as substantiated if the page has a verified publication date OR explicitly states the year in text
-  const eventYearConfirmed =
-    parsedEventYmd && (Boolean(pagePubYmd) || corpus.includes(parsedEventYmd.slice(0, 4)));
+
+  // Event date only counts as confirmed if identity + event matched AND:
+  // (a) the full event date (with year) appears in non-copyright page text, OR
+  // (b) the article has a confirmed publication date AND the month+day or target year appears in non-copyright text.
+  let eventDateConfirmed = false;
+  let confirmedEventDateStr = "";
+  if (identityMatched && eventMatched && rawEventDate) {
+    if (parsedEventYmd) {
+      if (isYmdExplicitlyInText(parsedEventYmd, cleanDateCorpus)) {
+        eventDateConfirmed = true;
+        confirmedEventDateStr = parsedEventYmd;
+      } else if (verifiedPubDate) {
+        const [, mStr, dStr] = parsedEventYmd.split("-");
+        const mIdx = Number(mStr) - 1;
+        const dNum = Number(dStr);
+        const monthRe =
+          mIdx >= 0 && mIdx <= 11
+            ? new RegExp(
+                `\\b(?:${MONTH_NAMES_EN[mIdx]}|${MONTH_SHORT_EN[mIdx]}\\.?|${MONTH_NAMES_ES[mIdx]})\\s+0?${dNum}\\b`,
+                "i"
+              )
+            : null;
+        if (monthRe && monthRe.test(cleanDateCorpus)) {
+          eventDateConfirmed = true;
+          confirmedEventDateStr = parsedEventYmd;
+        }
+      }
+    } else if (verifiedPubDate) {
+      const explicitYearMatch = rawEventDate.match(/\b(20\d{2})\b/);
+      if (explicitYearMatch && cleanDateCorpus.includes(explicitYearMatch[1])) {
+        eventDateConfirmed = true;
+        confirmedEventDateStr = rawEventDate;
+      }
+    }
+  }
 
   // Check recency against timeWindowDays
   const windowMs = (Number(timeWindowDays) || 90) * 24 * 60 * 60 * 1000;
@@ -374,7 +490,7 @@ export function verifyCandidateWithRecoveredSource(candidate, recoveredPage, que
   }
 
   let eventInWindow = false;
-  if (parsedEventYmd && eventYearConfirmed) {
+  if (parsedEventYmd && eventDateConfirmed) {
     const evMs = new Date(`${parsedEventYmd}T12:00:00Z`).getTime();
     if (!Number.isNaN(evMs)) {
       const ageMs = nowMs - evMs;
@@ -383,18 +499,19 @@ export function verifyCandidateWithRecoveredSource(candidate, recoveredPage, que
   }
 
   let recencyBasis = "unverified_date";
-  if (eventInWindow && candidate.recency_basis === "event_date") {
-    recencyBasis = "event_date";
-  } else if (pubInWindow) {
-    recencyBasis = "announcement_date";
-  } else if (eventInWindow) {
-    recencyBasis = "event_date";
+  if (identityMatched && locationMatched && eventMatched) {
+    if (eventInWindow && candidate.recency_basis === "event_date") {
+      recencyBasis = "event_date";
+    } else if (pubInWindow) {
+      recencyBasis = "announcement_date";
+    } else if (eventInWindow) {
+      recencyBasis = "event_date";
+    }
   }
 
   // Pick a grounded supporting excerpt from the recovered page or verify the candidate's excerpt
   let finalExcerpt = String(candidate.supporting_excerpt || "").trim();
   if (recoveredPage.extractedDescription && recoveredPage.extractedDescription.length >= 40) {
-    // If candidate excerpt isn't found verbatim in plainText, use the recovered page's actual meta description or title+snippet
     const normExcerpt = finalExcerpt.toLowerCase().replace(/[^a-z0-9\s]/g, "").slice(0, 45);
     const normCorpus = corpus.replace(/[^a-z0-9\s]/g, "");
     if (!normExcerpt || !normCorpus.includes(normExcerpt)) {
@@ -431,7 +548,7 @@ export function verifyCandidateWithRecoveredSource(candidate, recoveredPage, que
       : "unverified",
     recency_basis: recencyBasis,
     publication_date: verifiedPubDate,
-    event_date: rawEventDate,
+    event_date: confirmedEventDateStr,
     supporting_excerpt: finalExcerpt,
     source_title: recoveredPage.extractedTitle || candidate.source_title || "Public web source",
     source_url: safePublicUrl(recoveredPage.finalUrl || candidate.source_url) || "",
@@ -458,10 +575,10 @@ END_SEARCH_DATA
 
 Strict retrieval rules:
 1. Prioritize identifiable local news reporting (e.g., local newspapers, business journals, regional food/retail/industry publications) and official company press releases or announcements.
-2. NEVER return generic directory pages, reservation pages, or delivery aggregators (do NOT use Yelp, OpenTable, TripAdvisor, YellowPages, MapQuest, DoorDash, UberEats, or generic business homepages without an announcement).
+2. NEVER return generic directory pages, reservation pages, delivery aggregators, or generic business homepages that lack a dated opening/expansion announcement.
 3. Return ONLY real businesses with actual public URLs found in web search results. If fewer than 5 businesses have verifiable recent opening or expansion evidence, return fewer results (or an empty array). Never pad or invent businesses, URLs, or dates.
-4. Keep publication_date (YYYY-MM-DD when the article/announcement was published) separate from event_date (when the opening/expansion happened or is planned). If either date is not stated in the source, return an empty string "" for that date.
-5. Set recency_basis to "announcement_date" if the article/announcement was published on or after ${cutoffDate}, "event_date" if the opening/expansion event itself occurred on or after ${cutoffDate}, or "unverified_date" if the date is uncertain.`;
+4. Keep publication_date (YYYY-MM-DD when the article/announcement was published) separate from event_date (when the opening/expansion happened or is planned). NEVER deduce a publication_date or event_date from website copyright notices (e.g., "© 2026"), the current retrieval date, or a bare year on a page. If either date is not explicitly confirmed in the source, return an empty string "" for that date.
+5. Set recency_basis to "announcement_date" only if the confirmed article publication_date is on or after ${cutoffDate}, "event_date" only if the confirmed event_date is on or after ${cutoffDate}, or "unverified_date" if the date cannot be confirmed.`;
 
   const responseSchema = {
     type: "object",
@@ -610,13 +727,29 @@ export async function verifyAndStructureCandidates({
         nowDate
       );
 
-      const cleanWebsite =
+      const rawWebsite =
         cand.website_url &&
         cand.website_url !== "null" &&
         isSafePublicUrl(cand.website_url) &&
         !isDirectoryDomain(cand.website_url)
           ? cand.website_url.trim()
           : "";
+      const finalSourceUrl = safePublicUrl(v.source_url) || "";
+      let cleanWebsite = rawWebsite;
+      if (cleanWebsite && finalSourceUrl) {
+        try {
+          const webUrlObj = new URL(cleanWebsite);
+          const srcUrlObj = new URL(finalSourceUrl);
+          if (
+            webUrlObj.href === srcUrlObj.href &&
+            !isRootHomepageUrl(finalSourceUrl)
+          ) {
+            cleanWebsite = "";
+          }
+        } catch {
+          cleanWebsite = "";
+        }
+      }
 
       const oppDraft = {
         business_name: String(cand.business_name || "").trim().slice(0, 200),

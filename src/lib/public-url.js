@@ -1,6 +1,16 @@
 // Shared by source ingestion and browser links, including previously saved records.
+function hasControlOrSpaceChar(str) {
+  for (let i = 0; i < str.length; i++) {
+    const code = str.charCodeAt(i);
+    if (code <= 0x20 || code === 0x7f) return true;
+  }
+  return false;
+}
+
 export function safePublicUrl(value) {
-  if (typeof value !== "string" || value.length > 500 || /[\u0000-\u0020\u007f]/.test(value.trim())) return undefined;
+  if (typeof value !== "string" || value.length > 500) return undefined;
+  const trimmed = value.trim();
+  if (!trimmed || hasControlOrSpaceChar(trimmed)) return undefined;
   try {
     const url = new URL(value.trim());
     if (!["https:", "http:"].includes(url.protocol) || url.username || url.password || url.port) return undefined;
