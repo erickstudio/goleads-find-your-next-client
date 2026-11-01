@@ -149,12 +149,20 @@ function AgentSettingsPage() {
           </p>
         </div>
 
-        <Link
-          to="/settings"
-          className="px-3.5 py-2 rounded-md text-xs font-medium bg-secondary text-foreground border border-border hover:bg-secondary/80 shrink-0 text-center"
-        >
-          {isEs ? "Configuración de cuenta" : "Account Settings"}
-        </Link>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Link
+            to="/connect"
+            className="px-3.5 py-2 rounded-md text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 text-center"
+          >
+            {isEs ? "Conectar asistentes IA (MCP)" : "Connect AI Assistants (MCP)"}
+          </Link>
+          <Link
+            to="/settings"
+            className="px-3.5 py-2 rounded-md text-xs font-medium bg-secondary text-foreground border border-border hover:bg-secondary/80 text-center"
+          >
+            {isEs ? "Configuración de cuenta" : "Account Settings"}
+          </Link>
+        </div>
       </div>
 
       {statusMsg && (
