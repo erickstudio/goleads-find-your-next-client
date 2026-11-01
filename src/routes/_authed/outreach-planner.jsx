@@ -85,7 +85,7 @@ function OutreachPlannerPage() {
     setOutreachLang(nextLang);
     const fresh = buildOutreachDraft(
       selectedLead,
-      selectedServices,
+      draftService ? [draftService] : selectedServices,
       serviceDescription,
       nextLang
     );
@@ -113,6 +113,8 @@ function OutreachPlannerPage() {
           ? `Borrador de contacto guardado para ${selectedLead.business_name}.`
           : `Saved personalized outreach draft for ${selectedLead.business_name}.`
       );
+    } catch {
+      setStatusBanner(isEs ? "No pudimos guardar el borrador. Tu texto sigue aquí; vuelve a intentarlo." : "We could not save your draft. Your text is still here; please try again.");
     } finally {
       setIsSaving(false);
     }
