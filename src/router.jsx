@@ -10,8 +10,9 @@ export function getRouter() {
   const router = createRouter({
     routeTree,
     context: { queryClient },
-    defaultPreload: "intent",
-    defaultPreloadStaleTime: 0,
+    // Private loaders read several entities. Hovering navigation must not spend requests.
+    defaultPreload: false,
+    defaultStaleTime: 30_000,
     defaultErrorComponent: DefaultCatchBoundary,
     defaultNotFoundComponent: () => <NotFound />,
     scrollRestoration: true,
