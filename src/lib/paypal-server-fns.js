@@ -524,7 +524,7 @@ export const cancelUserPayPalSubscription = createServerFn({ method: "POST" })
         }
       );
 
-      if (!cancelRes.ok && cancelRes.status !== 204 && cancelRes.status !== 422) {
+      if (!cancelRes.ok && cancelRes.status !== 204) {
         const errBody = await cancelRes.json().catch(() => ({}));
         throw new Error(
           errBody?.message ||
