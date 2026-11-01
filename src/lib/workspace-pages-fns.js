@@ -80,6 +80,7 @@ export const getExtendedWorkspaceData = createServerFn({ method: "GET" })
         id: userId,
         email: userEmail,
         full_name: context.user.full_name || "",
+        role: context.user.role || "user",
       },
       profile,
       recentSearches,

@@ -186,6 +186,7 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
         id: userId,
         email: userEmail,
         full_name: context.user.full_name || "",
+        role: context.user.role || "user",
       },
       profile,
       recentSearches,
@@ -801,6 +802,8 @@ export const saveOpportunityForUser = createServerFn({ method: "POST" })
         data.qualification_notes !== undefined
           ? data.qualification_notes.trim()
           : primaryExisting?.qualification_notes || "",
+      outreach_draft: primaryExisting?.outreach_draft || "",
+      outreach_draft_language: primaryExisting?.outreach_draft_language || undefined,
       review_stage: data.review_stage || primaryExisting?.review_stage || "saved",
     };
 
