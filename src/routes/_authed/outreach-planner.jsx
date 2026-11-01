@@ -15,11 +15,11 @@ export const Route = createFileRoute("/_authed/outreach-planner")({
   loader: () => getExtendedWorkspaceData(),
   head: () => ({
     meta: [
-      { title: "Lead Outreach Planner — goleads.app" },
+      { title: "Outreach drafts — GoLeads" },
       {
         name: "description",
         content:
-          "Draft and save personalized, evidence-grounded outreach messages for your saved leads.",
+          "Prepare, edit and save an introduction for a business you want to approach.",
       },
     ],
   }),
@@ -37,6 +37,7 @@ function OutreachPlannerPage() {
   const profile = data?.profile;
   const selectedServices = normalizeServicesList(profile?.selected_services || []);
   const serviceDescription = profile?.service_description || "";
+  const [draftService, setDraftService] = useState(selectedServices[0] || "");
 
   const [selectedId, setSelectedId] = useState(savedLeads[0]?.id || "");
   const selectedLead =
@@ -57,8 +58,8 @@ function OutreachPlannerPage() {
 
   useEffect(() => {
     document.title = isEs
-      ? "Planificador de contacto — goleads.app"
-      : "Lead Outreach Planner — goleads.app";
+      ? "Borradores de contacto — GoLeads"
+      : "Outreach drafts — GoLeads";
   }, [isEs]);
 
   useEffect(() => {
@@ -124,7 +125,7 @@ function OutreachPlannerPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setStatusBanner(t("detail.copiedOutreachMsg"));
+      setStatusBanner(isEs ? "No pudimos copiar el mensaje. Selecciona el texto y cópialo manualmente." : "We could not copy the message. Select the text and copy it manually.");
     }
   };
 
@@ -133,12 +134,12 @@ function OutreachPlannerPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-            {isEs ? "Planificador de contacto" : "Lead Outreach Planner"}
+            {isEs ? "Borradores de contacto" : "Outreach drafts"}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {isEs
-              ? "Redacta y guarda plantillas de contacto personalizadas basadas en evidencia para tus oportunidades guardadas."
-              : "Draft and save personalized, evidence-grounded outreach messages for your saved opportunities."}
+              ? "Elige un negocio y un servicio. Prepara un mensaje breve, ajústalo y guárdalo para cuando decidas contactar."
+              : "Choose a business and a service. Prepare a short introduction, edit it and save it for when you are ready to reach out."}
           </p>
         </div>
 
@@ -178,13 +179,13 @@ function OutreachPlannerPage() {
         <div className="bg-card rounded-lg border border-border p-8 text-center space-y-3">
           <h2 className="text-sm font-semibold text-foreground">
             {isEs
-              ? "Aún no tienes oportunidades guardadas para planificar contacto"
-              : "No saved opportunities to plan outreach for yet"}
+              ? "Guarda un negocio para preparar tu primer contacto"
+              : "Save a business to prepare your first introduction"}
           </h2>
           <p className="text-xs text-muted-foreground max-w-md mx-auto">
             {isEs
-              ? "Guarda al menos un prospecto desde Buscar leads para redactar y almacenar mensajes personalizados aquí."
-              : "Save at least one prospect from Find leads to draft and store personalized outreach templates here."}
+              ? "Busca oportunidades y guarda un negocio que te interese. Aquí podrás preparar un mensaje y conservar tus notas."
+              : "Find opportunities and save a business that interests you. Then come here to prepare a message and keep your notes."}
           </p>
           <Link
             to="/app"
@@ -273,14 +274,28 @@ function OutreachPlannerPage() {
 
               {/* Outreach Template Form */}
               <form onSubmit={handleSaveDraft} className="space-y-4">
+                {selectedServices.length > 0 && (
+                  <div className="space-y-2">
+                    <label htmlFor="outreach-service" className="block text-xs font-semibold text-foreground">
+                      {isEs ? "Servicio que quieres ofrecer" : "Service to introduce"}
+                    </label>
+                    <select id="outreach-service" value={draftService} onChange={(e) => setDraftService(e.target.value)} className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm text-foreground">
+                      {selectedServices.map((service) => <option key={service} value={service}>{service}</option>)}
+                    </select>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {isEs ? "Elige un servicio y pulsa Actualizar plantilla. Se reemplazará el texto actual; revisa el mensaje antes de enviarlo." : "Choose a service and select Update template. This replaces the current text; review the message before sending."}
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <label
                     htmlFor="outreach-draft-textarea"
                     className="text-xs font-semibold text-foreground"
                   >
                     {isEs
-                      ? "Plantilla de contacto personalizada"
-                      : "Personalized outreach draft"}
+                      ? "Tu mensaje"
+                      : "Your message"}
                   </label>
 
                   <div className="flex flex-wrap items-center gap-2">
@@ -311,7 +326,7 @@ function OutreachPlannerPage() {
                       onClick={() => handleRegenerateTemplate(outreachLang)}
                       className="px-2.5 py-1 rounded text-xs font-medium text-primary hover:bg-primary/10"
                     >
-                      {isEs ? "Restaurar plantilla base" : "Reset to base template"}
+                      {isEs ? "Actualizar plantilla" : "Update template"}
                     </button>
                   </div>
                 </div>
