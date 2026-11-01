@@ -41,7 +41,7 @@ export const TRANSLATIONS = {
       restore: "Restore",
       retry: "Retry",
       back: "Back",
-      notStated: "Not stated",
+      notStated: "Date not confirmed",
       website: "Website",
       websiteUnknown: "Website unknown",
       published: "Published",
@@ -453,7 +453,7 @@ export const TRANSLATIONS = {
       restore: "Restaurar",
       retry: "Reintentar",
       back: "Volver",
-      notStated: "No especificado",
+      notStated: "Fecha no confirmada",
       website: "Sitio web",
       websiteUnknown: "Sitio web desconocido",
       published: "Publicado",
@@ -892,21 +892,38 @@ export function buildOutreachDraft(opportunity, selectedServices = [], _serviceD
   const spanish = outreachLang === "es";
   const biz = opportunity?.business_name || (spanish ? "su negocio" : "your business");
   const location = opportunity?.location || "";
-  const signalKey = String(opportunity?.signal_type || "").trim().toLowerCase().replace(/[_-]+/g, " ");
+  const signalKey = String(opportunity?.signal_type || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ");
   const signals = {
     "new opening": ["apertura", "opening"],
-    "opening": ["apertura", "opening"],
+    opening: ["apertura", "opening"],
     "new location": ["nuevo local", "new location"],
-    "expansion": ["expansión", "expansion"],
-    "relocation": ["traslado", "relocation"],
+    "new location opening": ["apertura de nuevo local", "new location opening"],
+    "new location announcement": ["anuncio de nueva sede", "new location announcement"],
+    expansion: ["expansión", "expansion"],
+    relocation: ["traslado", "relocation"],
+    reopening: ["reapertura", "reopening"],
+    "grand opening": ["inauguración", "grand opening"],
+    "second clinic expansion": ["segunda clínica", "second clinic expansion"],
+    "new flagship roastery & retail launch": ["nueva tienda y tostaduría", "new retail storefront"],
   };
   const event = signals[signalKey]?.[spanish ? 0 : 1];
-  const services = Array.isArray(selectedServices) ? selectedServices.filter(s => typeof s === "string" && s.trim()) : [];
-  const service = services[0]?.trim() || (spanish ? "[el servicio que quieres ofrecer]" : "[the service you want to offer]");
+  const services =
+    typeof selectedServices === "string"
+      ? [selectedServices]
+      : Array.isArray(selectedServices)
+      ? selectedServices.filter((s) => typeof s === "string" && s.trim())
+      : [];
+  // Strictly use ONLY the single chosen service; never append other services automatically
+  const service =
+    services[0]?.trim() ||
+    (spanish ? "[el servicio que quieres ofrecer]" : "[the service you want to offer]");
   if (spanish) {
     const reason = event ? `sobre su ${event}` : `sobre ${biz}`;
-    return `Hola equipo de ${biz},\n\nVi una publicación ${reason}${location ? ` en ${location}` : ""} y quería presentarles mi trabajo.\n\nMe dedico a ${service}. ¿Les vendría bien que les comparta una propuesta breve para esta etapa?\n\nSaludos,\n[Tu nombre]`;
+    return `Hola equipo de ${biz},\n\nVi una publicación ${reason}${location ? ` en ${location}` : ""} y quería presentarles mi trabajo.\n\nMe dedico a ${service}. ¿Les vendría bien conversar brevemente por esta vía por si les resulta útil en esta etapa?\n\nSaludos,\n[Tu nombre]`;
   }
   const reason = event ? `about your ${event}` : `about ${biz}`;
-  return `Hi ${biz} team,\n\nI saw an announcement ${reason}${location ? ` in ${location}` : ""} and wanted to introduce my work.\n\nI offer ${service}. Would it be useful if I shared a brief proposal for this stage?\n\nBest,\n[Your name]`;
+  return `Hi ${biz} team,\n\nI saw an announcement ${reason}${location ? ` in ${location}` : ""} and wanted to introduce my work.\n\nI offer ${service}. Would a brief conversation be useful as you prepare for this stage?\n\nBest,\n[Your name]`;
 }

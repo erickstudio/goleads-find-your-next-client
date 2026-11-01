@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { formatRecencyBasisLabel } from "@/lib/leads-constants";
+import {
+  formatSignalTypeLabel,
+  formatDateValue,
+  formatOriginalExcerptBadge,
+  getExcerptSupportTranslation,
+  formatVerificationNotes,
+} from "@/lib/opportunity-copy";
 import { getExtendedWorkspaceData } from "@/lib/workspace-pages-fns";
 import { usePreferences } from "@/lib/PreferencesContext";
 import { safePublicUrl } from "@/lib/public-url";
@@ -138,7 +145,7 @@ function EvidenceLibraryPage() {
             </option>
             {distinctSignals.map((sig) => (
               <option key={sig} value={sig}>
-                {sig}
+                {formatSignalTypeLabel(sig, lang)}
               </option>
             ))}
           </select>
@@ -177,6 +184,9 @@ function EvidenceLibraryPage() {
           {filteredEvidence.map((ev) => {
             const isVerified = ev.verification_status === "verified";
             const recencyLabel = formatRecencyBasisLabel(ev.recency_basis, lang);
+            const signalLabel = formatSignalTypeLabel(ev.signal_type, lang);
+            const supportTranslation = getExcerptSupportTranslation(ev, lang);
+            const verificationNotesText = formatVerificationNotes(ev, lang);
 
             return (
               <article
@@ -184,7 +194,7 @@ function EvidenceLibraryPage() {
                 className="bg-card text-card-foreground rounded-lg border border-border p-5 space-y-3"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                  <div className="space-y-1">
+                  <div className="space-y-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={`px-2 py-0.5 rounded text-xs font-semibold border ${
@@ -196,13 +206,13 @@ function EvidenceLibraryPage() {
                         {isVerified ? t("common.verified") : t("common.needsReview")}
                       </span>
                       <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/15 text-primary border border-primary/30">
-                        {ev.signal_type}
+                        {signalLabel}
                       </span>
                       <span className="px-2 py-0.5 rounded text-xs bg-secondary text-muted-foreground border border-border">
                         {recencyLabel}
                       </span>
                     </div>
-                    <h3 className="text-sm font-semibold text-foreground">
+                    <h3 className="text-sm font-semibold text-foreground break-words">
                       {ev.business_name}{" "}
                       {ev.location && (
                         <span className="font-normal text-muted-foreground">
@@ -234,22 +244,32 @@ function EvidenceLibraryPage() {
                 </div>
 
                 <div className="bg-secondary/50 rounded-md p-3.5 border border-border space-y-1.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-medium text-foreground">{ev.source_title}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <span className="font-medium text-foreground break-words">{ev.source_title}</span>
                     <span className="text-[10px] font-mono text-muted-foreground">
-                      {t("common.originalLanguageBadge")}
+                      {formatOriginalExcerptBadge(ev.supporting_excerpt, lang)}
                     </span>
                   </div>
-                  <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/50 pl-2.5">
+                  <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/50 pl-2.5 break-words">
                     {ev.supporting_excerpt}
                   </blockquote>
+                  {supportTranslation && (
+                    <div className="rounded bg-card/70 border border-border/70 px-2.5 py-1.5 space-y-0.5">
+                      <span className="block text-[10px] font-mono text-primary">
+                        {t("common.optionalTranslationBadge")}
+                      </span>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        {supportTranslation}
+                      </p>
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-4 text-[11px] font-mono text-muted-foreground pt-1">
                     <span>
                       {t("common.published")}:{" "}
-                      {ev.publication_date || t("common.notStated")}
+                      {formatDateValue(ev.publication_date, lang)}
                     </span>
                     <span>
-                      {t("common.eventDate")}: {ev.event_date || t("common.notStated")}
+                      {t("common.eventDate")}: {formatDateValue(ev.event_date, lang)}
                     </span>
                     <span>
                       {t("common.retrieved")}:{" "}
@@ -259,6 +279,17 @@ function EvidenceLibraryPage() {
                         : t("common.notStated")}
                     </span>
                   </div>
+                  {verificationNotesText && (
+                    <p
+                      className={`text-[11px] pt-1 ${
+                        isVerified
+                          ? "text-emerald-700 dark:text-emerald-300"
+                          : "text-amber-800 dark:text-amber-300 font-medium"
+                      }`}
+                    >
+                      {verificationNotesText}
+                    </p>
+                  )}
                 </div>
               </article>
             );

@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getExtendedWorkspaceData } from "@/lib/workspace-pages-fns";
+import {
+  formatSignalTypeLabel,
+  formatBusinessCategoryLabel,
+} from "@/lib/opportunity-copy";
 import { usePreferences } from "@/lib/PreferencesContext";
 
 export const Route = createFileRoute("/_authed/market-insights")({
@@ -53,13 +57,15 @@ function MarketInsightsPage() {
 
   const topCategories = tallyGroup(
     opportunities,
-    (o) => o.business_category || "Uncategorized"
+    (o) => formatBusinessCategoryLabel(o.business_category || "Uncategorized", lang)
   );
   const topRegions = tallyGroup(opportunities, (o) => o.location);
-  const topSignals = tallyGroup(opportunities, (o) => o.signal_type);
+  const topSignals = tallyGroup(opportunities, (o) =>
+    formatSignalTypeLabel(o.signal_type, lang)
+  );
   const searchedMarkets = tallyGroup(
     searches,
-    (s) => `${s.business_category} — ${s.location_query}`
+    (s) => `${formatBusinessCategoryLabel(s.business_category, lang)} — ${s.location_query}`
   );
 
   const verifiedCount = opportunities.filter(

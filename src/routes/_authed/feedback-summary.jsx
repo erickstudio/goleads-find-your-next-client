@@ -3,6 +3,10 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { clearOpportunityFeedback } from "@/lib/server-fns";
 import { getExtendedWorkspaceData } from "@/lib/workspace-pages-fns";
+import {
+  formatFeedbackReasonCategory,
+  formatFeedbackNote,
+} from "@/lib/opportunity-copy";
 import { usePreferences } from "@/lib/PreferencesContext";
 
 export const Route = createFileRoute("/_authed/feedback-summary")({
@@ -251,13 +255,14 @@ function FeedbackSummaryPage() {
 
                   {fb.reason_category && (
                     <div className="text-xs font-medium text-foreground">
-                      {isEs ? "Categoría:" : "Reason tag:"} {fb.reason_category}
+                      {isEs ? "Categoría:" : "Reason tag:"}{" "}
+                      {formatFeedbackReasonCategory(fb.reason_category, lang)}
                     </div>
                   )}
 
                   {fb.reason_note && (
                     <p className="text-xs text-muted-foreground italic">
-                      "{fb.reason_note}"
+                      "{formatFeedbackNote(fb.reason_note, lang)}"
                     </p>
                   )}
 

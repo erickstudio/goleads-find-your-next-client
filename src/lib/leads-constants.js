@@ -1,3 +1,5 @@
+import { buildStructuredServiceFit } from "@/lib/opportunity-copy";
+
 // Legacy ID map so earlier profiles stored with enum IDs migrate seamlessly to readable service names
 export const LEGACY_SERVICE_LABELS = {
   web_design_seo: "Web design & SEO",
@@ -100,49 +102,7 @@ export function buildServiceFitHypothesis(
   lang = "en"
 ) {
   const cleanServices = normalizeServicesList(selectedServices);
-  const desc = (serviceDescription || "").trim();
-
-  if (lang === "es") {
-    if (cleanServices.length > 0) {
-      const servicesText = cleanServices.join(", ");
-      const signalContext = opportunity?.signal_type
-        ? `durante un evento de "${opportunity.signal_type}"`
-        : "al abrir o expandir operaciones";
-      const descClause = desc
-        ? ` Según la descripción de tu oferta (${desc}), este momento puede ser relevante para evaluar.`
-        : "";
-      return `Hipótesis para ${servicesText}: Los negocios ${signalContext} suelen evaluar proveedores externos y soporte operativo al habilitar una nueva sede o ampliar capacidad.${descClause} La evidencia pública de apertura o expansión no confirma presupuesto, defectos técnicos ni intención activa de compra.`;
-    }
-    if (opportunity?.service_fit_inference) {
-      return opportunity.service_fit_inference.replace(
-        /^INFERENCE \(Not a verified fact\):\s*/i,
-        "Hipótesis: "
-      );
-    }
-    return "Hipótesis: Los negocios en apertura o expansión suelen evaluar servicios profesionales externos durante su lanzamiento o crecimiento, aunque los anuncios públicos no confirman presupuesto ni intención activa de compra.";
-  }
-
-  if (cleanServices.length > 0) {
-    const servicesText = cleanServices.join(", ");
-    const signalContext = opportunity?.signal_type
-      ? `during a ${opportunity.signal_type.toLowerCase()}`
-      : "when opening or expanding";
-
-    const descClause = desc
-      ? ` Based on your offer description (${desc}), this timing may be relevant to review.`
-      : "";
-
-    return `Hypothesis for ${servicesText}: Businesses ${signalContext} often evaluate external providers and operational support while setting up a new site or expanding capacity.${descClause} Public opening or expansion evidence does not confirm budget, technical defects, or active buying intent.`;
-  }
-
-  if (opportunity?.service_fit_inference) {
-    return opportunity.service_fit_inference.replace(
-      /^INFERENCE \(Not a verified fact\):\s*/i,
-      "Hypothesis: "
-    );
-  }
-
-  return "Hypothesis: Opening or expanding locations may evaluate external business services during launch or growth, though public announcements do not confirm budget or active buying intent.";
+  return buildStructuredServiceFit(opportunity, cleanServices, serviceDescription, lang);
 }
 
 // Sample opportunities kept strictly for the optional "Example results" view (excluded from live metrics)

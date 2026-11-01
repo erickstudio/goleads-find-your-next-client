@@ -88,14 +88,21 @@ function AgentSettingsPage() {
       description: isEs
         ? "Guía al usuario en la elección de parámetros de LeadSearch (categoría comercial, ciudad/país y ventana de 30, 90 o 180 días) según sus servicios e historial."
         : "Guides users through high-signal LeadSearch parameters (business_category, location_query, and 30/90/180-day windows) tailored to their custom services and history.",
-      model: "automatic (temperature: 0.3)",
-      memoryMode: "auto (max 6 messages)",
-      permissions: [
-        "UserProfile (read)",
-        "LeadSearch (read)",
-        "Opportunity (read)",
-        "SavedOpportunity (read)",
-      ],
+      model: isEs ? "automático (temperatura: 0.3)" : "automatic (temperature: 0.3)",
+      memoryMode: isEs ? "automática (máx. 6 mensajes)" : "auto (max 6 messages)",
+      permissions: isEs
+        ? [
+            "UserProfile (lectura)",
+            "LeadSearch (lectura)",
+            "Opportunity (lectura)",
+            "SavedOpportunity (lectura)",
+          ]
+        : [
+            "UserProfile (read)",
+            "LeadSearch (read)",
+            "Opportunity (read)",
+            "SavedOpportunity (read)",
+          ],
     },
     {
       id: "evidence_analyst",
@@ -110,14 +117,21 @@ function AgentSettingsPage() {
       description: isEs
         ? "Interpreta los registros de EvidenceItem (extractos literales, fechas de publicación/evento/recuperación y estado de verificación) frente a tus servicios sin inventar datos."
         : "Interprets EvidenceItem records (verbatim excerpts, publication/event/retrieval dates, and verification status) against your services without fabricating facts.",
-      model: "automatic (temperature: 0.2)",
-      memoryMode: "auto (max 6 messages)",
-      permissions: [
-        "EvidenceItem (read)",
-        "Opportunity (read)",
-        "UserProfile (read)",
-        "OpportunityFeedback (read)",
-      ],
+      model: isEs ? "automático (temperatura: 0.2)" : "automatic (temperature: 0.2)",
+      memoryMode: isEs ? "automática (máx. 6 mensajes)" : "auto (max 6 messages)",
+      permissions: isEs
+        ? [
+            "EvidenceItem (lectura)",
+            "Opportunity (lectura)",
+            "UserProfile (lectura)",
+            "OpportunityFeedback (lectura)",
+          ]
+        : [
+            "EvidenceItem (read)",
+            "Opportunity (read)",
+            "UserProfile (read)",
+            "OpportunityFeedback (read)",
+          ],
     },
   ];
 

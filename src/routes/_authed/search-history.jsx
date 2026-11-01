@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getExtendedWorkspaceData } from "@/lib/workspace-pages-fns";
+import { formatSearchStatusReason, formatBusinessCategoryLabel } from "@/lib/opportunity-copy";
 import { usePreferences } from "@/lib/PreferencesContext";
 
 export const Route = createFileRoute("/_authed/search-history")({
@@ -184,7 +185,7 @@ function SearchHistoryPage() {
                       {badge.label}
                     </span>
                     <span className="text-sm font-semibold text-foreground">
-                      {s.business_category} · {s.location_query}
+                      {formatBusinessCategoryLabel(s.business_category, lang)} · {s.location_query}
                     </span>
                     <span className="px-2 py-0.5 rounded text-xs font-mono bg-secondary text-muted-foreground border border-border">
                       {t("discover.daysOption", { days: s.time_window_days || 90 })}
@@ -193,7 +194,7 @@ function SearchHistoryPage() {
 
                   {s.honest_status_reason && (
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      {s.honest_status_reason}
+                      {formatSearchStatusReason(s, lang)}
                     </p>
                   )}
 

@@ -4,6 +4,15 @@ import {
   buildServiceFitHypothesis,
   formatRecencyBasisLabel,
 } from "@/lib/leads-constants";
+import {
+  formatSignalTypeLabel,
+  formatBusinessCategoryLabel,
+  formatDateValue,
+  formatOriginalExcerptBadge,
+  formatSignalSummary,
+  getExcerptSupportTranslation,
+  formatVerificationNotes,
+} from "@/lib/opportunity-copy";
 import { usePreferences } from "@/lib/PreferencesContext";
 import { trackLeadsEvent } from "@/lib/telemetry";
 
@@ -26,6 +35,11 @@ export default function OpportunityCard({
   const isVerified = opp.verification_status === "verified";
   const fitText = buildServiceFitHypothesis(opp, selectedServices, serviceDescription, lang);
   const recencyLabel = formatRecencyBasisLabel(opp.recency_basis, lang);
+  const signalLabel = formatSignalTypeLabel(opp.signal_type, lang);
+  const categoryLabel = formatBusinessCategoryLabel(opp.business_category, lang);
+  const summaryText = formatSignalSummary(opp, lang);
+  const excerptSupportTranslation = getExcerptSupportTranslation(opp, lang);
+  const verificationNotesText = formatVerificationNotes(opp, lang);
 
   const formattedRetrieval = opp.retrieval_date
     ? opp.retrieval_date.replace("T", " ").slice(0, 16) +
@@ -66,7 +80,7 @@ export default function OpportunityCard({
             </span>
 
             <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/15 text-primary border border-primary/30">
-              {opp.signal_type}
+              {signalLabel}
             </span>
 
             <span className="px-2 py-0.5 rounded text-xs text-muted-foreground bg-secondary border border-border">
@@ -96,10 +110,10 @@ export default function OpportunityCard({
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span>{opp.location}</span>
-            {opp.business_category && (
+            {categoryLabel && (
               <>
                 <span>·</span>
-                <span>{opp.business_category}</span>
+                <span>{categoryLabel}</span>
               </>
             )}
             <span>·</span>
@@ -185,32 +199,42 @@ export default function OpportunityCard({
             </a>
           </div>
 
-          <p className="text-xs text-foreground/90 leading-relaxed">{opp.signal_summary}</p>
+          <p className="text-xs text-foreground/90 leading-relaxed">{summaryText}</p>
 
           {opp.supporting_excerpt && (
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <span className="inline-block text-[10px] font-mono text-muted-foreground">
-                {t("common.originalLanguageBadge")}
+                {formatOriginalExcerptBadge(opp.supporting_excerpt, lang)}
               </span>
-              <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/50 pl-2.5 py-0.5">
+              <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/50 pl-2.5 py-0.5 break-words">
                 {opp.supporting_excerpt}
               </blockquote>
+              {excerptSupportTranslation && (
+                <div className="rounded bg-card/70 border border-border/70 px-2.5 py-1.5 space-y-0.5">
+                  <span className="block text-[10px] font-mono text-primary">
+                    {t("common.optionalTranslationBadge")}
+                  </span>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    {excerptSupportTranslation}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-mono text-muted-foreground pt-1">
             <span>
-              {t("common.published")}: {opp.publication_date || t("common.notStated")}
+              {t("common.published")}: {formatDateValue(opp.publication_date, lang)}
             </span>
             <span>
-              {t("common.eventDate")}: {opp.event_date || t("common.notStated")}
+              {t("common.eventDate")}: {formatDateValue(opp.event_date, lang)}
             </span>
             <span>
               {t("common.retrieved")}: {formattedRetrieval}
             </span>
           </div>
 
-          {opp.verification_notes && (
+          {verificationNotesText && (
             <p
               className={`text-[11px] pt-1 ${
                 isVerified
@@ -218,7 +242,7 @@ export default function OpportunityCard({
                   : "text-amber-800 dark:text-amber-300 font-medium"
               }`}
             >
-              {opp.verification_notes}
+              {verificationNotesText}
             </p>
           )}
         </div>

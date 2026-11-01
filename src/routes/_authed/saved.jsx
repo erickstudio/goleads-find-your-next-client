@@ -1,7 +1,20 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { formatRecencyBasisLabel } from "@/lib/leads-constants";
+import {
+  formatRecencyBasisLabel,
+  normalizeServicesList,
+  buildServiceFitHypothesis,
+} from "@/lib/leads-constants";
+import {
+  formatSignalTypeLabel,
+  formatBusinessCategoryLabel,
+  formatDateValue,
+  formatOriginalExcerptBadge,
+  formatSignalSummary,
+  getExcerptSupportTranslation,
+  formatVerificationNotes,
+} from "@/lib/opportunity-copy";
 import {
   getWorkspaceBootstrap,
   updateSavedOpportunityItem,
@@ -44,6 +57,8 @@ function SavedOpportunitiesScreen() {
   const deleteSavedFn = useServerFn(deleteSavedOpportunityItem);
 
   const savedList = data?.savedOpportunities || [];
+  const profileServices = normalizeServicesList(data?.profile?.selected_services || []);
+  const profileDescription = data?.profile?.service_description || "";
   const feedbackByOppId = new Map(
     (data?.feedbackRecords || []).map((f) => [f.opportunity_id, f])
   );
@@ -218,6 +233,21 @@ function SavedOpportunitiesScreen() {
           {filteredList.map((item) => {
             const isVerified = item.verification_status === "verified";
             const recencyLabel = formatRecencyBasisLabel(item.recency_basis, lang);
+            const signalLabel = formatSignalTypeLabel(item.signal_type, lang);
+            const categoryLabel = formatBusinessCategoryLabel(item.business_category, lang);
+            const summaryText = formatSignalSummary(item, lang);
+            const excerptSupportTranslation = getExcerptSupportTranslation(item, lang);
+            const verificationNotesText = formatVerificationNotes(item, lang);
+            const effectiveServices =
+              profileServices.length > 0
+                ? profileServices
+                : normalizeServicesList(item.inferred_service_categories || []);
+            const fitText = buildServiceFitHypothesis(
+              item,
+              effectiveServices,
+              profileDescription,
+              lang
+            );
             const fb = feedbackByOppId.get(item.opportunity_id);
             const noteVal =
               editingNotesById[item.id] !== undefined
@@ -230,7 +260,7 @@ function SavedOpportunitiesScreen() {
                 className="bg-card text-card-foreground rounded-lg border border-border p-5 space-y-4"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div className="space-y-1.5">
+                  <div className="space-y-1.5 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={`px-2 py-0.5 rounded text-xs font-semibold border ${
@@ -242,7 +272,7 @@ function SavedOpportunitiesScreen() {
                         {isVerified ? t("common.verified") : t("common.needsReview")}
                       </span>
                       <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/15 text-primary border border-primary/30">
-                        {item.signal_type}
+                        {signalLabel}
                       </span>
                       <span className="px-2 py-0.5 rounded text-xs bg-secondary text-muted-foreground border border-border">
                         {recencyLabel}
@@ -262,20 +292,20 @@ function SavedOpportunitiesScreen() {
                       )}
                     </div>
 
-                    <h3 className="text-base font-semibold text-foreground">
+                    <h3 className="text-base font-semibold text-foreground break-words">
                       {item.business_name}
                     </h3>
 
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                       <span>{item.location}</span>
-                      {item.business_category && <span>· {item.business_category}</span>}
+                      {categoryLabel && <span>· {categoryLabel}</span>}
                       <span>·</span>
                       <a
                         href={safePublicUrl(item.source_url)}
                         target="_blank"
                         rel="noreferrer"
                         onClick={() => handleSourceOpen(item)}
-                        className="text-primary hover:underline font-medium"
+                        className="text-primary hover:underline font-medium break-words"
                       >
                         {item.source_title || t("saved.sourceLink")}
                       </a>
@@ -335,23 +365,33 @@ function SavedOpportunitiesScreen() {
                         {t("saved.sourceLink")}
                       </a>
                     </div>
-                    {item.signal_summary && (
-                      <p className="text-xs text-foreground/90">{item.signal_summary}</p>
+                    {summaryText && (
+                      <p className="text-xs text-foreground/90 leading-relaxed">{summaryText}</p>
                     )}
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <span className="inline-block text-[10px] font-mono text-muted-foreground">
-                        {t("common.originalLanguageBadge")}
+                        {formatOriginalExcerptBadge(item.supporting_excerpt, lang)}
                       </span>
-                      <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/50 pl-2.5">
+                      <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/50 pl-2.5 break-words">
                         {item.supporting_excerpt}
                       </blockquote>
+                      {excerptSupportTranslation && (
+                        <div className="rounded bg-card/70 border border-border/70 px-2.5 py-1.5 space-y-0.5">
+                          <span className="block text-[10px] font-mono text-primary">
+                            {t("common.optionalTranslationBadge")}
+                          </span>
+                          <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            {excerptSupportTranslation}
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-3 text-[11px] font-mono text-muted-foreground pt-1">
                       <span>
-                        {t("common.published")}: {item.publication_date || t("common.notStated")}
+                        {t("common.published")}: {formatDateValue(item.publication_date, lang)}
                       </span>
                       <span>
-                        {t("common.eventDate")}: {item.event_date || t("common.notStated")}
+                        {t("common.eventDate")}: {formatDateValue(item.event_date, lang)}
                       </span>
                       <span>
                         {t("common.retrieved")}:{" "}
@@ -360,7 +400,7 @@ function SavedOpportunitiesScreen() {
                           : t("common.notStated")}
                       </span>
                     </div>
-                    {item.verification_notes && (
+                    {verificationNotesText && (
                       <p
                         className={`text-[11px] pt-0.5 ${
                           isVerified
@@ -368,7 +408,7 @@ function SavedOpportunitiesScreen() {
                             : "text-amber-800 dark:text-amber-300 font-medium"
                         }`}
                       >
-                        {item.verification_notes}
+                        {verificationNotesText}
                       </p>
                     )}
                   </div>
@@ -376,9 +416,9 @@ function SavedOpportunitiesScreen() {
                   <div className="space-y-3">
                     <div className="bg-accent/60 rounded-md p-3 border border-primary/25 space-y-1">
                       <div className="text-xs font-medium text-foreground">
-                        {t("saved.possibleFitTitle")}
+                        {t("card.possibleServiceFitTitle")}
                       </div>
-                      <p className="text-xs text-muted-foreground">{item.service_fit_inference}</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{fitText}</p>
                     </div>
 
                     <div className="bg-secondary/50 rounded-md p-3 border border-border space-y-1.5">
