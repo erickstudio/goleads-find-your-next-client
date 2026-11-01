@@ -4,10 +4,12 @@ import { Menu, ArrowUpRight } from "lucide-react";
 import BrandWordmark from "@/components/BrandWordmark";
 import PreferenceControls from "@/components/PreferenceControls";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useAuth } from "@/lib/AuthContext";
 import { usePublicLocale } from "@/lib/PublicLocaleContext";
 
 export default function PublicHeader() {
   const { lang, copy } = usePublicLocale();
+  const { isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
   const isEs = lang === "es";
   const hashes = ["how-it-works", "evidence-first", "integrations", "faq"];
@@ -43,13 +45,15 @@ export default function PublicHeader() {
         <div className="hidden items-center gap-4 lg:flex">
           <PreferenceControls compact />
           <Link
-            to="/login"
+            to={isAuthenticated ? "/app" : "/login"}
+            search={isAuthenticated ? {} : { returnTo: "/app" }}
             className="text-sm font-medium text-muted-foreground hover:text-foreground"
           >
-            {copy.signIn}
+            {isAuthenticated ? (isEs ? "Mi espacio" : "My workspace") : copy.signIn}
           </Link>
           <Link
             to="/register"
+            search={{ returnTo: "/app" }}
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
           >
             {isEs ? "Crear cuenta" : "Create account"}
@@ -87,17 +91,19 @@ export default function PublicHeader() {
               <div className="flex flex-col gap-2.5 pt-2">
                 <Link
                   to="/register"
+            search={{ returnTo: "/app" }}
                   onClick={() => setOpen(false)}
                   className="inline-flex min-h-11 items-center justify-center rounded-lg bg-brand px-5 text-sm font-semibold text-brand-foreground"
                 >
                   {isEs ? "Crear cuenta" : "Create account"}
                 </Link>
                 <Link
-                  to="/login"
+                  to={isAuthenticated ? "/app" : "/login"}
+            search={isAuthenticated ? {} : { returnTo: "/app" }}
                   onClick={() => setOpen(false)}
                   className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border bg-card px-5 text-sm font-medium text-foreground"
                 >
-                  {copy.signIn}
+                  {isAuthenticated ? (isEs ? "Mi espacio" : "My workspace") : copy.signIn}
                 </Link>
               </div>
             </div>
