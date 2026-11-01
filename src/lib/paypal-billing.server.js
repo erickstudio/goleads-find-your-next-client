@@ -11,7 +11,6 @@ export const PAYPAL_SDK_BASE_URL = "https://www.paypal.com/sdk/js";
 export const REQUIRED_PAYPAL_WEBHOOK_EVENTS = [
   "BILLING.SUBSCRIPTION.ACTIVATED",
   "BILLING.SUBSCRIPTION.UPDATED",
-  "BILLING.SUBSCRIPTION.RE-ACTIVATED",
   "BILLING.SUBSCRIPTION.CANCELLED",
   "BILLING.SUBSCRIPTION.SUSPENDED",
   "BILLING.SUBSCRIPTION.EXPIRED",
@@ -39,21 +38,21 @@ export function getPayPalServerConfig(overrides = {}) {
   const env = rawEnv === "live" ? "live" : "sandbox";
 
   const secretClientId = String(
-    overrides.clientId ?? secrets.get("PAYPAL_CLIENT_ID") ?? ""
+    overrides.clientId ?? secrets.get(env === "live" ? "PAYPAL_ID" : "PAYPAL_ID_TEST") ?? secrets.get("PAYPAL_CLIENT_ID") ?? ""
   ).trim();
-  const clientId = secretClientId || DEFAULT_PAYPAL_PUBLIC_CLIENT_ID;
+  const clientId = secretClientId || (env === "live" ? DEFAULT_PAYPAL_PUBLIC_CLIENT_ID : "");
 
   const clientSecret = String(
-    overrides.clientSecret ?? secrets.get("PAYPAL_CLIENT_SECRET") ?? ""
+    overrides.clientSecret ?? secrets.get(env === "live" ? "PAYPAL_SECRET" : "PAYPAL_SECRET_TEST") ?? (env === "live" ? secrets.get("PAYPAYL_SECRET") : undefined) ?? secrets.get("PAYPAL_CLIENT_SECRET") ?? ""
   ).trim();
 
   const secretPlanId = String(
-    overrides.planId ?? secrets.get("PAYPAL_PLAN_ID") ?? ""
+    overrides.planId ?? (env === "sandbox" ? secrets.get("PAYPAL_PLAN_ID_TEST") : undefined) ?? secrets.get("PAYPAL_PLAN_ID") ?? ""
   ).trim();
-  const planId = secretPlanId || DEFAULT_PAYPAL_PLAN_ID;
+  const planId = secretPlanId || (env === "live" ? DEFAULT_PAYPAL_PLAN_ID : "");
 
   const webhookId = String(
-    overrides.webhookId ?? secrets.get("PAYPAL_WEBHOOK_ID") ?? ""
+    overrides.webhookId ?? (env === "sandbox" ? secrets.get("PAYPAL_WEBHOOK_ID_TEST") : undefined) ?? secrets.get("PAYPAL_WEBHOOK_ID") ?? ""
   ).trim();
 
   const rawAllowance = String(
@@ -63,21 +62,21 @@ export function getPayPalServerConfig(overrides = {}) {
   ).trim();
   const parsedAllowance = rawAllowance ? Number(rawAllowance) : NaN;
   const hasConfiguredAllowance =
-    Number.isFinite(parsedAllowance) && parsedAllowance > 0;
+    Number.isSafeInteger(parsedAllowance) && parsedAllowance >= 1;
 
   const missingSecrets = [];
   if (!secretClientId) {
     missingSecrets.push({
-      name: "PAYPAL_CLIENT_ID",
+      name: env === "sandbox" ? "PAYPAL_ID_TEST" : "PAYPAL_ID",
       required: false,
-      status: "using_default_button_client_id",
+      status: clientId ? "using_default_button_client_id" : "missing",
       description:
         "Client ID público de la app REST de PayPal (actualmente usando el Client ID del botón proporcionado; configúralo en Secretos si usas una app Sandbox distinta).",
     });
   }
   if (!clientSecret) {
     missingSecrets.push({
-      name: "PAYPAL_CLIENT_SECRET",
+      name: env === "sandbox" ? "PAYPAL_SECRET_TEST" : "PAYPAL_SECRET",
       required: true,
       status: "missing",
       description:
@@ -86,15 +85,15 @@ export function getPayPalServerConfig(overrides = {}) {
   }
   if (!secretPlanId) {
     missingSecrets.push({
-      name: "PAYPAL_PLAN_ID",
+      name: env === "sandbox" ? "PAYPAL_PLAN_ID_TEST" : "PAYPAL_PLAN_ID",
       required: false,
-      status: "using_default_button_plan_id",
-      description: `ID del plan de suscripción en PayPal (actualmente usando ${DEFAULT_PAYPAL_PLAN_ID}).`,
+      status: planId ? "using_default_button_plan_id" : "missing",
+      description: planId ? `ID del plan en PayPal (${planId}).` : "Crea un plan Sandbox y registra su ID. Los planes Live no funcionan en Sandbox.",
     });
   }
   if (!webhookId) {
     missingSecrets.push({
-      name: "PAYPAL_WEBHOOK_ID",
+      name: env === "sandbox" ? "PAYPAL_WEBHOOK_ID_TEST" : "PAYPAL_WEBHOOK_ID",
       required: true,
       status: "missing",
       description:
@@ -191,6 +190,7 @@ export async function fetchPayPalAccessToken(config, fetchImpl = fetch) {
   try {
     const res = await fetchImpl(`${config.apiBaseUrl}/v1/oauth2/token`, {
       method: "POST",
+      signal: AbortSignal.timeout(15_000),
       headers: {
         Authorization: `Basic ${basicAuth}`,
         "Content-Type": "application/x-www-form-urlencoded",
@@ -256,6 +256,7 @@ export async function fetchPayPalPlanDetails(
       `${config.apiBaseUrl}/v1/billing/plans/${encodeURIComponent(config.planId)}`,
       {
         method: "GET",
+      signal: AbortSignal.timeout(15_000),
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/json",
@@ -361,6 +362,7 @@ export async function fetchPayPalSubscriptionDetails(
     )}`,
     {
       method: "GET",
+      signal: AbortSignal.timeout(15_000),
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: "application/json",
@@ -420,24 +422,11 @@ export function computeFallbackPeriodEndIso(
  * Determines whether a PayPalSubscription record currently grants active search allowance.
  * A cancelled subscription continues to grant its already-paid allowance until current_period_end_iso.
  */
-export function isPayPalSubscriptionAllowanceActive(
-  sub,
-  nowMs = Date.now()
-) {
-  if (!sub) return false;
-  const allowedStatuses = new Set(["active", "trialing", "cancelled"]);
-  if (!allowedStatuses.has(sub.status)) return false;
-
-  if (sub.current_period_end_iso) {
-    const endMs = new Date(sub.current_period_end_iso).getTime();
-    if (!Number.isNaN(endMs) && endMs <= nowMs) {
-      return false;
-    }
-  } else if (sub.status === "cancelled") {
-    // If cancelled without a confirmed future period end, do not grant active access
-    return false;
-  }
-
+export function isPayPalSubscriptionAllowanceActive(sub, nowMs = Date.now()) {
+  if (!sub || !["active", "trialing", "cancelled"].includes(sub.status)) return false;
+  if (!sub.verified_at_iso || !sub.paypal_subscription_id) return false;
+  const endMs = Date.parse(sub.current_period_end_iso || "");
+  if (!Number.isFinite(endMs) || endMs <= nowMs) return false;
   return (Number(sub.granted_search_allowance) || 0) > 0;
 }
 
@@ -474,8 +463,7 @@ export async function reconcilePayPalSubscriptionForUser({
   const existingWithSubId = bySubIdPage?.items || [];
   const foreignRecord = existingWithSubId.find(
     (rec) =>
-      (rec.owner_id && rec.owner_id !== userId) ||
-      (rec.created_by_id && rec.created_by_id !== userId)
+      rec.owner_id !== userId
   );
   if (foreignRecord) {
     return {
@@ -491,9 +479,7 @@ export async function reconcilePayPalSubscriptionForUser({
   // 2. Verify enrollmentRecord ownership
   if (
     !enrollmentRecord ||
-    enrollmentRecord.owner_id !== userId ||
-    (enrollmentRecord.created_by_id &&
-      enrollmentRecord.created_by_id !== userId)
+    enrollmentRecord.owner_id !== userId
   ) {
     return {
       ok: false,
@@ -604,14 +590,12 @@ export async function reconcilePayPalSubscriptionForUser({
     enrollmentRecord.billing_interval_count ||
     1;
 
-  const periodEndIso =
-    nextBillingTime ||
-    enrollmentRecord.current_period_end_iso ||
-    computeFallbackPeriodEndIso(startTime, intervalUnit, intervalCount);
-
-  const cycleKey = `${remoteId}:${
-    lastPayment?.time || startTime
-  }:${periodEndIso}`;
+  // Entitlement dates must be confirmed; a webhook receipt time is not a billing period.
+  const periodEndIso = nextBillingTime || enrollmentRecord.current_period_end_iso || "";
+  const validPeriod = Number.isFinite(Date.parse(periodEndIso)) && Date.parse(periodEndIso) > Date.parse(nowIso);
+  // Payment and activation notifications for the same period share one cycle identity.
+  const cycleKey = `${remoteId}:${periodEndIso}`;
+  const samePeriod = Boolean(periodEndIso && enrollmentRecord.current_period_end_iso && Date.parse(periodEndIso) === Date.parse(enrollmentRecord.current_period_end_iso));
 
   let internalStatus = "pending_approval";
   let grantedAllowance = Number(enrollmentRecord.granted_search_allowance) || 0;
@@ -619,7 +603,11 @@ export async function reconcilePayPalSubscriptionForUser({
   let cancelAtPeriodEnd = Boolean(enrollmentRecord.cancel_at_period_end);
   let statusNote = "";
 
-  if (remoteStatus === "ACTIVE") {
+  if (remoteStatus === "ACTIVE" && !validPeriod) {
+    internalStatus = "approval_pending_verification";
+    grantedAllowance = 0;
+    statusNote = "PayPal todavía no confirma un periodo vigente de facturación. No se concedió cuota.";
+  } else if (remoteStatus === "ACTIVE") {
     internalStatus = isTrialPeriod ? "trialing" : "active";
     cancelAtPeriodEnd = false;
     // Grant or refresh cycle allowance only if this cycle has not been credited yet
@@ -630,7 +618,7 @@ export async function reconcilePayPalSubscriptionForUser({
       grantedAllowance = config.effectiveCycleAllowance;
       if (
         enrollmentRecord.current_cycle_id &&
-        enrollmentRecord.current_cycle_id !== cycleKey
+        enrollmentRecord.current_cycle_id !== cycleKey && !samePeriod
       ) {
         usedSearches = 0;
       }
@@ -647,7 +635,7 @@ export async function reconcilePayPalSubscriptionForUser({
     internalStatus = "cancelled";
     cancelAtPeriodEnd = true;
     const stillInPaidPeriod =
-      periodEndIso && new Date(periodEndIso).getTime() > Date.now();
+      periodEndIso && new Date(periodEndIso).getTime() > Date.parse(nowIso);
     statusNote = stillInPaidPeriod
       ? `Suscripción cancelada en PayPal. Conservas tu acceso y búsquedas restantes hasta el final del periodo ya pagado (${periodEndIso.slice(
           0,
@@ -710,7 +698,7 @@ export async function reconcilePayPalSubscriptionForUser({
   );
 
   const isGranted =
-    internalStatus === "active" || internalStatus === "trialing";
+    validPeriod && (internalStatus === "active" || internalStatus === "trialing");
 
   return {
     ok: true,
@@ -791,6 +779,7 @@ export async function verifyPayPalWebhookSignature({
     return {
       valid: false,
       reason: tokenRes.message,
+      retryable: true,
     };
   }
 
@@ -798,6 +787,7 @@ export async function verifyPayPalWebhookSignature({
     `${config.apiBaseUrl}/v1/notifications/verify-webhook-signature`,
     {
       method: "POST",
+      signal: AbortSignal.timeout(15_000),
       headers: {
         Authorization: `Bearer ${tokenRes.accessToken}`,
         "Content-Type": "application/json",
@@ -819,6 +809,7 @@ export async function verifyPayPalWebhookSignature({
   if (!verifyRes.ok || verifyData?.verification_status !== "SUCCESS") {
     return {
       valid: false,
+      retryable: !verifyRes.ok,
       reason:
         verifyData?.message ||
         `PayPal verify-webhook-signature returned '${
@@ -838,404 +829,68 @@ export async function verifyPayPalWebhookSignature({
  * renewals without duplicate credits, and cancellations without wiping paid periods.
  */
 export async function processVerifiedPayPalWebhookEvent({
-  serviceRoleBase44,
-  event,
-  config,
-  nowIso = new Date().toISOString(),
+  serviceRoleBase44, event, config, nowIso = new Date().toISOString(), fetchImpl = fetch,
 }) {
   const eventId = String(event?.id || "").trim();
   const eventType = String(event?.event_type || "").trim();
-  const eventCreateTime = String(event?.create_time || nowIso).trim();
-  const resource = event?.resource || {};
+  if (!eventId || !eventType) throw new Error("Invalid PayPal webhook event.");
+  const existing = await serviceRoleBase44.entities.PayPalWebhookEvent.filter({ paypal_event_id: eventId }, { limit: 1 });
+  if (existing?.items?.length) return { received: true, duplicate: true, outcome: existing.items[0].processing_outcome };
 
-  if (!eventId || !eventType) {
-    throw new Error("Invalid PayPal webhook payload: missing id or event_type.");
-  }
-
-  // 1. Idempotency check against PayPalWebhookEvent
-  const existingEventsPage =
-    await serviceRoleBase44.entities.PayPalWebhookEvent.filter(
-      { paypal_event_id: eventId },
-      { limit: 1 }
-    );
-  const existingEvent = existingEventsPage?.items?.[0];
-  if (existingEvent) {
-    return {
-      received: true,
-      duplicate: true,
-      paypal_event_id: eventId,
-      previous_outcome: existingEvent.processing_outcome,
-    };
-  }
-
-  // Extract subscription ID and custom_id from either subscription or sale resource
-  const isSaleEvent = eventType.startsWith("PAYMENT.SALE.");
-  const subscriptionId = String(
-    isSaleEvent
-      ? resource.billing_agreement_id || ""
-      : resource.id || ""
-  ).trim();
-  const customId = String(
-    resource.custom_id || resource.custom || ""
-  ).trim();
-
-  // Locate matching PayPalSubscription record
-  let subRecord = null;
+  const resource = event.resource || {};
+  const isSale = eventType.startsWith("PAYMENT.SALE.");
+  const subscriptionId = String(isSale ? resource.billing_agreement_id || "" : resource.id || "").trim();
+  const customId = String(resource.custom_id || resource.custom || "").trim();
+  let record = null;
   if (subscriptionId) {
-    const bySubPage =
-      await serviceRoleBase44.entities.PayPalSubscription.filter(
-        { paypal_subscription_id: subscriptionId },
-        { limit: 5 }
-      );
-    subRecord = bySubPage?.items?.[0] || null;
+    const found = await serviceRoleBase44.entities.PayPalSubscription.filter({ paypal_subscription_id: subscriptionId }, { limit: 5 });
+    record = found?.items?.[0] || null;
   }
-  if (!subRecord && customId) {
-    const byCustomPage =
-      await serviceRoleBase44.entities.PayPalSubscription.filter(
-        { enrollment_reference: customId },
-        { limit: 5 }
-      );
-    subRecord = byCustomPage?.items?.[0] || null;
+  if (!record && customId) {
+    const found = await serviceRoleBase44.entities.PayPalSubscription.filter({ enrollment_reference: customId }, { limit: 5 });
+    record = found?.items?.[0] || null;
   }
-
-  // Out-of-order guard: if subscription record already processed a newer lifecycle event,
-  // do not allow an older event timestamp to overwrite current state
-  if (subRecord?.last_event_time_iso && eventCreateTime) {
-    const prevEventMs = new Date(subRecord.last_event_time_iso).getTime();
-    const currEventMs = new Date(eventCreateTime).getTime();
-    if (
-      !Number.isNaN(prevEventMs) &&
-      !Number.isNaN(currEventMs) &&
-      currEventMs < prevEventMs
-    ) {
-      await serviceRoleBase44.entities.PayPalWebhookEvent.create({
-        paypal_event_id: eventId,
-        event_type: eventType,
-        paypal_subscription_id: subscriptionId || "unmatched",
-        resource_id: String(resource.id || ""),
-        environment: config.env,
-        event_create_time_iso: eventCreateTime,
-        verification_status: "SUCCESS",
-        processing_outcome: "ignored_out_of_order",
-        processed_at_iso: nowIso,
-        notes: `Ignored out-of-order event (${eventCreateTime} < ${subRecord.last_event_time_iso}).`,
-      });
-      return {
-        received: true,
-        duplicate: false,
-        outOfOrder: true,
-        outcome: "ignored_out_of_order",
-        paypal_event_id: eventId,
-      };
-    }
-  }
-
-  const recordWebhookOutcome = async (outcome, notes = "") => {
+  const logOutcome = async (outcome, notes = "") => {
     await serviceRoleBase44.entities.PayPalWebhookEvent.create({
-      paypal_event_id: eventId,
-      event_type: eventType,
+      paypal_event_id: eventId, event_type: eventType,
       paypal_subscription_id: subscriptionId || "unmatched",
-      resource_id: String(resource.id || ""),
-      environment: config.env,
-      event_create_time_iso: eventCreateTime,
-      verification_status: "SUCCESS",
-      processing_outcome: outcome,
-      processed_at_iso: nowIso,
-      notes,
+      resource_id: String(resource.id || ""), environment: config.env,
+      event_create_time_iso: String(event.create_time || nowIso),
+      verification_status: "SUCCESS", processing_outcome: outcome,
+      processed_at_iso: nowIso, notes,
     });
   };
-
-  if (!subRecord) {
-    await recordWebhookOutcome(
-      "ignored_unhandled",
-      "No matching PayPalSubscription record found for subscriptionId/customId."
-    );
-    return {
-      received: true,
-      duplicate: false,
-      outcome: "ignored_unhandled",
-      reason: "subscription_not_found",
-    };
+  if (!REQUIRED_PAYPAL_WEBHOOK_EVENTS.includes(eventType)) {
+    await logOutcome("ignored_unhandled", "Event type is not used by this integration.");
+    return { received: true, outcome: "ignored_unhandled" };
   }
-
-  // Verify plan_id if present in event resource
-  if (resource.plan_id && resource.plan_id !== config.planId) {
-    await recordWebhookOutcome(
-      "ignored_unhandled",
-      `Event plan_id (${resource.plan_id}) does not match configured plan (${config.planId}).`
-    );
-    return {
-      received: true,
-      duplicate: false,
-      outcome: "ignored_unhandled",
-      reason: "plan_mismatch",
-    };
+  if (!record) {
+    // Leave unmatched notifications retryable: checkout creation can still be in flight.
+    throw new Error("Subscription enrollment is not available yet.");
   }
-
-  // Case 1: Activation / Re-activation / Update
-  if (
-    eventType === "BILLING.SUBSCRIPTION.ACTIVATED" ||
-    eventType === "BILLING.SUBSCRIPTION.RE-ACTIVATED" ||
-    eventType === "BILLING.SUBSCRIPTION.UPDATED"
-  ) {
-    const startTime =
-      resource.start_time || subRecord.current_period_start_iso || eventCreateTime;
-    const nextBillingTime =
-      resource.billing_info?.next_billing_time ||
-      subRecord.current_period_end_iso ||
-      computeFallbackPeriodEndIso(
-        startTime,
-        subRecord.billing_interval_unit || "MONTH",
-        subRecord.billing_interval_count || 1
-      );
-    const lastPaymentTime =
-      resource.billing_info?.last_payment?.time || startTime;
-    const cycleId = `cycle:${subscriptionId || subRecord.paypal_subscription_id}:${nextBillingTime}`;
-
-    const isNewCycle = subRecord.current_cycle_id !== cycleId;
-    const nextAllowance =
-      isNewCycle || (Number(subRecord.granted_search_allowance) || 0) === 0
-        ? config.effectiveCycleAllowance
-        : subRecord.granted_search_allowance;
-    const nextUsed = isNewCycle && subRecord.current_cycle_id
-      ? 0
-      : Number(subRecord.used_subscription_searches) || 0;
-
-    subRecord = await serviceRoleBase44.entities.PayPalSubscription.update(
-      subRecord.id,
-      {
-        paypal_subscription_id:
-          subscriptionId || subRecord.paypal_subscription_id,
-        status: "active",
-        paypal_raw_status: String(resource.status || "ACTIVE"),
-        cancel_at_period_end: false,
-        commercial_limits_status: config.commercialLimitsStatus,
-        granted_search_allowance: nextAllowance,
-        used_subscription_searches: nextUsed,
-        current_cycle_id: cycleId,
-        current_period_start_iso: startTime,
-        current_period_end_iso: nextBillingTime,
-        last_payment_at_iso:
-          lastPaymentTime || subRecord.last_payment_at_iso || "",
-        last_webhook_event_id: eventId,
-        last_event_time_iso: eventCreateTime,
-        verified_at_iso: subRecord.verified_at_iso || nowIso,
-        status_note: `Suscripción activa confirmada por webhook ${eventType} (${eventId}).`,
-      }
-    );
-
-    await recordWebhookOutcome(
-      "processed_activated",
-      `Activated subscription ${subRecord.id} with allowance ${nextAllowance}.`
-    );
-
-    return {
-      received: true,
-      duplicate: false,
-      outcome: "processed_activated",
-      subscription: subRecord,
-    };
+  if (record.paypal_environment !== config.env || record.paypal_plan_id !== config.planId ||
+      (customId && customId !== record.enrollment_reference)) {
+    await logOutcome("ignored_unhandled", "Subscription environment, plan or reference mismatch.");
+    return { received: true, outcome: "ignored_unhandled" };
   }
-
-  // Case 2: Completed Payment / Renewal (PAYMENT.SALE.COMPLETED)
-  if (eventType === "PAYMENT.SALE.COMPLETED") {
-    const saleId = String(resource.id || eventId).trim();
-    const saleAmount =
-      resource.amount?.total || resource.amount?.value || subRecord.billing_amount || "";
-    const saleCurrency =
-      resource.amount?.currency ||
-      resource.amount?.currency_code ||
-      subRecord.billing_currency ||
-      "USD";
-
-    // Prevent duplicate renewal credits if the same sale or initial activation cycle already credited
-    const saleCycleKey = `sale:${saleId}`;
-    if (subRecord.current_cycle_id === saleCycleKey) {
-      await recordWebhookOutcome(
-        "ignored_duplicate",
-        `Sale ${saleId} already credited on subscription ${subRecord.id}.`
-      );
-      return {
-        received: true,
-        duplicate: true,
-        outcome: "ignored_duplicate",
-        subscription: subRecord,
-      };
-    }
-
-    const nextPeriodEndIso = computeFallbackPeriodEndIso(
-      eventCreateTime,
-      subRecord.billing_interval_unit || "MONTH",
-      subRecord.billing_interval_count || 1
-    );
-
-    subRecord = await serviceRoleBase44.entities.PayPalSubscription.update(
-      subRecord.id,
-      {
-        status: "active",
-        paypal_raw_status: "ACTIVE",
-        cancel_at_period_end: false,
-        billing_amount: String(saleAmount || subRecord.billing_amount || ""),
-        billing_currency: String(saleCurrency),
-        commercial_limits_status: config.commercialLimitsStatus,
-        granted_search_allowance: config.effectiveCycleAllowance,
-        used_subscription_searches: 0,
-        current_cycle_id: saleCycleKey,
-        current_period_start_iso: eventCreateTime,
-        current_period_end_iso: nextPeriodEndIso,
-        last_payment_at_iso: eventCreateTime,
-        last_payment_amount: String(saleAmount),
-        last_webhook_event_id: eventId,
-        last_event_time_iso: eventCreateTime,
-        verified_at_iso: subRecord.verified_at_iso || nowIso,
-        status_note: `Pago/renovación confirmado (${saleId}). Cupo del nuevo periodo renovado a ${config.effectiveCycleAllowance} búsquedas hasta ${nextPeriodEndIso.slice(
-          0,
-          10
-        )}.`,
-      }
-    );
-
-    await recordWebhookOutcome(
-      "processed_payment",
-      `Processed renewal sale ${saleId} for subscription ${subRecord.id}.`
-    );
-
-    return {
-      received: true,
-      duplicate: false,
-      outcome: "processed_payment",
-      subscription: subRecord,
-    };
-  }
-
-  // Case 3: Cancellation (BILLING.SUBSCRIPTION.CANCELLED)
-  // Does NOT wipe out an already-paid period; keeps current_period_end_iso and remaining allowance intact!
-  if (eventType === "BILLING.SUBSCRIPTION.CANCELLED") {
-    const periodEnd = subRecord.current_period_end_iso || "";
-    const hasRemainingPaidWindow =
-      periodEnd && new Date(periodEnd).getTime() > Date.now();
-
-    subRecord = await serviceRoleBase44.entities.PayPalSubscription.update(
-      subRecord.id,
-      {
-        status: "cancelled",
-        paypal_raw_status: "CANCELLED",
-        cancel_at_period_end: true,
-        cancelled_at_iso: eventCreateTime,
-        last_webhook_event_id: eventId,
-        last_event_time_iso: eventCreateTime,
-        status_note: hasRemainingPaidWindow
-          ? `Suscripción cancelada (${eventId}). Tu periodo ya pagado sigue activo hasta ${periodEnd.slice(
-              0,
-              10
-            )} sin cargos futuros.`
-          : `Suscripción cancelada (${eventId}).`,
-      }
-    );
-
-    await recordWebhookOutcome(
-      "processed_cancelled",
-      `Marked subscription ${subRecord.id} cancelled while preserving paid period until ${periodEnd || "n/a"}.`
-    );
-
-    return {
-      received: true,
-      duplicate: false,
-      outcome: "processed_cancelled",
-      subscription: subRecord,
-    };
-  }
-
-  // Case 4: Suspension (BILLING.SUBSCRIPTION.SUSPENDED)
-  if (eventType === "BILLING.SUBSCRIPTION.SUSPENDED") {
-    subRecord = await serviceRoleBase44.entities.PayPalSubscription.update(
-      subRecord.id,
-      {
-        status: "suspended",
-        paypal_raw_status: "SUSPENDED",
-        last_webhook_event_id: eventId,
-        last_event_time_iso: eventCreateTime,
-        status_note: `Suscripción suspendida en PayPal (${eventId}).`,
-      }
-    );
-
-    await recordWebhookOutcome(
-      "processed_suspended",
-      `Suspended subscription ${subRecord.id}.`
-    );
-
-    return {
-      received: true,
-      duplicate: false,
-      outcome: "processed_suspended",
-      subscription: subRecord,
-    };
-  }
-
-  // Case 5: Expiration (BILLING.SUBSCRIPTION.EXPIRED)
-  if (eventType === "BILLING.SUBSCRIPTION.EXPIRED") {
-    subRecord = await serviceRoleBase44.entities.PayPalSubscription.update(
-      subRecord.id,
-      {
-        status: "expired",
-        paypal_raw_status: "EXPIRED",
-        granted_search_allowance: 0,
-        last_webhook_event_id: eventId,
-        last_event_time_iso: eventCreateTime,
-        status_note: `Suscripción expirada en PayPal (${eventId}).`,
-      }
-    );
-
-    await recordWebhookOutcome(
-      "processed_expired",
-      `Expired subscription ${subRecord.id}.`
-    );
-
-    return {
-      received: true,
-      duplicate: false,
-      outcome: "processed_expired",
-      subscription: subRecord,
-    };
-  }
-
-  // Case 6: Payment Failed (BILLING.SUBSCRIPTION.PAYMENT.FAILED / PAYMENT.SALE.DENIED)
-  if (
-    eventType === "BILLING.SUBSCRIPTION.PAYMENT.FAILED" ||
-    eventType === "PAYMENT.SALE.DENIED"
-  ) {
-    subRecord = await serviceRoleBase44.entities.PayPalSubscription.update(
-      subRecord.id,
-      {
-        status: "payment_failed",
-        paypal_raw_status: "PAYMENT_FAILED",
-        granted_search_allowance: 0,
-        last_webhook_event_id: eventId,
-        last_event_time_iso: eventCreateTime,
-        status_note: `Pago de suscripción fallido en PayPal (${eventId}). Revisa tu método de pago para reactivar tu plan.`,
-      }
-    );
-
-    await recordWebhookOutcome(
-      "processed_payment_failed",
-      `Recorded failed payment on subscription ${subRecord.id}.`
-    );
-
-    return {
-      received: true,
-      duplicate: false,
-      outcome: "processed_payment_failed",
-      subscription: subRecord,
-    };
-  }
-
-  await recordWebhookOutcome(
-    "ignored_unhandled",
-    `Unhandled event type ${eventType}.`
-  );
-  return {
-    received: true,
-    duplicate: false,
-    outcome: "ignored_unhandled",
-  };
+  const remote = await fetchPayPalSubscriptionDetails(config, subscriptionId || record.paypal_subscription_id, null, fetchImpl);
+  if (!remote.ok || !remote.subscription) throw new Error("Could not reconcile the PayPal subscription. Retry delivery.");
+  const result = await reconcilePayPalSubscriptionForUser({
+    serviceRoleBase44, userId: record.owner_id, enrollmentRecord: record,
+    remoteSubscription: remote.subscription, planDetails: null, config, nowIso,
+  });
+  if (!result.ok) throw new Error("Subscription ownership or plan verification failed.");
+  const status = result.subscriptionRecord.status;
+  const outcome = status === "cancelled" ? "processed_cancelled"
+    : status === "suspended" ? "processed_suspended"
+    : status === "expired" ? "processed_expired"
+    : eventType === "PAYMENT.SALE.COMPLETED" ? "processed_payment"
+    : eventType.includes("FAILED") || eventType.includes("DENIED") ? "processed_payment_failed"
+    : "processed_activated";
+  await serviceRoleBase44.entities.PayPalSubscription.update(record.id, {
+    last_webhook_event_id: eventId, last_event_time_iso: String(event.create_time || nowIso),
+  });
+  await logOutcome(outcome, "Reconciled against the current subscription returned by PayPal.");
+  // No subscription record or customer details are returned to a public caller.
+  return { received: true, duplicate: false, outcome };
 }
