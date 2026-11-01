@@ -1,19 +1,28 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, ArrowDown, ScanLine } from "lucide-react";
+import { ArrowRight, ArrowDown } from "lucide-react";
 import { usePublicLocale } from "@/lib/PublicLocaleContext";
 
 export default function LaunchHero() {
   const { copy } = usePublicLocale();
   return (
-    <section className="signal-hero relative isolate overflow-hidden px-5 pb-16 pt-20 sm:px-8 sm:pb-20 sm:pt-28">
-      <div aria-hidden="true" className="signal-orbit pointer-events-none absolute inset-0 -z-10" />
-      <div className="mx-auto max-w-5xl text-center">
-        <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/8 px-4 py-2 text-[10px] font-semibold tracking-widest text-primary sm:text-xs"><ScanLine className="h-3.5 w-3.5" />{copy.beta}</span>
-        <h1 className="mx-auto mt-8 max-w-5xl font-display text-4xl font-semibold leading-[1.08] tracking-tight sm:text-7xl lg:text-8xl"><span className="block">{copy.headline}</span><span className="mt-1 block text-primary">{copy.headlineAccent}</span></h1>
-        <p className="mx-auto mt-7 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">{copy.intro}</p>
-        <div className="mt-9 flex flex-col items-center gap-5 sm:flex-row sm:justify-center sm:gap-8"><Link to="/app" className="inline-flex min-h-12 items-center justify-center gap-3 rounded-xl bg-brand px-7 py-3.5 text-sm font-semibold text-brand-foreground shadow-lg shadow-brand/20 transition-colors hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{copy.cta}<ArrowRight className="h-4 w-4" /></Link><a href="#product-preview" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">{copy.previewLink}<ArrowDown className="h-3.5 w-3.5" /></a></div>
-        <p className="mx-auto mt-5 max-w-lg text-xs leading-relaxed text-muted-foreground">{copy.ctaNote}</p>
-        <p className="mt-12 text-[11px] font-medium uppercase tracking-widest text-muted-foreground">{copy.audience}</p>
+    <section className="border-b border-border bg-background px-5 py-16 sm:px-8 sm:py-20">
+      <div className="mx-auto max-w-6xl">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">{copy.beta}</p>
+        <div className="mt-7 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-16">
+          <h1 className="max-w-2xl font-display text-4xl font-semibold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl">
+            <span className="block">{copy.headline}</span>
+            <span className="mt-3 block text-primary">{copy.headlineAccent}</span>
+          </h1>
+          <div className="max-w-lg pb-1">
+            <p className="text-base leading-8 text-muted-foreground sm:text-lg">{copy.intro}</p>
+            <div className="mt-7 flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:gap-7">
+              <Link to="/app" className="inline-flex min-h-12 items-center justify-center gap-3 rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-brand-foreground transition-colors hover:bg-brand/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">{copy.cta}<ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
+              <a href="#product-preview" className="inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground hover:text-foreground">{copy.previewLink}<ArrowDown className="h-3.5 w-3.5" aria-hidden="true" /></a>
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">{copy.ctaNote}</p>
+            <p className="mt-7 border-t border-border pt-5 text-xs leading-relaxed text-muted-foreground">{copy.audience}</p>
+          </div>
+        </div>
       </div>
     </section>
   );
