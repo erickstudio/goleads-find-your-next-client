@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth-middleware";
-import { getPayPalServerConfig, isPayPalSubscriptionAllowanceActive } from "@/lib/paypal-billing.server";
+import { getPayPalServerConfig } from "@/lib/paypal-billing.server";
+import { isPayPalSubscriptionAllowanceActive } from "@/lib/subscription-access";
 import {
   SEARCH_LIMITS,
   buildQueryCacheKey,
