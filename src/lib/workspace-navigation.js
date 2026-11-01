@@ -1,4 +1,4 @@
-import { Search, Bookmark, Send, Library, History, MessageSquare, ChartNoAxesCombined, Gauge, BriefcaseBusiness, Bot, Settings, FlaskConical } from "lucide-react";
+import { Search, Bookmark, Send, Library, History, MessageSquare, ChartNoAxesCombined, Gauge, BriefcaseBusiness, Bot, Settings } from "lucide-react";
 
 export const workspaceGroups = [
   { key: "prospecting", items: [
@@ -17,6 +17,5 @@ export const workspaceGroups = [
     { to: "/onboarding", key: "services", icon: BriefcaseBusiness },
     { to: "/agent-settings", key: "agents", icon: Bot },
     { to: "/settings", key: "settings", icon: Settings },
-    { to: "/pilot", key: "pilot", icon: FlaskConical },
   ] },
 ];
