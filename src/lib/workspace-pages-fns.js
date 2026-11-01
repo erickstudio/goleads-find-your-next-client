@@ -25,6 +25,7 @@ export const getExtendedWorkspaceData = createServerFn({ method: "GET" })
       savedPage,
       feedbackPage,
       enrollmentsPage,
+      subsPage,
     ] = await Promise.all([
       base44.entities.UserProfile.filter(
         { created_by_id: userId },
@@ -55,7 +56,7 @@ export const getExtendedWorkspaceData = createServerFn({ method: "GET" })
         { sort: "-created_date", limit: 20 }
       ),
       base44.entities.PayPalSubscription.filter(
-        { created_by_id: userId },
+        { owner_id: userId },
         { sort: "-created_date", limit: 20 }
       ),
     ]);
@@ -76,7 +77,7 @@ export const getExtendedWorkspaceData = createServerFn({ method: "GET" })
     const savedOpportunities = filterOwned(savedPage?.items, userId);
     const feedbackRecords = filterOwned(feedbackPage?.items, userId);
     const pilotEnrollments = filterOwned(enrollmentsPage?.items, userId);
-    const paypalSubscriptions = filterOwned(subsPage?.items, userId);
+    const paypalSubscriptions = (subsPage?.items || []).filter((sub) => sub.owner_id === userId);
 
     const quota = computeQuotaUsage(
       recentSearches,
