@@ -8,7 +8,7 @@ export default function LaunchHero() {
     <section className="border-b border-border bg-background px-5 py-16 sm:px-8 sm:py-20">
       <div className="mx-auto max-w-6xl">
         <p className="text-[11px] font-semibold uppercase tracking-widest text-primary">{copy.beta}</p>
-        <div className="mt-7 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-end lg:gap-16">
+        <div className="mt-7 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-start lg:gap-16">
           <h1 className="max-w-2xl font-display text-4xl font-semibold leading-[1.12] tracking-tight sm:text-5xl lg:text-6xl">
             <span className="block">{copy.headline}</span>
             <span className="mt-3 block text-primary">{copy.headlineAccent}</span>
