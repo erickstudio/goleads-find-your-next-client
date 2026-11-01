@@ -121,6 +121,8 @@ function PlansAndSubscriptionScreen() {
       : "Plans & Subscription — goleads.app";
   }, [isEs]);
 
+  const checkoutReady = paypalConfig.canAuthenticateWithPayPal && paypalConfig.hasWebhookId && planVerification.ok && remotePlan?.status === "ACTIVE" && (paypalConfig.env === "sandbox" || paypalConfig.hasConfiguredAllowance);
+
   const hasActiveOrTrialSub =
     activeSub && ["active", "trialing"].includes(activeSub.status);
 
@@ -615,21 +617,21 @@ function PlansAndSubscriptionScreen() {
                 <ShieldAlert className="h-4 w-4 shrink-0" />
                 <span>
                   {isEs
-                    ? "Verificación de servidor pendiente de credenciales"
-                    : "Server verification awaiting credentials"}
+                    ? "Configuración del plan pendiente"
+                    : "Plan configuration pending"}
                 </span>
               </div>
               <p className="leading-relaxed">{planVerification.message}</p>
               <p className="text-[11px] opacity-90">
                 {isEs
-                  ? "No se deduce precio, moneda ni frecuencia del código del botón: el servidor los consulta directamente en PayPal una vez configures PAYPAL_CLIENT_SECRET."
-                  : "Price, currency, and billing interval are never deduced from button code: the server queries them directly from PayPal once PAYPAL_CLIENT_SECRET is set."}
+                  ? "El precio, la moneda y la frecuencia se consultan en PayPal después de configurar un plan del mismo entorno que las credenciales."
+                  : "The price, currency and billing interval are read from PayPal after a plan is configured in the same environment as the credentials."}
               </p>
             </div>
           )}
 
-          {/* PayPal Subscription Button */}
-          {hasActiveOrTrialSub ? (
+          {/* The SDK is loaded only after the plan and webhook are ready. */}
+          {!checkoutReady && !hasActiveOrTrialSub ? <div role="status" className="rounded-lg border border-border bg-secondary/30 p-4 text-sm text-muted-foreground">{isEs ? "La suscripción estará disponible al completar el plan y el webhook de PayPal. No se ha iniciado ningún pago." : "Subscriptions will be available after the PayPal plan and webhook are configured. No payment has started."}</div> : hasActiveOrTrialSub ? (
             <div className="rounded-lg border border-emerald-500/35 bg-emerald-500/10 p-4 text-xs text-emerald-800 dark:text-emerald-200 space-y-1">
               <div className="font-semibold">
                 {isEs
@@ -703,13 +705,13 @@ function PlansAndSubscriptionScreen() {
             </div>
           </div>
           <div className="p-3 rounded-lg bg-secondary/50 border border-border">
-            <div className="text-muted-foreground">PAYPAL_CLIENT_ID</div>
+            <div className="text-muted-foreground">{paypalConfig.env === "sandbox" ? "PAYPAL_ID_TEST" : "PAYPAL_ID"}</div>
             <div className="font-mono font-semibold text-foreground mt-0.5 truncate" title={paypalConfig.clientId}>
               {paypalConfig.clientId?.slice(0, 16)}…
             </div>
           </div>
           <div className="p-3 rounded-lg bg-secondary/50 border border-border">
-            <div className="text-muted-foreground">PAYPAL_CLIENT_SECRET</div>
+            <div className="text-muted-foreground">{paypalConfig.env === "sandbox" ? "PAYPAL_SECRET_TEST" : "PAYPAL_SECRET"}</div>
             <div
               className={`font-semibold mt-0.5 ${
                 paypalConfig.hasClientSecret
@@ -727,7 +729,7 @@ function PlansAndSubscriptionScreen() {
             </div>
           </div>
           <div className="p-3 rounded-lg bg-secondary/50 border border-border">
-            <div className="text-muted-foreground">PAYPAL_WEBHOOK_ID</div>
+            <div className="text-muted-foreground">{paypalConfig.env === "sandbox" ? "PAYPAL_WEBHOOK_ID_TEST" : "PAYPAL_WEBHOOK_ID"}</div>
             <div
               className={`font-semibold mt-0.5 ${
                 paypalConfig.hasWebhookId
