@@ -6,11 +6,17 @@ import { AuthError, AuthLink, GoogleButton, OrDivider, SubmitButton } from "@/co
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { safeReturnTo } from "@/lib/authReturnTo";
+import { useAuth } from "@/lib/AuthContext";
 import { usePreferences } from "@/lib/PreferencesContext";
 
 export function LoginPage() {
   const { t } = usePreferences();
   const returnTo = safeReturnTo();
+  const { isAuthenticated, isLoadingAuth } = useAuth();
+
+  useEffect(() => {
+    if (!isLoadingAuth && isAuthenticated) window.location.replace(returnTo);
+  }, [isAuthenticated, isLoadingAuth, returnTo]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
