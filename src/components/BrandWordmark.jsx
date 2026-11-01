@@ -11,8 +11,8 @@ export default function BrandWordmark({ size = "md", className = "" }) {
         <Image src={LIGHT_LOGO} alt="GoLeads" className="h-full w-full" fittingType="fit" />
       </span>
       <span className="hidden h-full w-full dark:block">
-        <Image src={DARK_LOGO} alt="GoLeads" className="h-full w-full" fittingType="fit" />
+        <Image src="https://media.base44.com/images/public/6ae63656edc313a907ad5680/12acd4060_2.png" alt="GoLeads" className="h-full w-full" fittingType="fit" />
       </span>
-    </span>
-  );
+    </span>);
+
 }
