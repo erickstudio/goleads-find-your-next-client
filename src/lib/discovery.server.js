@@ -368,13 +368,115 @@ function getDistinctiveTokens(text, minLen = 3) {
 }
 
 /**
+ * Queries the enabled Google Maps Places (New) connector to corroborate local business existence,
+ * physical address, and official website URL. Never substitutes for a dated opening announcement.
+ */
+export async function lookupGoogleLocalBusiness(base44, businessName, locationQuery) {
+  if (!base44?.asServiceRole?.connectors?.callApi || !businessName) {
+    return null;
+  }
+  const textQuery = `${String(businessName).trim()} ${String(locationQuery || "").trim()}`.trim();
+  if (textQuery.length < 3) return null;
+
+  try {
+    const callPromise = base44.asServiceRole.connectors.callApi("google_maps", {
+      method: "POST",
+      host: "places",
+      path: "/v1/places:searchText",
+      query: {
+        fields:
+          "places.id,places.displayName,places.formattedAddress,places.websiteUri,places.businessStatus,places.googleMapsUri",
+      },
+      body: {
+        textQuery,
+        maxResultCount: 1,
+      },
+    });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Google Places lookup timeout")), 4500)
+    );
+
+    const res = await Promise.race([callPromise, timeoutPromise]);
+    const place = res?.data?.places?.[0];
+    if (!place) return null;
+
+    const placeName = String(place?.displayName?.text || "").trim();
+    const bizTokens = getDistinctiveTokens(businessName, 3);
+    const placeLower = placeName.toLowerCase();
+    const tokenMatch =
+      bizTokens.length === 0 || bizTokens.some((tok) => placeLower.includes(tok));
+    if (!tokenMatch) return null;
+
+    return {
+      placeId: place.id || "",
+      displayName: placeName,
+      formattedAddress: place.formattedAddress || "",
+      websiteUri:
+        place.websiteUri && isSafePublicUrl(place.websiteUri) && !isDirectoryDomain(place.websiteUri)
+          ? place.websiteUri.trim()
+          : "",
+      businessStatus: place.businessStatus || "OPERATIONAL",
+      googleMapsUri:
+        place.googleMapsUri && isSafePublicUrl(place.googleMapsUri)
+          ? place.googleMapsUri.trim()
+          : "https://www.google.com/maps",
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Verifies a candidate against the actual recovered page content and checks whether
  * identity, location, opening/expansion event, and recency within timeWindowDays are supported.
+ * If the primary source is blocked (e.g. HTTP 403), an optional recoveredBackupPage can corroborate the event.
  */
-export function verifyCandidateWithRecoveredSource(candidate, recoveredPage, queryContext, nowDate = new Date()) {
+export function verifyCandidateWithRecoveredSource(
+  candidate,
+  recoveredPage,
+  queryContext,
+  nowDate = new Date(),
+  recoveredBackupPage = null
+) {
   const { locationQuery, timeWindowDays } = queryContext;
 
   if (!recoveredPage?.ok) {
+    // Check if an accessible alternative announcement source was provided and recovered
+    if (recoveredBackupPage?.ok) {
+      const backupCandidate = {
+        ...candidate,
+        source_title:
+          candidate.backup_source_title ||
+          recoveredBackupPage.extractedTitle ||
+          "Accessible corroborating source",
+        source_url: candidate.backup_source_url || recoveredBackupPage.finalUrl,
+      };
+      const backupVerified = verifyCandidateWithRecoveredSource(
+        backupCandidate,
+        recoveredBackupPage,
+        queryContext,
+        nowDate,
+        null
+      );
+      if (backupVerified.verification_status === "verified") {
+        return {
+          ...backupVerified,
+          blocked_primary_source: {
+            source_title: candidate.source_title || "Blocked source",
+            source_url: safePublicUrl(candidate.source_url) || "",
+            http_status: recoveredPage?.httpStatus || 403,
+            verification_notes:
+              recoveredPage?.reason ||
+              "Primary URL blocked automated reading; verified via accessible alternative source.",
+          },
+          verification_notes: `${backupVerified.verification_notes} (Primary URL returned HTTP ${
+            recoveredPage?.httpStatus || 403
+          } and was not read; event confirmed via accessible source "${backupVerified.source_title}").`,
+        };
+      }
+    }
+
     const baseReason =
       recoveredPage?.reason ||
       "Source content could not be retrieved directly to confirm business identity, location, and event.";
@@ -686,6 +788,7 @@ Strict retrieval rules:
  * with SSRF/untrusted-content protections, and classifies each into 'verified' vs 'needs_review'.
  */
 export async function verifyAndStructureCandidates({
+  base44 = null,
   rawCandidates,
   businessCategory,
   locationQuery,
@@ -716,10 +819,13 @@ export async function verifyAndStructureCandidates({
   const nowIso = nowDate.toISOString();
   const cleanServices = normalizeServicesList(selectedServices);
 
-  // Recover and verify each candidate source URL in parallel with bounded timeout
+  // Recover and verify each candidate source URL + Google Maps Local corroboration in parallel
   const verifiedItems = await Promise.all(
     uniqueCandidates.map(async (cand) => {
-      const recovered = await fetchUntrustedSourcePage(cand.source_url);
+      const [recovered, googleLocal] = await Promise.all([
+        fetchUntrustedSourcePage(cand.source_url),
+        lookupGoogleLocalBusiness(base44, cand.business_name, cand.location || locationQuery),
+      ]);
       const v = verifyCandidateWithRecoveredSource(
         cand,
         recovered,
@@ -750,13 +856,38 @@ export async function verifyAndStructureCandidates({
           cleanWebsite = "";
         }
       }
+      if (!cleanWebsite && googleLocal?.websiteUri) {
+        cleanWebsite = googleLocal.websiteUri;
+      }
+
+      const extraEvidenceItems = [];
+      if (googleLocal) {
+        extraEvidenceItems.push({
+          source_title: `Google Maps Places — ${googleLocal.displayName}`,
+          source_url: googleLocal.googleMapsUri,
+          supporting_excerpt: `${googleLocal.displayName} · ${googleLocal.formattedAddress} (${googleLocal.businessStatus})`,
+          publication_date: "",
+          event_date: "",
+          retrieval_date: nowIso,
+          recency_basis: v.recency_basis,
+          verification_status: v.verification_status,
+          verification_notes:
+            "Corroborated local business identity and address via Google Maps Places. Opening/expansion announcement is evaluated separately from the primary source.",
+          http_status: 200,
+          evidence_status: "corroborated_permit",
+        });
+      }
 
       const oppDraft = {
         business_name: String(cand.business_name || "").trim().slice(0, 200),
         business_category: String(cand.business_category || businessCategory || "")
           .trim()
           .slice(0, 160),
-        location: String(cand.location || locationQuery || "").trim().slice(0, 200),
+        location: String(
+          googleLocal?.formattedAddress || cand.location || locationQuery || ""
+        )
+          .trim()
+          .slice(0, 200),
         website_url: cleanWebsite,
         signal_type: String(cand.signal_type || "Opening / expansion signal")
           .trim()
@@ -778,6 +909,7 @@ export async function verifyAndStructureCandidates({
         evidence_status: v.evidence_status,
         http_status: v.http_status || 0,
         inferred_service_categories: cleanServices,
+        extra_evidence_items: extraEvidenceItems,
       };
 
       oppDraft.service_fit_inference = buildServiceFitHypothesis(

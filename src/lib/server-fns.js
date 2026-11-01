@@ -148,13 +148,34 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
     const latestLiveSearch =
       recentSearches.find((s) => s.status !== "not_configured") || null;
 
-    const oppsPage = await base44.entities.Opportunity.filter(
-      { created_by_id: userId },
-      { sort: "-created_date", limit: 50 }
+    const [oppsPage, evidencePage] = await Promise.all([
+      base44.entities.Opportunity.filter(
+        { created_by_id: userId },
+        { sort: "-created_date", limit: 50 }
+      ),
+      base44.entities.EvidenceItem.filter(
+        { created_by_id: userId },
+        { sort: "-created_date", limit: 100 }
+      ),
+    ]);
+    const ownedEvidence = (evidencePage?.items || []).filter(
+      (e) => e.created_by_id === userId && (!e.owner_id || e.owner_id === userId)
     );
-    const allUserOpportunities = (oppsPage?.items || []).filter(
-      (o) => o.created_by_id === userId && (!o.owner_id || o.owner_id === userId)
-    );
+    const evidenceByOppId = new Map();
+    for (const ev of ownedEvidence) {
+      if (!ev.opportunity_id) continue;
+      if (!evidenceByOppId.has(ev.opportunity_id)) {
+        evidenceByOppId.set(ev.opportunity_id, []);
+      }
+      evidenceByOppId.get(ev.opportunity_id).push(ev);
+    }
+
+    const allUserOpportunities = (oppsPage?.items || [])
+      .filter((o) => o.created_by_id === userId && (!o.owner_id || o.owner_id === userId))
+      .map((o) => ({
+        ...o,
+        evidence_items: evidenceByOppId.get(o.id) || [],
+      }));
 
     let latestOpportunities = [];
     if (latestLiveSearch) {
@@ -357,6 +378,7 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
 
         const { allOpportunities, verifiedCount, needsReviewCount } =
           await verifyAndStructureCandidates({
+            base44,
             rawCandidates: candidates,
             businessCategory,
             locationQuery,
@@ -391,7 +413,8 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
             service_fit_inference: oppDraft.service_fit_inference,
           });
 
-          await base44.entities.EvidenceItem.create({
+          const createdEvList = [];
+          const primaryEv = await base44.entities.EvidenceItem.create({
             owner_id: userId,
             opportunity_id: createdOpp.id,
             source_title: oppDraft.source_title,
@@ -406,8 +429,31 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
             http_status: oppDraft.http_status || 0,
             evidence_status: oppDraft.evidence_status,
           });
+          createdEvList.push(primaryEv);
 
-          savedOpportunityRecords.push(createdOpp);
+          for (const extraEv of oppDraft.extra_evidence_items || []) {
+            const savedExtra = await base44.entities.EvidenceItem.create({
+              owner_id: userId,
+              opportunity_id: createdOpp.id,
+              source_title: extraEv.source_title,
+              source_url: extraEv.source_url,
+              supporting_excerpt: extraEv.supporting_excerpt,
+              publication_date: extraEv.publication_date || "",
+              event_date: extraEv.event_date || "",
+              retrieval_date: extraEv.retrieval_date || oppDraft.retrieval_date,
+              recency_basis: extraEv.recency_basis || oppDraft.recency_basis,
+              verification_status: extraEv.verification_status || oppDraft.verification_status,
+              verification_notes: extraEv.verification_notes || "",
+              http_status: extraEv.http_status || 200,
+              evidence_status: extraEv.evidence_status || "corroborated_permit",
+            });
+            createdEvList.push(savedExtra);
+          }
+
+          savedOpportunityRecords.push({
+            ...createdOpp,
+            evidence_items: createdEvList,
+          });
         }
 
         const durationMs = Date.now() - startTime;
@@ -999,4 +1045,188 @@ export const clearOpportunityFeedback = createServerFn({ method: "POST" })
     }
 
     return { cleared: ownedList.length > 0, opportunity_id: data.opportunity_id };
+  });
+
+const activeUserBatchOps = new Map();
+
+export const batchDismissOpportunities = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .validator(
+    z.object({
+      opportunity_ids: z
+        .array(z.string().trim().min(1, "ID required").max(120, "ID too long"))
+        .min(1, "Select at least one opportunity")
+        .max(25, "Batch size cannot exceed 25 opportunities"),
+      reason_category: z.string().max(120).optional(),
+      reason_note: z.string().max(500).optional(),
+    })
+  )
+  .handler(async ({ data, context }) => {
+    const base44 = context.getBase44();
+    const userId = context.user.id;
+
+    const uniqueIds = Array.from(
+      new Set(data.opportunity_ids.map((id) => id.trim()).filter(Boolean))
+    );
+    const lockKey = `${userId}:dismiss:${uniqueIds.slice().sort().join(",")}`;
+    if (activeUserBatchOps.has(lockKey)) {
+      return await activeUserBatchOps.get(lockKey);
+    }
+
+    const opPromise = (async () => {
+      const updatedIds = [];
+      const failedIds = [];
+      const nowIso = new Date().toISOString();
+
+      for (const oppId of uniqueIds) {
+        if (oppId.startsWith("demo-")) {
+          failedIds.push({ id: oppId, reason: "example_record" });
+          continue;
+        }
+        try {
+          const [oppPage, existingPage] = await Promise.all([
+            base44.entities.Opportunity.filter(
+              { id: oppId, created_by_id: userId },
+              { limit: 1 }
+            ),
+            base44.entities.OpportunityFeedback.filter(
+              { created_by_id: userId, opportunity_id: oppId },
+              { sort: "-created_date", limit: 10 }
+            ),
+          ]);
+
+          const canonicalOpp = oppPage?.items?.[0];
+          if (
+            !canonicalOpp ||
+            canonicalOpp.created_by_id !== userId ||
+            (canonicalOpp.owner_id && canonicalOpp.owner_id !== userId)
+          ) {
+            failedIds.push({ id: oppId, reason: "not_found_or_forbidden" });
+            continue;
+          }
+
+          const existingList = (existingPage?.items || []).filter(
+            (f) => f.created_by_id === userId && (!f.owner_id || f.owner_id === userId)
+          );
+          const primaryExisting = existingList[0] || null;
+          for (const dup of existingList.slice(1)) {
+            await base44.entities.OpportunityFeedback.delete(dup.id);
+          }
+
+          const payload = {
+            owner_id: userId,
+            opportunity_id: canonicalOpp.id,
+            business_name: canonicalOpp.business_name,
+            verdict: "not_relevant",
+            reason_category: data.reason_category?.trim() || "Not a fit for my services",
+            reason_note: data.reason_note?.trim() || "Dismissed from Find leads",
+            recorded_at: nowIso,
+          };
+
+          if (primaryExisting) {
+            await base44.entities.OpportunityFeedback.update(primaryExisting.id, payload);
+          } else {
+            await base44.entities.OpportunityFeedback.create(payload);
+          }
+          updatedIds.push(canonicalOpp.id);
+        } catch (err) {
+          failedIds.push({ id: oppId, reason: err?.message || "update_error" });
+        }
+      }
+
+      return {
+        updatedCount: updatedIds.length,
+        updatedIds,
+        failedCount: failedIds.length,
+        failedIds,
+      };
+    })();
+
+    activeUserBatchOps.set(lockKey, opPromise);
+    try {
+      return await opPromise;
+    } finally {
+      activeUserBatchOps.delete(lockKey);
+    }
+  });
+
+export const batchRestoreOpportunities = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .validator(
+    z.object({
+      opportunity_ids: z
+        .array(z.string().trim().min(1, "ID required").max(120, "ID too long"))
+        .min(1, "Select at least one opportunity")
+        .max(25, "Batch size cannot exceed 25 opportunities"),
+    })
+  )
+  .handler(async ({ data, context }) => {
+    const base44 = context.getBase44();
+    const userId = context.user.id;
+
+    const uniqueIds = Array.from(
+      new Set(data.opportunity_ids.map((id) => id.trim()).filter(Boolean))
+    );
+    const lockKey = `${userId}:restore:${uniqueIds.slice().sort().join(",")}`;
+    if (activeUserBatchOps.has(lockKey)) {
+      return await activeUserBatchOps.get(lockKey);
+    }
+
+    const opPromise = (async () => {
+      const restoredIds = [];
+      const failedIds = [];
+
+      for (const oppId of uniqueIds) {
+        if (oppId.startsWith("demo-")) {
+          failedIds.push({ id: oppId, reason: "example_record" });
+          continue;
+        }
+        try {
+          const [oppPage, existingPage] = await Promise.all([
+            base44.entities.Opportunity.filter(
+              { id: oppId, created_by_id: userId },
+              { limit: 1 }
+            ),
+            base44.entities.OpportunityFeedback.filter(
+              { created_by_id: userId, opportunity_id: oppId },
+              { limit: 10 }
+            ),
+          ]);
+
+          const canonicalOpp = oppPage?.items?.[0];
+          if (
+            !canonicalOpp ||
+            canonicalOpp.created_by_id !== userId ||
+            (canonicalOpp.owner_id && canonicalOpp.owner_id !== userId)
+          ) {
+            failedIds.push({ id: oppId, reason: "not_found_or_forbidden" });
+            continue;
+          }
+
+          const ownedList = (existingPage?.items || []).filter(
+            (f) => f.created_by_id === userId && (!f.owner_id || f.owner_id === userId)
+          );
+          for (const item of ownedList) {
+            await base44.entities.OpportunityFeedback.delete(item.id);
+          }
+          restoredIds.push(canonicalOpp.id);
+        } catch (err) {
+          failedIds.push({ id: oppId, reason: err?.message || "restore_error" });
+        }
+      }
+
+      return {
+        restoredCount: restoredIds.length,
+        restoredIds,
+        failedCount: failedIds.length,
+        failedIds,
+      };
+    })();
+
+    activeUserBatchOps.set(lockKey, opPromise);
+    try {
+      return await opPromise;
+    } finally {
+      activeUserBatchOps.delete(lockKey);
+    }
   });

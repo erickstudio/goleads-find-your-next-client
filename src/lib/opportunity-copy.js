@@ -42,6 +42,10 @@ const CATEGORY_MAP = {
     en: "Food & Beverage / Specialty Retail",
     es: "Alimentos y bebidas / Comercio especializado",
   },
+  "commercial print & creative studio": {
+    en: "Commercial Print & Creative Studio",
+    es: "Imprenta comercial y estudio creativo",
+  },
   uncategorized: { en: "Uncategorized", es: "Sin categoría" },
 };
 
@@ -262,6 +266,12 @@ export function formatSignalSummary(item, lang = "en") {
       : "Transitioning from wholesale-only coffee roasting to a public retail cafe and packaged bean storefront in East Austin.";
   }
 
+  if (lowerBiz.includes("atelier nueve")) {
+    return isEs
+      ? "Estudio de diseño gráfico e impresión comercial que se traslada a un local y sala de muestras de 3.500 pies cuadrados en el distrito de Wynwood, Miami."
+      : "Graphic design and commercial print studio relocating to a larger 3,500 sq. ft. production space and showroom in Miami's Wynwood district.";
+  }
+
   // Generic deterministic localization when summary language differs from UI language
   const summaryLang = detectTextLanguage(rawSummary);
   if (!rawSummary) {
@@ -351,19 +361,125 @@ export function formatVerificationNotes(item, lang = "en") {
 
   if (lower.includes("http 403") || lower.includes("anti-bot") || lower.includes("paywall")) {
     return isEs
-      ? "Pendiente de revisión: La fuente devolvió HTTP 403 (bloqueo automatizado) y no pudo leerse directamente para confirmar la fecha de publicación ni el detalle del anuncio."
-      : "Needs review: Source URL returned HTTP 403 (automated access blocked) and could not be read directly to confirm the publication date or announcement details.";
+      ? "Pendiente de revisión: El sitio web de la fuente bloqueó la lectura automática (acceso restringido), por lo que el contenido no pudo leerse directamente. Falta confirmar manualmente en el enlace: el anuncio de apertura o expansión y su fecha de publicación."
+      : "Needs review: The source website blocked automated reading (restricted access), so the page content could not be read directly. Still to confirm manually at the link: the opening or expansion announcement and its publication date.";
   }
 
   if (lower.includes("http 520") || lower.includes("timed out") || lower.includes("timeout")) {
     return isEs
-      ? "Pendiente de revisión: La fuente original no respondió a tiempo o devolvió error del servidor (HTTP 520 / tiempo agotado) durante la verificación automática; revisa el enlace manualmente para confirmar la fecha."
-      : "Needs review: The source page timed out or returned a server error (HTTP 520 / timeout) during automated verification; open the link manually to confirm the date.";
+      ? "Pendiente de revisión: El sitio de la fuente tardó demasiado en responder durante la comprobación automática, por lo que no se leyó el artículo. Falta confirmar manualmente en el enlace: los detalles del anuncio y su fecha de publicación."
+      : "Needs review: The source website took too long to respond during the automated check, so the article was not read. Still to confirm manually at the link: the announcement details and its publication date.";
   }
 
   if (!isEs) return raw;
 
   return "Pendiente de revisión: Algunos datos del anuncio o su fecha no pudieron confirmarse automáticamente en la página de origen.";
+}
+
+/**
+ * Summarizes source verification history, separating blocked sources (e.g. HTTP 403)
+ * from accessible corroborating sources and showing the last check date/status in plain language.
+ */
+export function buildSourceVerificationDetails(item, evidenceItems = [], lang = "en") {
+  const isEs = lang === "es";
+  const list = Array.isArray(evidenceItems) && evidenceItems.length > 0
+    ? evidenceItems
+    : item?.evidence_items || [];
+
+  const checkDateRaw = item?.retrieval_date || list[0]?.retrieval_date || "";
+  const formattedCheckDate = checkDateRaw
+    ? String(checkDateRaw).replace("T", " ").slice(0, 16) +
+      (String(checkDateRaw).includes("T") ? " UTC" : "")
+    : isEs
+    ? "No registrada"
+    : "Not recorded";
+
+  const blockedSources = list.filter(
+    (ev) =>
+      Number(ev?.http_status) === 403 ||
+      Number(ev?.http_status) === 520 ||
+      /http (403|520)|blocked|anti-bot|timed out/i.test(String(ev?.verification_notes || ""))
+  );
+  const accessibleVerifiedSources = list.filter(
+    (ev) =>
+      ev?.verification_status === "verified" &&
+      Number(ev?.http_status) !== 403 &&
+      Number(ev?.http_status) !== 520 &&
+      !/http (403|520)|blocked/i.test(String(ev?.verification_notes || ""))
+  );
+  const localCorroborationSources = list.filter(
+    (ev) =>
+      ev?.evidence_status === "corroborated_permit" ||
+      /google maps|google local/i.test(String(ev?.source_title || ""))
+  );
+
+  const primaryNotes = String(item?.verification_notes || "").toLowerCase();
+  const isPrimaryBlocked =
+    blockedSources.length > 0 ||
+    primaryNotes.includes("http 403") ||
+    primaryNotes.includes("http 520") ||
+    primaryNotes.includes("anti-bot") ||
+    primaryNotes.includes("timed out");
+
+  // If a primary source was blocked, check if an accessible source corroborated the event
+  if (isPrimaryBlocked && accessibleVerifiedSources.length > 0) {
+    const alt = accessibleVerifiedSources[0];
+    const altDate = alt.retrieval_date
+      ? String(alt.retrieval_date).replace("T", " ").slice(0, 16) + " UTC"
+      : formattedCheckDate;
+    return {
+      isBlockedWithoutFullBackup: false,
+      hasAlternativeSupport: true,
+      lastCheckedLabel: isEs
+        ? `Última comprobación: ${formattedCheckDate} · Respaldado por fuente accesible`
+        : `Last checked: ${formattedCheckDate} · Supported by accessible source`,
+      alternativeSummary: isEs
+        ? `Fuente alternativa verificada («${alt.source_title}», consultada el ${altDate}): respalda la identidad del negocio, la ubicación y el anuncio con fecha confirmada (${formatDateValue(alt.publication_date || alt.event_date, "es")}). Nota: otra URL asociada bloqueó la lectura automática y se mantiene separada.`
+        : `Verified alternative source ("${alt.source_title}", checked ${altDate}): supports business identity, location, and the dated announcement (${formatDateValue(alt.publication_date || alt.event_date, "en")}). Note: another linked URL blocked automated reading and is tracked separately.`,
+      localSummary: null,
+    };
+  }
+
+  let localSummary = null;
+  if (localCorroborationSources.length > 0) {
+    const locEv = localCorroborationSources[0];
+    const locDate = locEv.retrieval_date
+      ? String(locEv.retrieval_date).replace("T", " ").slice(0, 16) + " UTC"
+      : formattedCheckDate;
+    localSummary = isEs
+      ? `Datos locales corroborados (${locEv.source_title}, consultado el ${locDate}): confirma nombre comercial y ubicación (${locEv.supporting_excerpt || item?.location || ""}). El anuncio de apertura o expansión se evalúa por separado.`
+      : `Corroborated local listing (${locEv.source_title}, checked ${locDate}): confirms business name and location (${locEv.supporting_excerpt || item?.location || ""}). The opening or expansion announcement is evaluated separately.`;
+  }
+
+  if (isPrimaryBlocked) {
+    return {
+      isBlockedWithoutFullBackup: true,
+      hasAlternativeSupport: false,
+      lastCheckedLabel: isEs
+        ? `Última comprobación: ${formattedCheckDate} · Lectura automática bloqueada por el sitio`
+        : `Last checked: ${formattedCheckDate} · Automated reading blocked by site`,
+      alternativeSummary: null,
+      localSummary,
+    };
+  }
+
+  return {
+    isBlockedWithoutFullBackup: false,
+    hasAlternativeSupport: false,
+    lastCheckedLabel: isEs
+      ? `Última comprobación: ${formattedCheckDate} · ${
+          item?.verification_status === "verified"
+            ? "Lectura directa completada"
+            : "Revisión parcial — faltan datos por confirmar"
+        }`
+      : `Last checked: ${formattedCheckDate} · ${
+          item?.verification_status === "verified"
+            ? "Direct source check completed"
+            : "Partial check — details still need confirmation"
+        }`,
+    alternativeSummary: null,
+    localSummary,
+  };
 }
 
 /**
