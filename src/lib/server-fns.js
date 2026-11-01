@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth-middleware";
+import { getPayPalServerConfig, isPayPalSubscriptionAllowanceActive } from "@/lib/paypal-billing.server";
 import {
   SEARCH_LIMITS,
   buildQueryCacheKey,
@@ -57,16 +58,9 @@ export function computeQuotaUsage(
   const pilotRemaining = Math.max(0, pilotGrantedTotal - pilotUsedTotal);
 
   // 2. Server-verified PayPal subscriptions (active, trialing, or cancelled with paid period still active)
-  const activeVerifiedSubscriptions = (paypalSubscriptions || []).filter((sub) => {
-    if (!["active", "trialing", "cancelled"].includes(sub.status)) return false;
-    if (sub.current_period_end_iso) {
-      const endMs = new Date(sub.current_period_end_iso).getTime();
-      if (!Number.isNaN(endMs) && endMs <= nowMs) return false;
-    } else if (sub.status === "cancelled") {
-      return false;
-    }
-    return (Number(sub.granted_search_allowance) || 0) > 0;
-  });
+  const activeVerifiedSubscriptions = (paypalSubscriptions || []).filter((sub) =>
+    isPayPalSubscriptionAllowanceActive(sub, nowMs)
+  );
 
   const subscriptionGrantedTotal = activeVerifiedSubscriptions.reduce(
     (sum, s) => sum + Math.max(0, Number(s.granted_search_allowance) || 0),
@@ -154,7 +148,7 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
         { sort: "-created_date", limit: 20 }
       ),
       base44.entities.PayPalSubscription.filter(
-        { created_by_id: userId },
+        { owner_id: userId },
         { sort: "-created_date", limit: 20 }
       ),
     ]);
@@ -238,8 +232,9 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
     const ownedEnrollments = (enrollmentsPage?.items || []).filter(
       (e) => e.created_by_id === userId && (!e.owner_id || e.owner_id === userId)
     );
+    const paymentConfig = getPayPalServerConfig();
     const ownedSubscriptions = (subsPage?.items || []).filter(
-      (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
+      (s) => s.owner_id === userId && s.paypal_environment === paymentConfig.env && s.paypal_plan_id === paymentConfig.planId
     );
     const quota = computeQuotaUsage(
       recentSearches,
@@ -327,7 +322,7 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
         { sort: "-created_date", limit: 20 }
       ),
       base44.entities.PayPalSubscription.filter(
-        { created_by_id: userId },
+        { owner_id: userId },
         { sort: "-created_date", limit: 20 }
       ),
     ]);
@@ -343,8 +338,9 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
     const ownedEnrollments = (enrollmentsPage?.items || []).filter(
       (e) => e.created_by_id === userId && (!e.owner_id || e.owner_id === userId)
     );
+    const paymentConfig = getPayPalServerConfig();
     const ownedSubscriptions = (subsPage?.items || []).filter(
-      (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
+      (s) => s.owner_id === userId && s.paypal_environment === paymentConfig.env && s.paypal_plan_id === paymentConfig.planId
     );
 
     // Check DB-level concurrent search within last 35 seconds
