@@ -57,6 +57,10 @@
         "partial_date_verification",
         "unverified"
       ]
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
     }
   },
   "required": [

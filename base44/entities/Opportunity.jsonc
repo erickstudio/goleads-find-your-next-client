@@ -91,6 +91,10 @@
     "service_fit_inference": {
       "type": "string",
       "description": "Clearly labeled commercial hypothesis separate from verified facts"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
     }
   },
   "required": [

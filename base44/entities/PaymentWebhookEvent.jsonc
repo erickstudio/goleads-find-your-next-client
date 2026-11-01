@@ -30,6 +30,10 @@
     },
     "processed_at_iso": {
       "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
     }
   },
   "required": [

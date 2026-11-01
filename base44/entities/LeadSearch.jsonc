@@ -85,6 +85,10 @@
     "completed_at": {
       "type": "string",
       "description": "ISO timestamp when search finished"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
     }
   },
   "required": [

@@ -35,6 +35,10 @@
     "recorded_at": {
       "type": "string",
       "description": "ISO timestamp when feedback was created or last updated"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000
     }
   },
   "required": [
