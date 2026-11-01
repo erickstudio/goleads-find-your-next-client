@@ -5,7 +5,7 @@ import { usePublicLocale } from "@/lib/PublicLocaleContext";
 export default function IntegrationStatus() {
   const { copy } = usePublicLocale();
   return (
-    <section className="border-y border-border bg-card/30 px-5 py-16 sm:px-8 sm:py-20">
+    <section id="integrations" className="border-y border-border bg-card/30 px-5 py-16 sm:px-8 sm:py-20">
       <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
         <div>
           <p className="text-[11px] font-semibold tracking-widest text-primary">{copy.statusEyebrow}</p>
