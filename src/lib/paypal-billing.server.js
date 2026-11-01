@@ -422,13 +422,7 @@ export function computeFallbackPeriodEndIso(
  * Determines whether a PayPalSubscription record currently grants active search allowance.
  * A cancelled subscription continues to grant its already-paid allowance until current_period_end_iso.
  */
-export function isPayPalSubscriptionAllowanceActive(sub, nowMs = Date.now()) {
-  if (!sub || !["active", "trialing", "cancelled"].includes(sub.status)) return false;
-  if (!sub.verified_at_iso || !sub.paypal_subscription_id) return false;
-  const endMs = Date.parse(sub.current_period_end_iso || "");
-  if (!Number.isFinite(endMs) || endMs <= nowMs) return false;
-  return (Number(sub.granted_search_allowance) || 0) > 0;
-}
+export { isPayPalSubscriptionAllowanceActive } from "@/lib/subscription-access";
 
 /**
  * Reconciles and verifies a PayPal subscription against PayPal's authoritative server data:
