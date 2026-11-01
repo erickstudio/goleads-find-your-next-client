@@ -15,7 +15,7 @@ import {
 function filterOwned(items = [], userId) {
   return (items || []).filter(
     (item) =>
-      item.created_by_id === userId && (!item.owner_id || item.owner_id === userId)
+      (item.owner_id ? item.owner_id === userId : item.created_by_id === userId)
   );
 }
 
@@ -42,7 +42,7 @@ export const getPayPalPlansWorkspaceData = createServerFn({ method: "GET" })
           { sort: "-created_date", limit: 20 }
         ),
         base44.entities.PayPalSubscription.filter(
-          { created_by_id: userId },
+          { owner_id: userId },
           { sort: "-created_date", limit: 20 }
         ),
         base44.entities.UserProfile.filter(
@@ -101,7 +101,7 @@ export const getPayPalPlansWorkspaceData = createServerFn({ method: "GET" })
       mySubscriptions,
       pilotEnrollments,
       quota,
-      webhookEndpointUrl: "https://go-leads-magic-flow.base44.app/api/paypal-webhook",
+      webhookEndpointUrl: "https://goleads.space/api/paypal-webhook",
     };
   });
 
@@ -144,9 +144,13 @@ export const preparePayPalSubscriptionOrder = createServerFn({ method: "POST" })
       };
     }
 
+    if (!config.hasWebhookId) {
+      return { ok: false, code: "MISSING_WEBHOOK_CONFIGURATION", message: "Configura PAYPAL_WEBHOOK_ID antes de abrir el pago. El webhook debe poder verificar las notificaciones de PayPal." };
+    }
+
     // Prevent duplicate active subscriptions for the same user
     const existingSubsPage = await base44.entities.PayPalSubscription.filter(
-      { created_by_id: userId },
+      { owner_id: userId },
       { sort: "-created_date", limit: 15 }
     );
     const ownedSubs = filterOwned(existingSubsPage?.items, userId);
@@ -193,7 +197,7 @@ export const preparePayPalSubscriptionOrder = createServerFn({ method: "POST" })
     const enrollmentReference = `glsub_${userId.slice(0, 8)}_${crypto.randomUUID()}`;
 
     // 1. Create enrollment record linked to the authenticated user BEFORE opening PayPal
-    const enrollmentRecord = await base44.entities.PayPalSubscription.create({
+    const enrollmentRecord = await serviceRole.entities.PayPalSubscription.create({
       owner_id: userId,
       owner_email: userEmail,
       enrollment_reference: enrollmentReference,
@@ -214,9 +218,9 @@ export const preparePayPalSubscriptionOrder = createServerFn({ method: "POST" })
         "Registro de contratación creado en el servidor. Esperando aprobación del usuario en PayPal.",
     });
 
-    const appOrigin = "https://go-leads-magic-flow.base44.app";
-    const safeOrigin =
-      data?.returnOrigin === appOrigin ? data.returnOrigin : appOrigin;
+    const appOrigin = "https://goleads.space";
+    const allowedOrigins = new Set([appOrigin, "https://go-leads-magic-flow.base44.app"]);
+    const safeOrigin = allowedOrigins.has(data?.returnOrigin) ? data.returnOrigin : appOrigin;
 
     // 2. Create the subscription on PayPal from the server with custom_id = enrollmentReference
     const createSubBody = {
@@ -316,8 +320,7 @@ export const confirmPayPalSubscriptionOnServer = createServerFn({
     const matchingSubRecords = allMatchingSubPage?.items || [];
     const otherUserRecord = matchingSubRecords.find(
       (rec) =>
-        (rec.owner_id && rec.owner_id !== userId) ||
-        (rec.created_by_id && rec.created_by_id !== userId)
+        rec.owner_id !== userId
     );
     if (otherUserRecord) {
       return {
@@ -333,7 +336,7 @@ export const confirmPayPalSubscriptionOnServer = createServerFn({
     let enrollmentRecord = null;
     if (data.enrollment_id) {
       const byIdPage = await base44.entities.PayPalSubscription.filter(
-        { id: data.enrollment_id, created_by_id: userId },
+        { id: data.enrollment_id, owner_id: userId },
         { limit: 1 }
       );
       enrollmentRecord = filterOwned(byIdPage?.items, userId)[0] || null;
@@ -342,8 +345,7 @@ export const confirmPayPalSubscriptionOnServer = createServerFn({
       enrollmentRecord =
         matchingSubRecords.find(
           (rec) =>
-            rec.created_by_id === userId &&
-            (!rec.owner_id || rec.owner_id === userId)
+            rec.owner_id === userId
         ) || null;
     }
 
@@ -417,7 +419,7 @@ export const recordPayPalCheckoutCancelOrError = createServerFn({
     const userId = context.user.id;
 
     const subsPage = await base44.entities.PayPalSubscription.filter(
-      { created_by_id: userId },
+      { owner_id: userId },
       { sort: "-created_date", limit: 10 }
     );
     const owned = filterOwned(subsPage?.items, userId);
@@ -484,7 +486,7 @@ export const cancelUserPayPalSubscription = createServerFn({ method: "POST" })
     const userId = context.user.id;
 
     const subPage = await base44.entities.PayPalSubscription.filter(
-      { id: data.id, created_by_id: userId },
+      { id: data.id, owner_id: userId },
       { limit: 1 }
     );
     const subRecord = filterOwned(subPage?.items, userId)[0] || null;
