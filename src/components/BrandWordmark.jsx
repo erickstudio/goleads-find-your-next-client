@@ -1,7 +1,7 @@
 import { Image } from "@/components/ui/image";
 
-const LIGHT_LOGO = "https://media.base44.com/images/public/6ae63656edc313a907ad5680/2a3764bad_logonuevo1.png";
-const DARK_LOGO = "https://media.base44.com/images/public/6ae63656edc313a907ad5680/f20e12e52_Logotransparten.png";
+const LIGHT_LOGO = "https://media.base44.com/images/public/6ae63656edc313a907ad5680/3db70aa5f_logocolor2.png";
+const DARK_LOGO = "https://media.base44.com/images/public/6ae63656edc313a907ad5680/6125cb31c_Logoblanco1.png";
 
 export default function BrandWordmark({ size = "md", className = "" }) {
   const dimensions = size === "lg" ? "h-12 w-44" : size === "sm" ? "h-8 w-28" : "h-10 w-36";
