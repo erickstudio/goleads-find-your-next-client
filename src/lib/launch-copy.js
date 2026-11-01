@@ -1,33 +1,34 @@
 export const LAUNCH_COPY = {
   "en": {
-    "title": "GoLeads — Find businesses opening or expanding.",
-    "description": "Find businesses with opening or expansion announcements, see how your services could fit and prepare your first introduction.",
+    "title": "GoLeads — Find clients for your services.",
+    "description": "Find leads with AI, save businesses and prepare messages to offer your services. GoLeads for freelancers, agencies and service providers.",
     "nav": [
       "How it works",
       "Why GoLeads",
+      "Integrations",
       "FAQ"
     ],
-    "signIn": "Open workspace",
+    "signIn": "Sign in",
     "menu": "Open menu",
     "skip": "Skip to content",
-    "beta": "PROSPECTS FOR YOUR SERVICES · BETA",
-    "headline": "Find businesses opening or growing.",
-    "headlineAccent": "Reach out with a reason.",
-    "intro": "Searching directories, news and spreadsheets for potential clients takes time. GoLeads brings opening and expansion announcements together so you can choose businesses to research and prepare an introduction that relates to your work.",
-    "cta": "Find opportunities",
-    "ctaNote": "Open your workspace and add the services you offer.",
+    "beta": "FIND LEADS WITH AI",
+    "headline": "Find clients",
+    "headlineAccent": "for your services.",
+    "intro": "Use AI to find businesses opening or growing. Save the leads that interest you and prepare messages to offer your services.",
+    "cta": "Find clients",
+    "ctaNote": "Add your services and start searching.",
     "previewLink": "See an example",
-    "audience": "For independent professionals & small agencies",
-    "principle": "An opening or expansion brings change. That change could create an opportunity for your services.",
+    "audience": "For freelancers, agencies and service providers.",
+    "principle": "Search by business category and city. Review the details and decide who to contact.",
     "preview": {
-      "label": "INSIDE AN OPPORTUNITY · FICTIONAL EXAMPLE",
-      "title": "A new venue. A possible conversation.",
-      "subtitle": "The announcement, its source and an idea for your introduction.",
+      "label": "PRODUCT EXAMPLE · FICTIONAL DATA",
+      "title": "An example lead",
+      "subtitle": "Review the business and choose a service to offer.",
       "category": "Business category",
       "categoryValue": "Cafés & restaurants",
       "location": "City / country",
       "locationValue": "Example city",
-      "window": "Time window",
+      "window": "Search period",
       "windowValue": "90 days",
       "results": "Example opportunity",
       "business": "Horizon Café",
@@ -42,94 +43,94 @@ export const LAUNCH_COPY = {
         "Event date: not stated",
         "Retrieved: not fetched"
       ],
-      "fit": "How you could help",
-      "fitText": "If you offer food photography, you could introduce a shoot for the new venue’s menu and social channels. First, confirm whether they need that service.",
+      "fit": "A service you could offer",
+      "fitText": "Product photography for the new venue’s menu and social channels. Before sending a proposal, confirm whether the business needs that service.",
       "note": "Fictional example showing the product. Searches in your private workspace include links to the sources found."
     },
     "stepsEyebrow": "HOW IT WORKS",
-    "stepsTitle": "Find a business. Know how to introduce yourself.",
+    "stepsTitle": "How to use GoLeads.",
     "steps": [
       {
-        "title": "Describe what you offer",
-        "body": "Add your services in your own words. Photography, bookkeeping, design, maintenance or another B2B service. You define your offer."
+        "title": "Add your services",
+        "body": "Describe what you offer: web design, photography, bookkeeping or another service for businesses."
       },
       {
-        "title": "Choose where to look",
-        "body": "Select a business category, location and time frame. GoLeads looks for public opening and expansion announcements and brings their sources together for review."
+        "title": "Find leads with AI",
+        "body": "Choose a business category, city and time frame. GoLeads searches for opening and expansion announcements."
       },
       {
-        "title": "Prepare your introduction",
-        "body": "Review the announcement, save businesses that interest you and edit an outreach draft. Your notes and message stay with the prospect."
+        "title": "Save leads and prepare messages",
+        "body": "Review the businesses found, save the ones that interest you and choose the service to offer in your introduction."
       }
     ],
     "benefitsEyebrow": "WHY GOLEADS",
-    "benefitsTitle": "Know who to approach and why.",
+    "benefitsTitle": "Find leads and organize your outreach.",
     "benefits": [
       {
-        "title": "Find a reason to start a conversation",
-        "body": "An opening, new location or expansion gives you a specific starting point. Introduce your service around that change with a message relevant to the business."
+        "title": "Find leads with AI",
+        "body": "Discover businesses announcing an opening or expansion in the category and city you choose."
       },
       {
-        "title": "Look for a fit with your work",
-        "body": "Your services give the search context. Decide what to offer each business, even when your specialty does not fit a predefined service list."
+        "title": "Offer any business service",
+        "body": "Describe what you sell. Use GoLeads for design, marketing, photography, bookkeeping and other services for businesses."
       },
       {
-        "title": "Check the details before investing time",
-        "body": "Open the original announcement and review its dates. Prospects with missing information stay marked for review so you can decide whether to investigate further."
+        "title": "Check the business details",
+        "body": "Review the original announcement, its date and available business information before reaching out."
       },
       {
-        "title": "Keep the research you have already done",
-        "body": "Save prospects, add notes and prepare drafts in your workspace. When you return to an opportunity, the reason it caught your attention is close at hand."
+        "title": "Save leads and messages",
+        "body": "Keep prospects, notes and drafts together so you can return to your work."
       }
     ],
-    "statusEyebrow": "OPPORTUNITIES FOR DIFFERENT SERVICES",
-    "statusTitle": "Where could your services fit?",
-    "statusNote": "These examples illustrate possible services. A growth announcement does not confirm a need or budget. That is something to learn by talking to the business.",
+    "statusEyebrow": "INTEGRATIONS · COMING SOON",
+    "statusTitle": "Connect your work tools.",
+    "statusNote": "We are building these connections so you can export leads and save documents from GoLeads. They are not available in this beta yet.",
     "statuses": [
       {
-        "name": "A venue is getting ready to open",
-        "badge": "Before launch",
-        "body": "Photography, web design, signage, cleaning or equipment. Research what the business is preparing and choose a specific way you could help."
+        "name": "Google Sheets",
+        "badge": "In development",
+        "body": "Export selected leads to a spreadsheet in your Google account."
       },
       {
-        "name": "A company opens another location",
-        "badge": "During expansion",
-        "body": "Bookkeeping, recruiting, IT support or maintenance. A new operation can provide relevant context for introducing your specialty."
+        "name": "Google Drive",
+        "badge": "Coming soon",
+        "body": "Save the documents and proposals you prepare for clients."
       },
       {
-        "name": "A business enters a new market",
-        "badge": "At a new stage",
-        "body": "Marketing, translation, logistics or consulting. Review the announcement and decide whether your experience fits the change."
+        "name": "HubSpot CRM",
+        "badge": "Coming soon",
+        "body": "Send leads to your CRM so your team can continue the sales follow-up."
       }
     ],
-    "faqTitle": "Before your first search.",
+    "faqTitle": "Frequently asked questions.",
     "faqs": [
       {
-        "q": "What businesses can I find?",
-        "a": "Businesses with public opening, new-location or expansion announcements matching your chosen market and time frame. Results depend on available sources; some searches may return no matches."
+        "q": "How do I start finding clients?",
+        "a": "Open GoLeads, add your services and choose a business category, city and time frame. Review the results and save businesses that interest you."
       },
       {
-        "q": "Will this work for my services?",
-        "a": "Add your own services and describe your work. You are not limited to three service categories. Choose the kind of business and location where you want to look for opportunities."
+        "q": "What services can I offer?",
+        "a": "Add your own services. GoLeads does not limit you to three categories. Use it for creative, professional, technical and other business services."
       },
       {
-        "q": "Are these businesses looking for suppliers?",
-        "a": "Not necessarily. GoLeads helps you find a reason to research and introduce yourself. You still confirm their needs, decision-makers and budget."
+        "q": "Are these businesses ready to buy?",
+        "a": "Not necessarily. GoLeads finds businesses with opening or expansion announcements. You confirm whether they need your service, who decides and their budget."
       },
       {
-        "q": "What does a verified opportunity mean?",
-        "a": "Source checks support the business details and its opening or expansion announcement. It does not mean the business is a confirmed buyer. Review the source and dates before reaching out."
+        "q": "What can I do with my leads?",
+        "a": "Save them, add notes, review their sources and prepare outreach messages. Each draft can focus on a service you choose."
       },
       {
-        "q": "Does GoLeads send the email for me?",
-        "a": "You can currently edit, save and copy drafts. You send the message yourself. Check the recipient details and wording before using it."
+        "q": "Can I connect Google Sheets or a CRM?",
+        "a": "Google Sheets is the first integration in development. Google Drive and HubSpot are planned for later. Exporting through these connections is not available in this beta yet."
       },
       {
-        "q": "Do I need a CRM connection or a paid plan?",
-        "a": "Open your workspace to review the access and limits available to your account. Search and drafts do not require a CRM connection. Paid plans are not available in this beta yet."
+        "q": "Does the app send emails automatically?",
+        "a": "You can currently prepare, edit, save and copy messages. You send them yourself; automatic sending is not available yet."
       }
     ],
-    "footer": "Find a business. Understand the moment. Start a conversation.",
+    "footer": "Find clients for your services.",
     "privacy": "Privacy",
     "terms": "Terms",
     "support": "Support",
@@ -211,34 +212,35 @@ export const LAUNCH_COPY = {
     }
   },
   "es": {
-    "title": "GoLeads — Encuentra negocios que abren o crecen.",
-    "description": "Encuentra negocios con anuncios de apertura o expansión, revisa por qué podrían encajar con tus servicios y prepara tu primer contacto.",
+    "title": "GoLeads — Encuentra clientes para tus servicios.",
+    "description": "Busca leads con IA, guarda negocios y prepara mensajes para ofrecer tus servicios. GoLeads para freelancers, agencias y proveedores de servicios.",
     "nav": [
       "Cómo funciona",
       "Por qué GoLeads",
+      "Integraciones",
       "Preguntas"
     ],
-    "signIn": "Abrir mi espacio",
+    "signIn": "Entrar",
     "menu": "Abrir menú",
     "skip": "Saltar al contenido",
-    "beta": "CLIENTES POTENCIALES PARA TUS SERVICIOS · BETA",
-    "headline": "Encuentra negocios que abren o crecen.",
-    "headlineAccent": "Acércate con una buena razón.",
-    "intro": "Buscar clientes entre directorios, noticias y hojas de cálculo toma tiempo. GoLeads reúne anuncios de apertura y expansión para que encuentres negocios que investigar y prepares un primer contacto relacionado con lo que haces.",
-    "cta": "Buscar oportunidades",
-    "ctaNote": "Entra a tu espacio y añade los servicios que ofreces.",
+    "beta": "BUSCA LEADS CON IA",
+    "headline": "Encuentra clientes",
+    "headlineAccent": "para tus servicios.",
+    "intro": "Busca con IA negocios que abren o crecen. Guarda los leads que te interesan y prepara mensajes para ofrecer tus servicios.",
+    "cta": "Buscar clientes",
+    "ctaNote": "Añade tus servicios y empieza a buscar.",
     "previewLink": "Ver un ejemplo",
-    "audience": "Para profesionales independientes y pequeñas agencias",
-    "principle": "Un negocio que abre o crece atraviesa cambios. Ahí puede haber una oportunidad para lo que haces.",
+    "audience": "Para freelancers, agencias y proveedores de servicios.",
+    "principle": "Busca negocios por sector y ciudad. Revisa sus datos y decide a quién contactar.",
     "preview": {
-      "label": "ASÍ SE VE UNA OPORTUNIDAD · EJEMPLO FICTICIO",
-      "title": "Un nuevo local. Una posible conversación.",
-      "subtitle": "El anuncio, su fuente y una idea para presentar tu servicio.",
+      "label": "EJEMPLO DEL PRODUCTO · DATOS FICTICIOS",
+      "title": "Ejemplo de un lead",
+      "subtitle": "Revisa el negocio y elige qué servicio ofrecer.",
       "category": "Categoría comercial",
       "categoryValue": "Cafés y restaurantes",
       "location": "Ciudad / país",
       "locationValue": "Ciudad de ejemplo",
-      "window": "Ventana de tiempo",
+      "window": "Periodo de búsqueda",
       "windowValue": "90 días",
       "results": "Oportunidad de ejemplo",
       "business": "Café Horizonte",
@@ -253,94 +255,94 @@ export const LAUNCH_COPY = {
         "Evento: no indicado",
         "Recuperación: no consultada"
       ],
-      "fit": "Cómo podrías ayudar",
-      "fitText": "Si haces fotografía gastronómica, podrías presentar una sesión para la carta y las redes del nuevo local. Confirma primero si necesitan ese servicio.",
+      "fit": "Servicio que podrías ofrecer",
+      "fitText": "Fotografía de productos para la carta y las redes del nuevo local. Antes de enviar una propuesta, confirma si el negocio necesita ese servicio.",
       "note": "Ejemplo ficticio para mostrar el producto. Las búsquedas del espacio privado incluyen los enlaces de las fuentes encontradas."
     },
     "stepsEyebrow": "CÓMO FUNCIONA",
-    "stepsTitle": "De buscar negocios a saber cómo presentarte.",
+    "stepsTitle": "Así usas GoLeads.",
     "steps": [
       {
-        "title": "Define lo que ofreces",
-        "body": "Añade tus servicios con tus propias palabras. Fotografía, contabilidad, diseño, mantenimiento o cualquier otro servicio B2B. Tú defines tu oferta."
+        "title": "Añade tus servicios",
+        "body": "Escribe qué ofreces: diseño web, fotografía, contabilidad o cualquier servicio para empresas."
       },
       {
-        "title": "Elige dónde buscar",
-        "body": "Indica el tipo de negocio, la ciudad y el periodo. GoLeads busca anuncios públicos de aperturas y expansión y reúne sus fuentes para revisarlas."
+        "title": "Busca clientes con IA",
+        "body": "Elige el tipo de negocio, la ciudad y el periodo. GoLeads busca anuncios de apertura y expansión."
       },
       {
-        "title": "Prepara tu primer contacto",
-        "body": "Revisa el anuncio, guarda los negocios que te interesan y edita un borrador para presentarte. Tus notas y el mensaje quedan junto al prospecto."
+        "title": "Guarda leads y prepara mensajes",
+        "body": "Revisa los negocios encontrados, guarda los que te interesan y elige qué servicio ofrecer en tu mensaje de contacto."
       }
     ],
     "benefitsEyebrow": "POR QUÉ GOLEADS",
-    "benefitsTitle": "Ten claro a quién contactar y por qué.",
+    "benefitsTitle": "Busca leads y organiza tus contactos.",
     "benefits": [
       {
-        "title": "Encuentra un motivo para conversar",
-        "body": "Una apertura, una nueva sede o una expansión te dan un punto de partida concreto. Puedes presentar tu servicio alrededor de ese cambio, en lugar de escribir un mensaje genérico."
+        "title": "Busca leads con IA",
+        "body": "Encuentra negocios que anuncian una apertura o expansión en el sector y la ciudad que elijas."
       },
       {
-        "title": "Busca oportunidades para lo que haces",
-        "body": "Tus servicios forman parte del contexto de la búsqueda. Así puedes evaluar qué ofrecer a cada negocio, aunque tu especialidad no esté en una lista predefinida."
+        "title": "Ofrece cualquier servicio",
+        "body": "Configura lo que vendes. Puedes usar GoLeads para diseño, marketing, fotografía, contabilidad y otros servicios para empresas."
       },
       {
-        "title": "Comprueba la información antes de invertir tiempo",
-        "body": "Abre el anuncio original y revisa las fechas. Si faltan datos, el prospecto queda pendiente de revisión para que decidas si vale la pena seguir investigando."
+        "title": "Revisa los datos del negocio",
+        "body": "Consulta el anuncio original, su fecha y los datos disponibles antes de contactar."
       },
       {
-        "title": "Conserva el trabajo que ya hiciste",
-        "body": "Guarda prospectos, añade notas y prepara borradores en tu espacio. Cuando retomes una oportunidad, tendrás a mano el motivo por el que te interesó."
+        "title": "Guarda leads y mensajes",
+        "body": "Mantén tus prospectos, notas y borradores en un solo lugar para retomar tu trabajo."
       }
     ],
-    "statusEyebrow": "OPORTUNIDADES PARA DISTINTOS SERVICIOS",
-    "statusTitle": "¿Dónde puede encajar lo que ofreces?",
-    "statusNote": "Estos ejemplos ilustran posibles servicios. Un anuncio de crecimiento no confirma una necesidad ni un presupuesto: eso se descubre conversando con el negocio.",
+    "statusEyebrow": "INTEGRACIONES · PRÓXIMAMENTE",
+    "statusTitle": "Conecta tus herramientas de trabajo.",
+    "statusNote": "Estamos preparando estas conexiones para que puedas exportar leads y guardar documentos desde GoLeads. Todavía no están disponibles en esta beta.",
     "statuses": [
       {
-        "name": "Un local se prepara para abrir",
-        "badge": "Antes del lanzamiento",
-        "body": "Fotografía, diseño web, rotulación, limpieza o equipamiento. Investiga qué está preparando y elige una ayuda concreta que puedas ofrecer."
+        "name": "Google Sheets",
+        "badge": "En preparación",
+        "body": "Exporta los leads que selecciones a una hoja de cálculo de tu cuenta de Google."
       },
       {
-        "name": "Una empresa abre otra sede",
-        "badge": "Durante la expansión",
-        "body": "Contabilidad, selección de personal, soporte tecnológico o mantenimiento. Una nueva operación puede ser un buen contexto para presentar tu especialidad."
+        "name": "Google Drive",
+        "badge": "Próximamente",
+        "body": "Guarda los documentos y propuestas que prepares para tus clientes."
       },
       {
-        "name": "Un negocio llega a otro mercado",
-        "badge": "En una nueva etapa",
-        "body": "Marketing, traducción, logística o consultoría. Revisa el alcance del anuncio y decide si tu experiencia encaja con ese cambio."
+        "name": "HubSpot CRM",
+        "badge": "Próximamente",
+        "body": "Envía tus leads al CRM para continuar el seguimiento comercial con tu equipo."
       }
     ],
-    "faqTitle": "Antes de tu primera búsqueda.",
+    "faqTitle": "Preguntas frecuentes.",
     "faqs": [
       {
-        "q": "¿Qué negocios puedo encontrar?",
-        "a": "Negocios con anuncios públicos de apertura, nuevas sedes o expansión que coincidan con el mercado y periodo elegidos. Los resultados dependen de las fuentes disponibles; puede haber búsquedas sin coincidencias."
+        "q": "¿Cómo empiezo a buscar clientes?",
+        "a": "Entra a GoLeads, añade tus servicios y elige un sector, una ciudad y un periodo. Revisa los resultados y guarda los negocios que te interesen."
       },
       {
-        "q": "¿Sirve para mi tipo de servicio?",
-        "a": "Puedes añadir tus propios servicios y explicar lo que haces. No estás limitado a tres categorías. Elige el tipo de negocio y la ubicación donde quieres buscar oportunidades."
+        "q": "¿Qué tipo de servicios puedo ofrecer?",
+        "a": "Puedes escribir tus propios servicios. GoLeads no te limita a tres categorías: puedes usarlo para servicios creativos, profesionales, técnicos y otros servicios para empresas."
       },
       {
-        "q": "¿Los negocios ya están buscando proveedores?",
-        "a": "No necesariamente. GoLeads te ayuda a encontrar un motivo para investigar y presentarte. Tú confirmas si necesitan ayuda, quién decide y si tienen presupuesto."
+        "q": "¿Los negocios ya quieren comprar?",
+        "a": "No necesariamente. GoLeads encuentra negocios con anuncios de apertura o expansión. Tú confirmas si necesitan tu servicio, quién decide y cuál es su presupuesto."
       },
       {
-        "q": "¿Qué significa que una oportunidad esté verificada?",
-        "a": "Que la revisión de fuentes respalda los datos del negocio y su anuncio de apertura o expansión. No significa que sea un comprador confirmado. Revisa siempre la fuente y las fechas antes de contactar."
+        "q": "¿Qué puedo hacer con mis leads?",
+        "a": "Guardarlos, añadir notas, revisar sus fuentes y preparar mensajes de contacto. Cada borrador puede centrarse en el servicio que elijas."
       },
       {
-        "q": "¿GoLeads envía el correo por mí?",
-        "a": "Actualmente puedes editar, guardar y copiar borradores. El envío lo haces tú. Revisa los datos del destinatario y el mensaje antes de usarlo."
+        "q": "¿Puedo conectar Google Sheets o un CRM?",
+        "a": "Estamos preparando Google Sheets como primera integración. Google Drive y HubSpot están previstos para después. Estas conexiones todavía no están disponibles para exportar desde esta beta."
       },
       {
-        "q": "¿Necesito conectar un CRM o pagar para empezar?",
-        "a": "Puedes entrar al espacio y revisar el acceso y los límites disponibles para tu cuenta. La búsqueda y los borradores no requieren conectar un CRM. Los planes de pago aún no están disponibles en esta beta."
+        "q": "¿La app envía correos automáticamente?",
+        "a": "Actualmente puedes preparar, editar, guardar y copiar tus mensajes. El envío lo haces tú; el envío automático todavía no está disponible."
       }
     ],
-    "footer": "Encuentra un negocio. Entiende el momento. Inicia una conversación.",
+    "footer": "Encuentra clientes para tus servicios.",
     "privacy": "Privacidad",
     "terms": "Términos",
     "support": "Ayuda",
