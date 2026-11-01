@@ -21,6 +21,7 @@ import {
   updateSavedOpportunityItem,
   deleteSavedOpportunityItem,
 } from "@/lib/server-fns";
+import GoogleSheetsExportPanel from "@/components/GoogleSheetsExportPanel";
 import { usePreferences } from "@/lib/PreferencesContext";
 import { trackLeadsEvent } from "@/lib/telemetry";
 import { safePublicUrl } from "@/lib/public-url";
@@ -172,6 +173,14 @@ function SavedOpportunitiesScreen() {
           {t("saved.findLeadsBtn")}
         </Link>
       </div>
+
+      {/* Google Sheets, CRM & MCP Export Bar */}
+      <GoogleSheetsExportPanel
+        source="saved"
+        records={filteredList}
+        stageFilter={stageFilter}
+        feedbackByOppId={feedbackByOppId}
+      />
 
       {/* Stage Filter Bar */}
       {savedList.length > 0 && (

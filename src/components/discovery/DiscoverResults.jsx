@@ -1,4 +1,5 @@
 import DiscoverOpportunityGroup from "@/components/discovery/DiscoverOpportunityGroup";
+import GoogleSheetsExportPanel from "@/components/GoogleSheetsExportPanel";
 import {
   formatSearchStatusReason,
   formatBusinessCategoryLabel,
@@ -81,6 +82,14 @@ export default function DiscoverResults({ d }) {
           )}
         </div>
       </div>
+
+      {/* Google Sheets, CRM & MCP Export Bar */}
+      <GoogleSheetsExportPanel
+        source="discover"
+        records={d.activeOpportunities}
+        selectedIds={d.selectedOppIds}
+        feedbackByOppId={d.feedbackByOppId}
+      />
 
       {/* Multi-Select Controls & Action Bar */}
       {(visibleActiveCount > 0 || totalSelectedCount > 0) && (
