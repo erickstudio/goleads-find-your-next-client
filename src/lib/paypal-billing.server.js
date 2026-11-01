@@ -68,7 +68,7 @@ export function getPayPalServerConfig(overrides = {}) {
   if (!secretClientId) {
     missingSecrets.push({
       name: env === "sandbox" ? "PAYPAL_ID_TEST" : "PAYPAL_ID",
-      required: false,
+      required: !clientId,
       status: clientId ? "using_default_button_client_id" : "missing",
       description:
         "Client ID público de la app REST de PayPal (actualmente usando el Client ID del botón proporcionado; configúralo en Secretos si usas una app Sandbox distinta).",
@@ -86,7 +86,7 @@ export function getPayPalServerConfig(overrides = {}) {
   if (!secretPlanId) {
     missingSecrets.push({
       name: env === "sandbox" ? "PAYPAL_PLAN_ID_TEST" : "PAYPAL_PLAN_ID",
-      required: false,
+      required: !planId,
       status: planId ? "using_default_button_plan_id" : "missing",
       description: planId ? `ID del plan en PayPal (${planId}).` : "Crea un plan Sandbox y registra su ID. Los planes Live no funcionan en Sandbox.",
     });
@@ -237,6 +237,7 @@ export async function fetchPayPalPlanDetails(
   accessToken = null,
   fetchImpl = fetch
 ) {
+  if (!config.planId) return { ok: false, code: "MISSING_PLAN_ID", plan: null, message: config.env === "sandbox" ? "Falta PAYPAL_PLAN_ID_TEST: crea o selecciona un plan Sandbox en PayPal y guarda su ID en Base44." : "Falta PAYPAL_PLAN_ID en Base44." };
   let token = accessToken;
   if (!token) {
     const tokenRes = await fetchPayPalAccessToken(config, fetchImpl);
