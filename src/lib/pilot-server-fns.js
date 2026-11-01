@@ -15,6 +15,47 @@ export const getPilotWorkspaceData = createServerFn({ method: "GET" })
     const base44 = context.getBase44();
     const userId = context.user.id;
     const userEmail = context.user.email || "";
+    const userRole = context.user.role || "user";
+    const isAdmin = userRole === "admin";
+
+    // Non-admin accounts cannot access administrative pilot configuration, Stripe secret status,
+    // or revenue reporting counters. Existing billing records and quota calculations remain intact.
+    if (!isAdmin) {
+      const [enrollmentsPage, searchesPage] = await Promise.all([
+        base44.entities.PilotEnrollment.filter(
+          { created_by_id: userId },
+          { sort: "-created_date", limit: 25 }
+        ),
+        base44.entities.LeadSearch.filter(
+          { created_by_id: userId },
+          { sort: "-created_date", limit: 25 }
+        ),
+      ]);
+      const myEnrollments = (enrollmentsPage?.items || []).filter(
+        (e) => e.created_by_id === userId && (!e.owner_id || e.owner_id === userId)
+      );
+      const recentSearches = (searchesPage?.items || []).filter(
+        (s) => s.created_by_id === userId && (!s.owner_id || s.owner_id === userId)
+      );
+      const quota = computeQuotaUsage(recentSearches, Date.now(), myEnrollments);
+
+      return {
+        isAdmin: false,
+        forbidden: true,
+        user: {
+          id: userId,
+          email: userEmail,
+          role: userRole,
+        },
+        offerSpec: null,
+        stripeStatus: null,
+        myEnrollments,
+        transactionSummary: null,
+        quota,
+        feedbackRecords: [],
+        documentedImprovements: [],
+      };
+    }
 
     const [enrollmentsPage, searchesPage, feedbackPage] = await Promise.all([
       base44.entities.PilotEnrollment.filter(
@@ -46,9 +87,12 @@ export const getPilotWorkspaceData = createServerFn({ method: "GET" })
     const transactionSummary = summarizePilotTransactions(myEnrollments);
 
     return {
+      isAdmin: true,
+      forbidden: false,
       user: {
         id: userId,
         email: userEmail,
+        role: userRole,
       },
       offerSpec: PILOT_OFFER_SPEC,
       stripeStatus: {
@@ -92,6 +136,11 @@ export const initiateTestPilotCheckout = createServerFn({ method: "POST" })
     })
   )
   .handler(async ({ data, context }) => {
+    if (context.user?.role !== "admin") {
+      throw new Error(
+        "Forbidden: Internal pilot administration and test checkout initiation require an admin account."
+      );
+    }
     const userId = context.user.id;
     const userEmail = context.user.email || "";
     const stripeConfig = getStripeServerConfig();

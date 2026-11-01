@@ -43,6 +43,8 @@ function PilotOfferScreen() {
   const startCheckoutFn = useServerFn(initiateTestPilotCheckout);
   const verifySessionFn = useServerFn(verifyPilotCheckoutSession);
 
+  const isAdmin = Boolean(data?.isAdmin);
+  const isEs = lang === "es";
   const offer = data?.offerSpec;
   const stripeStatus = data?.stripeStatus;
   const quota = data?.quota || {};
@@ -118,6 +120,49 @@ function PilotOfferScreen() {
       setIsBusy(false);
     }
   };
+
+  if (!isAdmin) {
+    return (
+      <div className="max-w-xl mx-auto space-y-4">
+        {statusBanner && (
+          <div
+            role="status"
+            className="px-4 py-3 rounded-md border text-xs bg-amber-500/15 border-amber-500/35 text-amber-900 dark:text-amber-200"
+          >
+            {statusBanner}
+          </div>
+        )}
+        <section
+          role="alert"
+          className="bg-card text-card-foreground rounded-lg border border-border p-6 space-y-4"
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="px-2.5 py-0.5 rounded text-xs font-semibold bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/35">
+              {isEs ? "Acceso restringido (Solo administradores)" : "Restricted access (Admins only)"}
+            </span>
+          </div>
+          <h1 className="text-lg font-bold text-foreground">
+            {isEs
+              ? "Esta sección del piloto interno es exclusiva para administradores"
+              : "This internal pilot section is restricted to administrators"}
+          </h1>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            {isEs
+              ? "La configuración del piloto interno, el estado de llaves de prueba y los reportes administrativos requieren permisos de administrador del espacio de trabajo. Tu cuota de búsquedas y registros existentes permanecen activos en tu cuenta."
+              : "Internal pilot configuration, test key diagnostics, and administrative reporting require workspace administrator permissions. Your search quota and existing records remain active in your account."}
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/app"
+              className="inline-flex items-center justify-center px-4 py-2 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              {t("pilot.backToDiscover")}
+            </Link>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

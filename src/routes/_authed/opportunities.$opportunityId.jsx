@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, AlertTriangle } from "lucide-react";
 import RelevanceFeedbackPanel from "@/components/RelevanceFeedbackPanel";
 import AgentChatPanel from "@/components/AgentChatPanel";
 import {
@@ -11,6 +11,15 @@ import {
   formatRecencyBasisLabel,
 } from "@/lib/leads-constants";
 import {
+  formatSignalTypeLabel,
+  formatBusinessCategoryLabel,
+  formatDateValue,
+  formatOriginalExcerptBadge,
+  formatSignalSummary,
+  getExcerptSupportTranslation,
+  formatVerificationNotes,
+} from "@/lib/opportunity-copy";
+import {
   getOpportunityDetail,
   saveOpportunityForUser,
   unsaveOpportunityForUser,
@@ -18,6 +27,7 @@ import {
   recordOpportunityFeedback,
   clearOpportunityFeedback,
 } from "@/lib/server-fns";
+import { saveSavedOpportunityOutreach } from "@/lib/workspace-pages-fns";
 import { buildOutreachDraft } from "@/lib/i18n";
 import { usePreferences } from "@/lib/PreferencesContext";
 import { trackLeadsEvent } from "@/lib/telemetry";
@@ -60,16 +70,31 @@ export const Route = createFileRoute("/_authed/opportunities/$opportunityId")({
   component: OpportunityDetailScreen,
 });
 
+function detectServiceInDraft(draftText, servicesList = []) {
+  if (!draftText || !Array.isArray(servicesList) || servicesList.length === 0) {
+    return servicesList[0] || "";
+  }
+  const lowerDraft = String(draftText).toLowerCase();
+  for (const svc of servicesList) {
+    if (svc && lowerDraft.includes(svc.toLowerCase())) {
+      return svc;
+    }
+  }
+  return servicesList[0] || "";
+}
+
 function OpportunityDetailScreen() {
   const { opportunityId } = Route.useParams();
   const navSearch = Route.useSearch();
   const detailData = Route.useLoaderData();
   const router = useRouter();
   const { lang, outreachLang, setOutreachLang, syncFromProfile, t } = usePreferences();
+  const isEs = lang === "es";
 
   const saveOppFn = useServerFn(saveOpportunityForUser);
   const unsaveOppFn = useServerFn(unsaveOpportunityForUser);
   const updateSavedFn = useServerFn(updateSavedOpportunityItem);
+  const saveOutreachFn = useServerFn(saveSavedOpportunityOutreach);
   const feedbackFn = useServerFn(recordOpportunityFeedback);
   const clearFeedbackFn = useServerFn(clearOpportunityFeedback);
 
@@ -85,10 +110,21 @@ function OpportunityDetailScreen() {
   const feedbackRecord = detailData?.feedbackRecord || null;
 
   const [statusMessage, setStatusMessage] = useState("");
+  const [statusTone, setStatusTone] = useState("info");
   const [isBusy, setIsBusy] = useState(false);
   const [notesDraft, setNotesDraft] = useState(savedRecord?.qualification_notes || "");
   const [reviewStage, setReviewStage] = useState(savedRecord?.review_stage || "saved");
   const [copiedOutreach, setCopiedOutreach] = useState(false);
+
+  const [draftService, setDraftService] = useState(() =>
+    detectServiceInDraft(savedRecord?.outreach_draft, selectedServices)
+  );
+  const [draftLang, setDraftLang] = useState(
+    () => savedRecord?.outreach_draft_language || outreachLang || "en"
+  );
+  const [draftText, setDraftText] = useState("");
+  const [baselineTemplate, setBaselineTemplate] = useState("");
+  const [pendingReplace, setPendingReplace] = useState(null);
 
   useEffect(() => {
     if (profile) {
@@ -106,6 +142,31 @@ function OpportunityDetailScreen() {
     setNotesDraft(savedRecord?.qualification_notes || "");
     setReviewStage(savedRecord?.review_stage || "saved");
   }, [savedRecord?.id, savedRecord?.qualification_notes, savedRecord?.review_stage]);
+
+  useEffect(() => {
+    if (!opp) return;
+    const initLang = savedRecord?.outreach_draft_language || outreachLang || "en";
+    const matchedSvc = detectServiceInDraft(
+      savedRecord?.outreach_draft,
+      selectedServices
+    );
+    const defaultGenerated = buildOutreachDraft(
+      opp,
+      matchedSvc ? [matchedSvc] : selectedServices.slice(0, 1),
+      serviceDescription,
+      initLang
+    );
+    const existingSavedDraft =
+      typeof savedRecord?.outreach_draft === "string" &&
+      savedRecord.outreach_draft.trim()
+        ? savedRecord.outreach_draft
+        : "";
+    setDraftLang(initLang);
+    setDraftService(matchedSvc);
+    setBaselineTemplate(defaultGenerated);
+    setDraftText(existingSavedDraft || defaultGenerated);
+    setPendingReplace(null);
+  }, [opp?.id, savedRecord?.id]);
 
   const backToSaved = navSearch.from === "saved";
   const discoverBackSearch = {
@@ -157,25 +218,158 @@ function OpportunityDetailScreen() {
   const isVerified = opp.verification_status === "verified";
   const dynamicFitText = buildServiceFitHypothesis(opp, selectedServices, serviceDescription, lang);
   const recencyLabel = formatRecencyBasisLabel(opp.recency_basis, lang);
-  const outreachDraftText = buildOutreachDraft(
-    opp,
-    selectedServices,
-    serviceDescription,
-    outreachLang
-  );
+  const signalLabel = formatSignalTypeLabel(opp.signal_type, lang);
+  const categoryLabel = formatBusinessCategoryLabel(opp.business_category, lang);
+  const summaryText = formatSignalSummary(opp, lang);
+  const verificationNotesText = formatVerificationNotes(opp, lang);
+
+  const isDraftEdited =
+    Boolean(draftText.trim()) &&
+    draftText.trim() !== baselineTemplate.trim();
+
+  const applyTemplateReplacement = (nextService, nextLang) => {
+    const svc = nextService !== undefined ? nextService : draftService;
+    const lng = nextLang || draftLang;
+    setDraftService(svc);
+    setDraftLang(lng);
+    setOutreachLang(lng);
+    const fresh = buildOutreachDraft(
+      opp,
+      svc ? [svc] : selectedServices.slice(0, 1),
+      serviceDescription,
+      lng
+    );
+    setBaselineTemplate(fresh);
+    setDraftText(fresh);
+    setPendingReplace(null);
+  };
+
+  const handleServiceChange = (e) => {
+    const nextService = e.target.value;
+    setDraftService(nextService);
+    if (!isDraftEdited) {
+      const fresh = buildOutreachDraft(
+        opp,
+        nextService ? [nextService] : selectedServices.slice(0, 1),
+        serviceDescription,
+        draftLang
+      );
+      setBaselineTemplate(fresh);
+      setDraftText(fresh);
+      setPendingReplace(null);
+    } else {
+      setPendingReplace({
+        nextService,
+        nextLang: draftLang,
+      });
+    }
+  };
+
+  const handleRequestTemplateUpdate = (targetLang) => {
+    const nextLang = targetLang || draftLang;
+    if (isDraftEdited) {
+      setPendingReplace({
+        nextService: draftService,
+        nextLang,
+      });
+      return;
+    }
+    applyTemplateReplacement(draftService, nextLang);
+  };
 
   const handleCopyOutreach = async () => {
+    if (!draftText.trim()) {
+      setCopiedOutreach(false);
+      setStatusTone("error");
+      setStatusMessage(
+        isEs
+          ? "No hay texto para copiar en el borrador."
+          : "There is no draft text to copy."
+      );
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(outreachDraftText);
+      if (!navigator?.clipboard?.writeText) {
+        throw new Error("Clipboard API unavailable");
+      }
+      await navigator.clipboard.writeText(draftText);
       setCopiedOutreach(true);
       setTimeout(() => setCopiedOutreach(false), 2000);
     } catch {
-      setStatusMessage(t("detail.copiedOutreachMsg"));
+      setCopiedOutreach(false);
+      setStatusTone("error");
+      setStatusMessage(
+        isEs
+          ? "No pudimos copiar el mensaje automáticamente. Selecciona el texto del recuadro y cópialo manualmente."
+          : "We could not copy the message automatically. Please select the text in the box and copy it manually."
+      );
+    }
+  };
+
+  const handleSaveOutreachDraft = async () => {
+    if (isExample) {
+      setStatusTone("info");
+      setStatusMessage(t("detail.exampleSaveNotice"));
+      return;
+    }
+    if (!draftText.trim()) {
+      setStatusTone("error");
+      setStatusMessage(
+        isEs
+          ? "El borrador de contacto no puede estar vacío."
+          : "The outreach draft cannot be empty."
+      );
+      return;
+    }
+    setIsBusy(true);
+    setStatusMessage("");
+    try {
+      let targetSavedId = savedRecord?.id;
+      if (!targetSavedId) {
+        const createdSaved = await saveOppFn({
+          data: {
+            opportunity_id: opp.id,
+            service_fit_inference: dynamicFitText,
+            inferred_service_categories: selectedServices,
+            qualification_notes: notesDraft,
+            review_stage: reviewStage,
+          },
+        });
+        targetSavedId = createdSaved?.id;
+      }
+      if (targetSavedId) {
+        await saveOutreachFn({
+          data: {
+            id: targetSavedId,
+            outreach_draft: draftText,
+            outreach_draft_language: draftLang,
+            qualification_notes: notesDraft,
+            review_stage: reviewStage,
+          },
+        });
+      }
+      await router.invalidate();
+      setStatusTone("info");
+      setStatusMessage(
+        isEs
+          ? `Borrador de contacto guardado (${draftLang.toUpperCase()}).`
+          : `Saved outreach draft (${draftLang.toUpperCase()}).`
+      );
+    } catch (err) {
+      setStatusTone("error");
+      setStatusMessage(
+        isEs
+          ? `No pudimos guardar el borrador (${err?.message || "error"}). Tu texto se mantiene en pantalla.`
+          : `Could not save outreach draft (${err?.message || "error"}). Your text remains in the editor.`
+      );
+    } finally {
+      setIsBusy(false);
     }
   };
 
   const handleSave = async () => {
     if (isExample) {
+      setStatusTone("info");
       setStatusMessage(t("detail.exampleSaveNotice"));
       return;
     }
@@ -201,8 +395,10 @@ function OpportunityDetailScreen() {
         { isExample, opportunityId: opp.id }
       );
       await router.invalidate();
+      setStatusTone("info");
       setStatusMessage(t("detail.savedSuccessMsg"));
     } catch (err) {
+      setStatusTone("error");
       setStatusMessage(err?.message || "Could not save lead.");
     } finally {
       setIsBusy(false);
@@ -218,8 +414,10 @@ function OpportunityDetailScreen() {
         data: { opportunity_id: opp.id },
       });
       await router.invalidate();
+      setStatusTone("info");
       setStatusMessage(t("detail.unsavedSuccessMsg"));
     } catch (err) {
+      setStatusTone("error");
       setStatusMessage(err?.message || "Could not remove saved lead.");
     } finally {
       setIsBusy(false);
@@ -240,8 +438,10 @@ function OpportunityDetailScreen() {
         },
       });
       await router.invalidate();
+      setStatusTone("info");
       setStatusMessage(t("detail.notesSavedMsg"));
     } catch (err) {
+      setStatusTone("error");
       setStatusMessage(err?.message || "Could not update saved notes.");
     } finally {
       setIsBusy(false);
@@ -250,6 +450,7 @@ function OpportunityDetailScreen() {
 
   const handleSubmitFeedback = async ({ verdict, reason_category, reason_note }) => {
     if (isExample) {
+      setStatusTone("info");
       setStatusMessage(t("detail.exampleFeedbackNotice"));
       return;
     }
@@ -277,12 +478,14 @@ function OpportunityDetailScreen() {
         { isExample, opportunityId: opp.id }
       );
       await router.invalidate();
+      setStatusTone("info");
       setStatusMessage(
         verdict === "relevant"
           ? t("detail.feedbackRelevantMsg")
           : t("detail.feedbackNotRelevantMsg")
       );
     } catch (err) {
+      setStatusTone("error");
       setStatusMessage(err?.message || "Could not record feedback.");
     } finally {
       setIsBusy(false);
@@ -298,8 +501,10 @@ function OpportunityDetailScreen() {
         data: { opportunity_id: opp.id },
       });
       await router.invalidate();
+      setStatusTone("info");
       setStatusMessage(t("detail.feedbackClearedMsg"));
     } catch (err) {
+      setStatusTone("error");
       setStatusMessage(err?.message || "Could not clear feedback.");
     } finally {
       setIsBusy(false);
@@ -337,14 +542,18 @@ function OpportunityDetailScreen() {
 
       {statusMessage && (
         <div
-          role="status"
-          className="p-3 rounded-md bg-primary/15 border border-primary/30 text-xs text-foreground flex items-center justify-between"
+          role={statusTone === "error" ? "alert" : "status"}
+          className={`p-3 rounded-md border text-xs flex items-center justify-between ${
+            statusTone === "error"
+              ? "bg-destructive/15 border-destructive/35 text-destructive"
+              : "bg-primary/15 border-primary/30 text-foreground"
+          }`}
         >
           <span>{statusMessage}</span>
           <button
             type="button"
             onClick={() => setStatusMessage("")}
-            className="text-primary hover:underline font-medium ml-4"
+            className="underline font-medium ml-4 shrink-0"
           >
             {t("common.dismiss")}
           </button>
@@ -353,7 +562,7 @@ function OpportunityDetailScreen() {
 
       <div className="bg-card text-card-foreground rounded-lg border border-border p-5 sm:p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-border pb-5">
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`px-2 py-0.5 rounded text-xs font-semibold border ${
@@ -365,7 +574,7 @@ function OpportunityDetailScreen() {
                 {isVerified ? t("common.verified") : t("common.needsReview")}
               </span>
               <span className="px-2 py-0.5 rounded text-xs font-medium bg-primary/15 text-primary border border-primary/30">
-                {opp.signal_type}
+                {signalLabel}
               </span>
               <span className="px-2 py-0.5 rounded text-xs bg-secondary text-muted-foreground border border-border">
                 {recencyLabel}
@@ -384,18 +593,18 @@ function OpportunityDetailScreen() {
                 </span>
               )}
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground break-words">
               {opp.business_name}
             </h1>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>{opp.location}</span>
-              {opp.business_category && <span>· {opp.business_category}</span>}
+              {categoryLabel && <span>· {categoryLabel}</span>}
               {opp.website_url ? (
                 <a
                   href={safePublicUrl(opp.website_url)}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-primary hover:underline font-medium"
+                  className="text-primary hover:underline font-medium break-all"
                 >
                   {opp.website_url}
                 </a>
@@ -438,9 +647,9 @@ function OpportunityDetailScreen() {
           <h2 className="text-sm font-semibold text-foreground">
             {t("detail.evidenceSectionTitle", { count: evidenceList.length })}
           </h2>
-          <p className="text-sm text-foreground/90">{opp.signal_summary}</p>
+          <p className="text-sm text-foreground/90 leading-relaxed">{summaryText}</p>
 
-          {opp.verification_notes && (
+          {verificationNotesText && (
             <div
               className={`p-3 rounded-md border text-xs ${
                 isVerified
@@ -448,52 +657,70 @@ function OpportunityDetailScreen() {
                   : "bg-amber-500/10 border-amber-500/35 text-amber-900 dark:text-amber-200"
               }`}
             >
-              <strong>{t("detail.verificationStatusLabel")}</strong> {opp.verification_notes}
+              <strong>{t("detail.verificationStatusLabel")}</strong> {verificationNotesText}
             </div>
           )}
 
           <div className="space-y-3">
-            {evidenceList.map((ev, idx) => (
-              <div
-                key={ev.id || idx}
-                className="bg-secondary/50 rounded-md border border-border p-4 space-y-2"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
-                  <span className="font-medium text-foreground">{ev.source_title}</span>
-                  <a
-                    href={safePublicUrl(ev.source_url)}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={handleSourceOpen}
-                    className="text-primary hover:underline font-medium"
-                  >
-                    {t("detail.openSourceLink")}
-                  </a>
+            {evidenceList.map((ev, idx) => {
+              const supportTranslation = getExcerptSupportTranslation(
+                { ...opp, supporting_excerpt: ev.supporting_excerpt },
+                lang
+              );
+              return (
+                <div
+                  key={ev.id || idx}
+                  className="bg-secondary/50 rounded-md border border-border p-4 space-y-2"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                    <span className="font-medium text-foreground break-words">
+                      {ev.source_title}
+                    </span>
+                    <a
+                      href={safePublicUrl(ev.source_url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={handleSourceOpen}
+                      className="text-primary hover:underline font-medium shrink-0"
+                    >
+                      {t("detail.openSourceLink")}
+                    </a>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="inline-block text-[10px] font-mono text-muted-foreground">
+                      {formatOriginalExcerptBadge(ev.supporting_excerpt, lang)}
+                    </span>
+                    <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/50 pl-3 py-0.5 break-words">
+                      {ev.supporting_excerpt}
+                    </blockquote>
+                    {supportTranslation && (
+                      <div className="rounded bg-card/70 border border-border/70 px-2.5 py-1.5 space-y-0.5">
+                        <span className="block text-[10px] font-mono text-primary">
+                          {t("common.optionalTranslationBadge")}
+                        </span>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          {supportTranslation}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-[11px] font-mono text-muted-foreground pt-1">
+                    <span>
+                      {t("common.published")}: {formatDateValue(ev.publication_date, lang)}
+                    </span>
+                    <span>
+                      {t("common.eventDate")}: {formatDateValue(ev.event_date, lang)}
+                    </span>
+                    <span>
+                      {t("common.retrieved")}:{" "}
+                      {ev.retrieval_date
+                        ? String(ev.retrieval_date).replace("T", " ").slice(0, 16) + " UTC"
+                        : t("common.notStated")}
+                    </span>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <span className="inline-block text-[10px] font-mono text-muted-foreground">
-                    {t("common.originalLanguageBadge")}
-                  </span>
-                  <blockquote className="text-xs italic text-muted-foreground border-l-2 border-primary/50 pl-3 py-0.5">
-                    {ev.supporting_excerpt}
-                  </blockquote>
-                </div>
-                <div className="flex flex-wrap gap-4 text-[11px] font-mono text-muted-foreground pt-1">
-                  <span>
-                    {t("common.published")}: {ev.publication_date || t("common.notStated")}
-                  </span>
-                  <span>
-                    {t("common.eventDate")}: {ev.event_date || t("common.notStated")}
-                  </span>
-                  <span>
-                    {t("common.retrieved")}:{" "}
-                    {ev.retrieval_date
-                      ? String(ev.retrieval_date).replace("T", " ").slice(0, 16) + " UTC"
-                      : t("common.notStated")}
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
@@ -593,7 +820,7 @@ function OpportunityDetailScreen() {
               </p>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <span className="text-xs text-muted-foreground">{t("common.outreachLangLabel")}:</span>
               <div
                 role="group"
@@ -604,12 +831,12 @@ function OpportunityDetailScreen() {
                   { code: "en", label: "EN · English" },
                   { code: "es", label: "ES · Español" },
                 ].map((opt) => {
-                  const active = outreachLang === opt.code;
+                  const active = draftLang === opt.code;
                   return (
                     <button
                       key={opt.code}
                       type="button"
-                      onClick={() => setOutreachLang(opt.code)}
+                      onClick={() => handleRequestTemplateUpdate(opt.code)}
                       aria-pressed={active}
                       className={`px-2.5 py-1 rounded-sm font-mono text-[11px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-ring ${
                         active
@@ -625,28 +852,122 @@ function OpportunityDetailScreen() {
             </div>
           </div>
 
+          {selectedServices.length > 0 && (
+            <div className="space-y-1.5">
+              <label
+                htmlFor="detail-outreach-service"
+                className="block text-xs font-semibold text-foreground"
+              >
+                {isEs ? "Servicio que quieres ofrecer" : "Service to introduce"}
+              </label>
+              <select
+                id="detail-outreach-service"
+                value={draftService}
+                onChange={handleServiceChange}
+                className="w-full h-9 rounded-md border border-input bg-background px-3 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                {selectedServices.map((service) => (
+                  <option key={service} value={service}>
+                    {service}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {pendingReplace && (
+            <div
+              role="alert"
+              className="p-3 rounded-md bg-amber-500/15 border border-amber-500/40 text-xs space-y-2"
+            >
+              <div className="flex items-start gap-2 text-amber-900 dark:text-amber-200">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <p>
+                  {isEs
+                    ? `Has editado este borrador. ¿Quieres reemplazar tu texto con una plantilla nueva en ${pendingReplace.nextLang.toUpperCase()}${
+                        pendingReplace.nextService ? ` para "${pendingReplace.nextService}"` : ""
+                      }?`
+                    : `You have edited this draft. Replace your text with a new ${pendingReplace.nextLang.toUpperCase()} template${
+                        pendingReplace.nextService ? ` for "${pendingReplace.nextService}"` : ""
+                      }?`}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 pl-6">
+                <button
+                  type="button"
+                  onClick={() =>
+                    applyTemplateReplacement(
+                      pendingReplace.nextService,
+                      pendingReplace.nextLang
+                    )
+                  }
+                  className="px-2.5 py-1 rounded text-xs font-medium bg-primary text-primary-foreground"
+                >
+                  {isEs ? "Reemplazar mi texto" : "Replace my text"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (pendingReplace.nextLang !== draftLang) {
+                      setDraftLang(pendingReplace.nextLang);
+                      setOutreachLang(pendingReplace.nextLang);
+                    }
+                    setPendingReplace(null);
+                  }}
+                  className="px-2.5 py-1 rounded text-xs font-medium bg-card text-foreground border border-border"
+                >
+                  {isEs ? "Conservar mi texto" : "Keep my text"}
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="bg-secondary/50 border border-border rounded-md p-3.5 space-y-2.5">
-            <pre className="whitespace-pre-wrap font-body text-xs text-foreground leading-relaxed">
-              {outreachDraftText}
-            </pre>
-            <div className="flex justify-end">
+            <textarea
+              aria-label={t("detail.outreachSectionTitle")}
+              rows={6}
+              maxLength={4000}
+              value={draftText}
+              onChange={(e) => setDraftText(e.target.value)}
+              className="w-full p-3 rounded-md border border-input bg-card font-body text-xs text-foreground leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={handleCopyOutreach}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-card border border-border text-foreground hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                onClick={() => handleRequestTemplateUpdate(draftLang)}
+                className="px-2.5 py-1.5 rounded-md text-xs font-medium text-primary hover:bg-primary/10 border border-primary/25"
               >
-                {copiedOutreach ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 text-emerald-500" />
-                    {t("detail.copiedOutreachMsg")}
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-3.5 w-3.5" />
-                    {t("detail.copyOutreachBtn")}
-                  </>
-                )}
+                {isEs ? "Actualizar plantilla" : "Update template"}
               </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyOutreach}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-card border border-border text-foreground hover:bg-secondary transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {copiedOutreach ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-emerald-500" />
+                      {t("detail.copiedOutreachMsg")}
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" />
+                      {t("detail.copyOutreachBtn")}
+                    </>
+                  )}
+                </button>
+                {!isExample && (
+                  <button
+                    type="button"
+                    disabled={isBusy}
+                    onClick={handleSaveOutreachDraft}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {isEs ? "Guardar borrador" : "Save draft"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </section>

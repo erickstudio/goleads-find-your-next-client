@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_site/")({
     const legacy = validateDiscoverySearch(search);
     if (Object.keys(legacy).length > 0) throw redirect({ to: "/app", search: legacy, replace: true });
   },
-  head: ({ match }) => publicHead(match.search.lang),
+  head: ({ match }) => publicHead(match?.search?.lang),
   component: LaunchPage,
 });
 function LaunchPage() {
