@@ -232,7 +232,7 @@ export const LAUNCH_COPY = {
     },
     "supportPage": {
       "title": "Support & access help",
-      "intro": "Start with the options below. A direct operator support channel is not configured yet; this page does not submit or send a support request.",
+      "intro": "Start with the options below or send us a message using the support form at the bottom of this page (or email info@goleads.space).",
       "sections": [
         {
           "title": "Having trouble signing in?",
@@ -244,7 +244,7 @@ export const LAUNCH_COPY = {
         },
         {
           "title": "Need operator assistance or a privacy request?",
-          "body": "A direct contact method and response timeframe are pending. There is no monitored inbox or support form linked here. Do not share passwords, payment details or confidential information."
+          "body": "Use the direct contact form below or write to info@goleads.space (Panamá, Panamá). Do not share passwords, payment card numbers or confidential information."
         }
       ],
       "login": "Sign in",
@@ -485,7 +485,7 @@ export const LAUNCH_COPY = {
     },
     "supportPage": {
       "title": "Ayuda y acceso",
-      "intro": "Empieza por las opciones siguientes. Aún no hay un canal directo de soporte del operador; esta página no envía ni registra solicitudes.",
+      "intro": "Empieza por las opciones siguientes o escríbenos directamente desde el formulario de soporte al final de esta página (o al correo info@goleads.space).",
       "sections": [
         {
           "title": "¿Problemas para entrar?",
@@ -497,7 +497,7 @@ export const LAUNCH_COPY = {
         },
         {
           "title": "¿Necesitas al operador o hacer una solicitud de privacidad?",
-          "body": "El contacto directo y el plazo de respuesta están pendientes. No hay un buzón supervisado ni un formulario de soporte enlazados aquí. No compartas contraseñas, datos de pago ni información confidencial."
+          "body": "Usa el formulario de contacto directo más abajo o escríbenos a info@goleads.space (Panamá, Panamá). No compartas contraseñas, datos de tarjetas ni información confidencial."
         }
       ],
       "login": "Iniciar sesión",

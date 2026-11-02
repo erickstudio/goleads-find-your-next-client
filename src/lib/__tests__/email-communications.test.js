@@ -67,6 +67,7 @@ test("Resolves Spanish (*Es) templates when profile ui_language is 'es' and Engl
     ["newsletter", "Newsletter", "NewsletterEs"],
     ["promotion", "Promotion", "PromotionEs"],
     ["product_update", "ProductUpdate", "ProductUpdateEs"],
+    ["enquiry_reply", "EnquiryReply", "EnquiryReplyEs"],
   ]) {
     const esResult = emailMod.resolveTemplateForLanguage(key, {
       ui_language: "es",

@@ -27,6 +27,13 @@ const EMAIL_TYPES = [
     tplEs: "NewsletterEs",
     tplEn: "Newsletter",
   },
+  {
+    key: "enquiry_reply",
+    labelEs: "EnquiryReply (Respuesta Soporte)",
+    labelEn: "EnquiryReply (Support Reply)",
+    tplEs: "EnquiryReplyEs",
+    tplEn: "EnquiryReply",
+  },
 ];
 
 export default function BilingualEmailEditorSection({
@@ -148,8 +155,8 @@ export default function BilingualEmailEditorSection({
         </div>
       </div>
 
-      {/* Selector of the 3 communication emails */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      {/* Selector of the 4 communication emails */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
         {EMAIL_TYPES.map((item) => (
           <button
             key={item.key}

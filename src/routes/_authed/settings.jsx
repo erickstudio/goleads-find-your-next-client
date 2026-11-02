@@ -504,6 +504,13 @@ function AccountSettingsPage() {
                   tplEs: "PromotionEs",
                   tplEn: "Promotion",
                 },
+                {
+                  key: "enquiry_reply",
+                  titleEs: "Respuesta a consulta (EnquiryReply)",
+                  titleEn: "Enquiry reply (EnquiryReply)",
+                  tplEs: "EnquiryReplyEs",
+                  tplEn: "EnquiryReply",
+                },
               ].map((item) => {
                 const activeTpl = lang === "es" ? item.tplEs : item.tplEn;
                 const isSendingThis = sendingEmailKey === item.key;

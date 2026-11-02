@@ -124,7 +124,13 @@ export const sendProfileLanguageCommunicationEmail = createServerFn({ method: "P
   .middleware([requireUser])
   .validator(
     z.object({
-      emailKey: z.enum(["welcome", "newsletter", "promotion", "product_update"]),
+      emailKey: z.enum([
+        "welcome",
+        "newsletter",
+        "promotion",
+        "product_update",
+        "enquiry_reply",
+      ]),
     })
   )
   .handler(async ({ data, context }) => {

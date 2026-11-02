@@ -1,0 +1,74 @@
+<mjml>
+  <mj-head>
+    <mj-title>{{subject_line}}</mj-title>
+    <mj-preview>{{subheadline}}</mj-preview>
+    <mj-attributes>
+      <mj-all font-family="Inter, Helvetica, Arial, sans-serif" />
+      <mj-section background-color="#111827" padding="0 36px" />
+      <mj-column padding="0" />
+      <mj-text color="#ffffff" font-size="15px" line-height="1.6" padding="0" />
+      <mj-button background-color="#4e2bff" color="#ffffff" border-radius="4px" font-size="15px" font-weight="700" inner-padding="14px 28px" padding="0" align="left" />
+      <mj-image padding="0" />
+      <mj-divider border-color="#e5e7eb" border-width="1px" padding="0" />
+      <mj-class name="h" font-family="Inter, Helvetica, Arial, sans-serif" font-weight="700" />
+      <mj-class name="label" font-size="11px" letter-spacing="2px" text-transform="uppercase" font-weight="700" color="#4e2bff" />
+      <mj-class name="muted" color="#8870ff" />
+    </mj-attributes>
+    <mj-style>
+      @media (max-width:480px) { .hero-h div { font-size:28px !important; line-height:1.18 !important; } }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#111827" width="600px">
+    <mj-wrapper padding="28px 12px" background-color="#111827">
+      <mj-section background-color="#4e2bff" padding="24px 36px" border-radius="4px 4px 0 0">
+        <mj-column>
+          <mj-image src="https://media.base44.com/images/public/6ae63656edc313a907ad5680/bbf2414d0_logo.png" alt="GoLeads find your next client" width="40px" align="center" padding="0 0 12px" />
+          <mj-text align="center" font-size="12px" letter-spacing="4px" font-weight="700" text-transform="uppercase" color="#ffffff">GoLeads find your next client</mj-text>
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="40px 36px 12px">
+        <mj-column>
+          <mj-text mj-class="label" padding="0 0 10px">{{eyebrow}}</mj-text>
+          <mj-text mj-class="h" css-class="hero-h" font-size="28px" line-height="1.22" padding="0 0 12px">{{headline}}</mj-text>
+          <mj-text mj-class="muted" font-size="16px" line-height="1.6" padding="0 0 20px">{{subheadline}}</mj-text>
+          <mj-divider border-color="#1f2937" border-width="1px" padding="0 0 24px" />
+          <mj-text mj-class="h" font-size="18px" line-height="1.35" padding="0 0 10px">{{section_title}}</mj-text>
+          <mj-text font-size="15px" line-height="1.7" padding="0 0 20px">{{body_text}}</mj-text>
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="0 28px 20px">
+        <mj-column padding="0 8px 16px" inner-background-color="#161a38" inner-border-radius="4px">
+          <mj-text mj-class="h" font-size="15px" line-height="1.35" color="#ffffff" padding="20px 20px 6px">{{card1_title}}</mj-text>
+          <mj-text mj-class="muted" font-size="13px" line-height="1.55" padding="0 20px 20px">{{card1_body}}</mj-text>
+        </mj-column>
+        <mj-column padding="0 8px 16px" inner-background-color="#161a38" inner-border-radius="4px">
+          <mj-text mj-class="h" font-size="15px" line-height="1.35" color="#ffffff" padding="20px 20px 6px">{{card2_title}}</mj-text>
+          <mj-text mj-class="muted" font-size="13px" line-height="1.55" padding="0 20px 20px">{{card2_body}}</mj-text>
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="8px 36px 28px">
+        <mj-column>
+          <mj-button href="{{cta_url}}" align="left">{{cta_label}}</mj-button>
+        </mj-column>
+      </mj-section>
+
+      <mj-section padding="16px 36px 36px">
+        <mj-column border-left="3px solid #4e2bff" padding="2px 0 2px 16px">
+          <mj-text mj-class="h" font-size="16px" padding="0 0 2px">El equipo de GoLeads</mj-text>
+          <mj-text mj-class="muted" font-size="13px">info@goleads.space &#183; Panam&#225;, Panam&#225;</mj-text>
+        </mj-column>
+      </mj-section>
+
+      <mj-section background-color="#4e2bff" padding="26px 36px 30px" border-radius="0 0 4px 4px">
+        <mj-column>
+          <mj-text mj-class="h" align="center" font-size="17px" color="#ffffff" padding="0 0 6px">GoLeads find your next client</mj-text>
+          <mj-text align="center" font-size="12px" line-height="1.6" color="#ffffff" padding="0 0 8px">Panam&#225;, Panam&#225; &#183; <a href="mailto:info@goleads.space" style="color:#ffffff;text-decoration:underline;">info@goleads.space</a></mj-text>
+          <mj-text align="center" font-size="11px" color="#ffffff"><a href="{{unsubscribe_url}}" style="color:#ffffff;text-decoration:underline;">Cancelar suscripci&#243;n</a></mj-text>
+        </mj-column>
+      </mj-section>
+    </mj-wrapper>
+  </mj-body>
+</mjml>

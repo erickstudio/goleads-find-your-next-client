@@ -23,9 +23,49 @@ export const COMMUNICATION_EMAIL_TEMPLATES = Object.freeze({
     labelEn: "Product update",
     labelEs: "Novedades del producto",
   },
+  enquiry_reply: {
+    en: "EnquiryReply",
+    es: "EnquiryReplyEs",
+    labelEn: "Enquiry & support reply",
+    labelEs: "Respuesta de soporte y consulta",
+  },
 });
 
 export const DEFAULT_BILINGUAL_CAMPAIGNS = Object.freeze({
+  enquiry_reply: {
+    email_key: "enquiry_reply",
+    subject_es: "Recibimos tu consulta en GoLeads",
+    subject_en: "We received your inquiry at GoLeads",
+    eyebrow_es: "Soporte y atención · GoLeads",
+    eyebrow_en: "Support & inquiries · GoLeads",
+    headline_es: "Hola, hemos recibido tu mensaje",
+    headline_en: "Hi there, we received your message",
+    subheadline_es:
+      "Nuestro equipo revisará tu solicitud y te responderá a la brevedad desde info@goleads.space.",
+    subheadline_en:
+      "Our team is reviewing your request and will get back to you shortly from info@goleads.space.",
+    section_title_es: "Deja de adivinar qué empresas están listas para contratarte",
+    section_title_en: "Stop guessing which companies are ready to buy",
+    body_es:
+      "GoLeads detecta señales verificadas de apertura y expansión para que contactes a empresas en crecimiento justo en el momento oportuno.",
+    body_en:
+      "GoLeads surfaces verified expansion signals so you reach out at exactly the right moment.",
+    card1_title_es: "Atención directa",
+    card1_body_es:
+      "Responde a este correo o escríbenos a info@goleads.space y una persona real de nuestro equipo te ayudará.",
+    card1_title_en: "Direct human help",
+    card1_body_en:
+      "Reply to this email or write to info@goleads.space and a real person from our team will help.",
+    card2_title_es: "Señales actualizadas",
+    card2_body_es:
+      "Las señales se actualizan continuamente para que tu lista de prospectos nunca quede desactualizada.",
+    card2_title_en: "Fresh signals",
+    card2_body_en:
+      "Signals update weekly, so your prospect list is never stale.",
+    cta_label_es: "Abrir GoLeads",
+    cta_label_en: "Open GoLeads",
+    cta_url: "https://goleads.space/app",
+  },
   product_update: {
     email_key: "product_update",
     subject_es: "Novedades en GoLeads: encuentra a tu próximo cliente",

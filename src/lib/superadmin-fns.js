@@ -128,6 +128,10 @@ export const getSuperAdminDashboardData = createServerFn({ method: "GET" })
         "newsletter",
         savedByKey.get("newsletter")
       ),
+      enquiry_reply: mergeCampaignContentWithDefaults(
+        "enquiry_reply",
+        savedByKey.get("enquiry_reply")
+      ),
     };
 
     const sanitizedGrants = (grantsPage?.items || []).map(
@@ -358,7 +362,7 @@ export const redeemProInvitePassword = createServerFn({ method: "POST" })
   });
 
 const BilingualCampaignSchema = z.object({
-  email_key: z.enum(["product_update", "promotion", "newsletter"]),
+  email_key: z.enum(["product_update", "promotion", "newsletter", "enquiry_reply"]),
   subject_es: z.string().trim().min(2).max(200),
   subject_en: z.string().trim().min(2).max(200),
   eyebrow_es: z.string().trim().max(120),
@@ -431,7 +435,7 @@ export const dispatchBilingualCampaignEmail = createServerFn({
   .middleware([requireUser])
   .validator(
     z.object({
-      email_key: z.enum(["product_update", "promotion", "newsletter"]),
+      email_key: z.enum(["product_update", "promotion", "newsletter", "enquiry_reply"]),
       mode: z.enum(["test_es", "test_en", "all_users", "selected_users"]),
       recipient_emails: z.array(z.string().trim().email()).max(50).optional(),
       campaign_override: BilingualCampaignSchema.optional(),
