@@ -36,7 +36,7 @@
         "operations": []
       }
     },
-    "exclude_agents": [
+    "excluded_agents": [
       "evidence_analyst",
       "search_strategist"
     ],
