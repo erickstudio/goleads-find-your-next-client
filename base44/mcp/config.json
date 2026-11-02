@@ -70,7 +70,12 @@
           },
           "additionalProperties": false
         },
-        "annotations": null,
+        "annotations": {
+          "read_only_hint": true,
+          "destructive_hint": null,
+          "idempotent_hint": null,
+          "open_world_hint": null
+        },
         "handler": "/api/mcp-leads",
         "disabled": false
       }
