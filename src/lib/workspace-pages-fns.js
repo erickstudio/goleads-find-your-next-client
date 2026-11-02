@@ -1,3 +1,4 @@
+import { getPayPalServerConfig } from "@/lib/paypal-billing.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth-middleware";
@@ -77,7 +78,8 @@ export const getExtendedWorkspaceData = createServerFn({ method: "GET" })
     const savedOpportunities = filterOwned(savedPage?.items, userId);
     const feedbackRecords = filterOwned(feedbackPage?.items, userId);
     const pilotEnrollments = filterOwned(enrollmentsPage?.items, userId);
-    const paypalSubscriptions = (subsPage?.items || []).filter((sub) => sub.owner_id === userId);
+    const config = getPayPalServerConfig();
+    const paypalSubscriptions = (subsPage?.items || []).filter((sub) => sub.owner_id === userId && sub.paypal_environment === config.env && sub.paypal_plan_id === config.planId);
 
     const quota = computeQuotaUsage(
       recentSearches,
@@ -100,7 +102,6 @@ export const getExtendedWorkspaceData = createServerFn({ method: "GET" })
       savedOpportunities,
       feedbackRecords,
       pilotEnrollments,
-      paypalSubscriptions,
       quota,
     };
   });
