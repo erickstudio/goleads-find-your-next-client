@@ -210,9 +210,7 @@ export const preparePayPalSubscriptionOrder = createServerFn({ method: "POST" })
         cancel_url: `${safeOrigin}/plans?paypal=cancelled&enrollment_id=${encodeURIComponent(enrollmentRecord.id)}`,
       },
     };
-    if (userEmail) {
-      createSubBody.subscriber = { email_address: userEmail };
-    }
+    // Let PayPal collect the buyer details. Pre-filling the app account email can force a wallet login instead of card checkout.
 
     const createRes = await fetch(
       `${config.apiBaseUrl}/v1/billing/subscriptions`,
