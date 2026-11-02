@@ -151,7 +151,7 @@
     "read": {
       "$or": [
         {
-          "owner_id": "{{user.id}}"
+          "data.owner_id": "{{user.id}}"
         },
         {
           "user_condition": {
