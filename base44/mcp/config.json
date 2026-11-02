@@ -1,3 +1,64 @@
 {
-  "auth": "oauth"
+  "auth": "oauth",
+  "tools": {
+    "entity_overrides": {
+      "EvidenceItem": {
+        "operations": []
+      },
+      "LeadSearch": {
+        "operations": []
+      },
+      "Opportunity": {
+        "operations": []
+      },
+      "OpportunityFeedback": {
+        "operations": []
+      },
+      "PayPalSubscription": {
+        "operations": []
+      },
+      "PayPalWebhookEvent": {
+        "operations": []
+      },
+      "PaymentWebhookEvent": {
+        "operations": []
+      },
+      "PilotEnrollment": {
+        "operations": []
+      },
+      "SavedOpportunity": {
+        "operations": []
+      },
+      "UserProfile": {
+        "operations": []
+      },
+      "User": {
+        "operations": []
+      }
+    },
+    "exclude_agents": [
+      "evidence_analyst",
+      "search_strategist"
+    ],
+    "functions": [
+      {
+        "name": "list_saved_leads",
+        "handler": "/api/mcp-leads",
+        "description": "Read up to 50 of your own saved GoLeads leads. Requires an active GoLeads Pro subscription. No billing data or write operations.",
+        "read_only_hint": true,
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    ]
+  }
 }
