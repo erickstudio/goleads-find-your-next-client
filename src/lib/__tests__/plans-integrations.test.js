@@ -42,6 +42,17 @@ test("Customer billing payload omits configuration, webhook, credentials and dia
   for (const forbidden of ["SECRET","WH-PRIVATE","PAYPAL_","sandbox","webhook","missingSecrets","verification_notes"]) assert.equal(json.includes(forbidden),false,forbidden);
   assert.equal(result.offer.checkout.ready,false); assert.equal(result.offer.extraSearches,500);
 });
+test("Free checkout includes the public SDK identifiers while keeping server secrets private", async () => {
+  const p = await load("src/lib/plan-policy.js");
+  const config = {env:"sandbox",clientId:"public-sdk-client",planId:"P-TESTPLAN",clientSecret:"PRIVATE-SECRET",webhookId:"PRIVATE-WEBHOOK",canAuthenticateWithPayPal:true,hasWebhookId:true,hasConfiguredAllowance:true};
+  const result = p.customerBillingSummary({config,verification:{ok:true,plan:{status:"ACTIVE",amount:"9.99",currency:"USD",intervalUnit:"MONTH",intervalCount:1}},subscriptions:[],quota:{remainingToday:3},nowMs:now});
+  assert.equal(result.access.isPro,false);
+  assert.equal(result.offer.checkout.ready,true);
+  assert.equal(result.offer.checkout.clientId,"public-sdk-client");
+  assert.equal(result.offer.checkout.planId,"P-TESTPLAN");
+  assert.equal(result.offer.checkout.testMode,true);
+  assert.equal(JSON.stringify(result).includes("PRIVATE-"),false);
+});
 test("Only administrators pass diagnostic authorization", async () => {
   const p = await load("src/lib/plan-policy.js");
   for (const user of [null,{role:"user"},{role:"Admin"}]) assert.throws(() => p.assertAdministrator(user),{status:403});
