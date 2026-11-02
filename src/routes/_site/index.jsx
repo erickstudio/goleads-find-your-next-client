@@ -1,3 +1,4 @@
+import PricingPreview from "@/components/launch/PricingPreview";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { validateDiscoverySearch } from "@/lib/discovery-search";
 import { publicHead } from "@/lib/public-head";
@@ -19,5 +20,5 @@ export const Route = createFileRoute("/_site/")({
   component: LaunchPage,
 });
 function LaunchPage() {
-  return <><PublicMetadata /><LaunchHero /><ProductPreview /><HowItWorks /><EvidenceBenefits /><IntegrationStatus /><LaunchFAQ /></>;
+  return <><PublicMetadata /><LaunchHero /><ProductPreview /><HowItWorks /><EvidenceBenefits /><IntegrationStatus /><PricingPreview /><LaunchFAQ /></>;
 }
