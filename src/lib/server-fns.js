@@ -423,6 +423,7 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
         location_query: locationQuery,
         time_window_days: timeWindowDays,
         query_cache_key: queryCacheKey,
+        search_mode: mode,
         selected_services_snapshot: selectedServices,
         service_description_snapshot: serviceDescription,
         status: "searching",
