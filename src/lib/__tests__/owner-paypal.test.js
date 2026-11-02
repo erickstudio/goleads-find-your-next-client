@@ -67,3 +67,10 @@ test("Ordinary users cannot run the administrative test-plan setup",async()=>{
   await assert.rejects(p.prepareSandboxProPlan({context:{user:{id:"other",role:"user"}}}),{status:403});assert.equal(calls,0);
 });
 
+
+test("Approval links are HTTPS and belong to the selected PayPal environment only",async()=>{
+  const p=await load("src/lib/paypal-billing.server.js");
+  assert.equal(p.safePayPalApprovalUrl("https://www.sandbox.paypal.com/webapps/billing/subscriptions?ba_token=test","sandbox"),"https://www.sandbox.paypal.com/webapps/billing/subscriptions?ba_token=test");
+  for(const url of ["https://attacker.example/","https://www.paypal.com/approve","http://www.sandbox.paypal.com/","https://www.sandbox.paypal.com.attacker.example/","https://user:pass@www.sandbox.paypal.com/"])assert.equal(p.safePayPalApprovalUrl(url,"sandbox"),null);
+  assert.equal(p.safePayPalApprovalUrl("https://www.sandbox.paypal.com/approve","live"),null);
+});

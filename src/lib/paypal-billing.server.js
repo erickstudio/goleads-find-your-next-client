@@ -19,6 +19,14 @@ export const REQUIRED_PAYPAL_WEBHOOK_EVENTS = [
   "PAYMENT.SALE.DENIED",
 ];
 
+export function safePayPalApprovalUrl(value, env = "sandbox") {
+  try {
+    const url = new URL(String(value || ""));
+    const expected = env === "live" ? "https://www.paypal.com" : "https://www.sandbox.paypal.com";
+    return url.origin === expected && !url.username && !url.password ? url.href : null;
+  } catch { return null; }
+}
+
 export function getPayPalApiBaseUrl(env = "sandbox") {
   return env === "live"
     ? "https://api-m.paypal.com"

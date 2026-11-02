@@ -1,17 +1,47 @@
-import { useState } from "react";
-import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { useState, useEffect, useRef } from "react";
+import { createFileRoute, Link, useRouter, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { getPayPalPlansWorkspaceData, cancelUserPayPalSubscription, confirmPayPalSubscriptionOnServer } from "@/lib/paypal-server-fns";
+import { getPayPalPlansWorkspaceData, cancelUserPayPalSubscription, confirmPayPalSubscriptionOnServer, recordPayPalCheckoutCancelOrError } from "@/lib/paypal-server-fns";
 import PayPalSubscriptionButton from "@/components/billing/PayPalSubscriptionButton";
 import { usePreferences } from "@/lib/PreferencesContext";
 
-export const Route = createFileRoute("/_authed/plans")({ ssr: false, loader: () => getPayPalPlansWorkspaceData(), head: () => ({ meta: [{ title: "Plans — GoLeads" }, { name: "robots", content: "noindex, nofollow" }] }), component: Plans });
+export const Route = createFileRoute("/_authed/plans")({ ssr: false, validateSearch: (raw) => ({
+  paypal: ["approved", "cancelled"].includes(raw.paypal) ? raw.paypal : undefined,
+  subscription_id: /^I-[A-Z0-9-]{2,138}$/i.test(String(raw.subscription_id || "")) ? String(raw.subscription_id) : undefined,
+  enrollment_id: typeof raw.enrollment_id === "string" && raw.enrollment_id.length <= 140 ? raw.enrollment_id : undefined,
+}), loader: () => getPayPalPlansWorkspaceData(), head: () => ({ meta: [{ title: "Plans — GoLeads" }, { name: "robots", content: "noindex, nofollow" }] }), component: Plans });
 function Plans() {
   const { access, quota, offer, subscription } = Route.useLoaderData();
   const { lang } = usePreferences(); const es = lang === "es";
   const router = useRouter();
   const cancel = useServerFn(cancelUserPayPalSubscription); const verify = useServerFn(confirmPayPalSubscriptionOnServer);
   const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
+  const receipt = Route.useSearch(); const navigate = useNavigate(); const processed = useRef(""); const mounted = useRef(false);
+  const recordCancel = useServerFn(recordPayPalCheckoutCancelOrError);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => {
+    const key = `${receipt.paypal || ""}:${receipt.subscription_id || ""}:${receipt.enrollment_id || ""}`;
+    if (!receipt.paypal || processed.current === key) return;
+    processed.current = key;
+    const isCurrent = () => mounted.current && processed.current === key;
+    async function finishReturn() {
+      setBusy(true);
+      try {
+        if (receipt.paypal === "approved" && receipt.subscription_id) {
+          const result = await verify({ data: { subscription_id: receipt.subscription_id, enrollment_id: receipt.enrollment_id } });
+          if (isCurrent()) setMessage(result?.ok ? (es ? "Suscripción confirmada con PayPal." : "Subscription confirmed with PayPal.") : (es ? "Tu suscripción todavía no está confirmada. Actualiza su estado dentro de unos momentos." : "Your subscription is not confirmed yet. Refresh its status in a moment."));
+        } else if (receipt.paypal === "cancelled") {
+          if (receipt.enrollment_id) await recordCancel({ data: { enrollment_id: receipt.enrollment_id, outcome: "cancelled" } });
+          if (isCurrent()) setMessage(es ? "No completaste la suscripción en PayPal." : "You did not complete the PayPal subscription.");
+        } else if (isCurrent()) setMessage(es ? "Actualiza el estado de tu suscripción para comprobar el pago." : "Refresh your subscription status to check the payment.");
+      } catch { if (isCurrent()) setMessage(es ? "No pudimos confirmar el pago. Puedes actualizar el estado de la suscripción." : "We could not confirm payment. You can refresh subscription status."); }
+      finally {
+        if (isCurrent()) { setBusy(false); await navigate({ to: "/plans", search: {}, replace: true }); await router.invalidate(); }
+      }
+    }
+    finishReturn();
+
+  }, [receipt.paypal, receipt.subscription_id, receipt.enrollment_id]);
   async function manage(action) {
     setBusy(true); setMessage("");
     try {
@@ -37,10 +67,10 @@ function Plans() {
     <div className="overflow-x-auto rounded-xl border border-border bg-card"><table className="w-full min-w-[420px] text-left text-sm"><thead className="bg-secondary/50"><tr><th className="p-4">{es ? "Incluye" : "Included"}</th><th className="p-4">{es ? "Gratis" : "Free"}</th><th className="p-4 text-primary">Pro</th></tr></thead><tbody>{features.map(([label,free,pro]) => <tr key={label} className="border-t border-border"><th scope="row" className="p-4 font-normal">{label}</th><td className="p-4">{free}</td><td className="p-4 font-semibold">{pro}</td></tr>)}</tbody></table></div>
     <p className="text-xs leading-6 text-muted-foreground">{es ? "Cada búsqueda puede devolver menos resultados según las fuentes disponibles. Las fichas de Google Maps se consultan en vivo y no confirman aperturas. El cupo adicional se utiliza después de las búsquedas gratis; no se acumula al siguiente ciclo." : "Searches may return fewer results depending on available sources. Google Maps listings are live and do not confirm openings. Extra searches are used after free searches and do not roll over to the next cycle."}</p>
     <section className="rounded-xl border border-primary/30 bg-card p-6"><h2 className="text-xl font-semibold">GoLeads Pro</h2>
-      {offer.price && <p className="mt-3 text-lg font-semibold">{offer.price.amount} {offer.price.currency} / {offer.price.intervalCount || 1} {offer.price.intervalUnit === "MONTH" ? (es ? "mes(es)" : "month(s)") : offer.price.intervalUnit}</p>}
+      {offer.price && <p className="mt-3 text-lg font-semibold">{offer.price.amount} {offer.price.currency} / {offer.price.intervalCount || 1} {offer.price.intervalUnit === "MONTH" ? (es ? "mes" : "month") : offer.price.intervalUnit}</p>}
       {access.isOwner ? <div className="mt-4 space-y-3"><p className="font-semibold text-primary">{es ? "Pro de propietario activo" : "Owner Pro is active"}</p><p className="text-sm text-muted-foreground">{es ? "Tienes acceso completo sin contratar una suscripción. Este permiso pertenece solo a tu cuenta y no depende de un pago." : "You have full access without a paid subscription. This permission belongs only to your account and does not depend on a payment."}</p></div> : access.isPro ? <div className="mt-4 space-y-3"><p>{subscription?.cancelled ? (es ? "Renovación cancelada. Conservas Pro hasta el final del periodo pagado." : "Renewal cancelled. You keep Pro until your paid period ends.") : (es ? "Tu plan Pro está activo." : "Your Pro plan is active.")}</p>{subscription?.periodEnd && <p className="text-sm text-muted-foreground">{es ? "Fin del periodo: " : "Period ends: "}{new Date(subscription.periodEnd).toLocaleDateString(es ? "es" : "en")}</p>}{subscription?.id && !subscription.cancelled && <button disabled={busy} onClick={() => manage("cancel")} className="rounded-lg border border-border px-4 py-2 text-sm disabled:opacity-50">{es ? "Cancelar renovación" : "Cancel renewal"}</button>}</div> : null}
       {offer.checkout.testMode && <p role="status" className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{es ? "Pago de prueba: no se cobra dinero real. Usa una cuenta de comprador de pruebas de PayPal." : "Test checkout: no real money is charged. Use a PayPal test buyer account."}</p>}
-      {offer.checkout.ready && (!access.isPro || access.isOwner && offer.checkout.testMode) ? <div className="mt-5 max-w-sm"><PayPalSubscriptionButton clientId={offer.checkout.clientId} planId={offer.checkout.planId} isEs={es} onPendingChange={setBusy} onVerified={async () => {setMessage(es ? "Suscripción confirmada. Ya puedes usar Pro." : "Subscription confirmed. You can now use Pro."); await router.invalidate();}} onCancelled={() => setMessage(es ? "No completaste la suscripción." : "Subscription not completed.")} onErrorMessage={() => setMessage(es ? "No se pudo completar la suscripción. Inténtalo más tarde." : "Unable to complete the subscription. Please try later.")} /></div> : !access.isPro ? <p className="mt-3 text-sm text-muted-foreground">{es ? "Las suscripciones no están disponibles en este momento. Puedes seguir usando Gratis." : "Subscriptions are currently unavailable. You can keep using Free."}</p> : null}
+      {offer.checkout.ready && (!access.isPro || access.isOwner && offer.checkout.testMode) ? <div className="mt-5 max-w-sm"><PayPalSubscriptionButton isEs={es} disabled={busy} onPendingChange={setBusy} onErrorMessage={setMessage} /></div> : !access.isPro ? <p className="mt-3 text-sm text-muted-foreground">{es ? "Las suscripciones no están disponibles en este momento. Puedes seguir usando Gratis." : "Subscriptions are currently unavailable. You can keep using Free."}</p> : null}
       {subscription?.subscriptionId && <button disabled={busy} onClick={() => manage("refresh")} className="mt-4 block text-sm text-primary hover:underline disabled:opacity-50">{es ? "Actualizar estado de mi suscripción" : "Refresh my subscription status"}</button>}
     </section>{message && <p role="status" className="rounded-lg border border-border bg-card p-4 text-sm">{message}</p>}<Link to="/integrations" className="inline-flex text-sm font-medium text-primary hover:underline">{es ? "Ver mis integraciones →" : "View my integrations →"}</Link>
   </div>;

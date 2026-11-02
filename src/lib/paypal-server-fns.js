@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth-middleware";
 import { computeQuotaUsage } from "@/lib/server-fns";
 import {
   getPayPalServerConfig,
+  safePayPalApprovalUrl,
   fetchPayPalAccessToken,
   fetchPayPalPlanDetails,
   fetchPayPalSubscriptionDetails,
@@ -195,7 +196,7 @@ export const preparePayPalSubscriptionOrder = createServerFn({ method: "POST" })
     });
 
     const appOrigin = "https://goleads.space";
-    const allowedOrigins = new Set([appOrigin, "https://go-leads-magic-flow.base44.app"]);
+    const allowedOrigins = new Set([appOrigin, "https://go-leads-magic-flow.base44.app", "https://preview-sandbox--6ae63656edc313a907ad5680.base44.app"]);
     const safeOrigin = allowedOrigins.has(data?.returnOrigin) ? data.returnOrigin : appOrigin;
 
     // 2. Create the subscription on PayPal from the server with custom_id = enrollmentReference
@@ -205,8 +206,8 @@ export const preparePayPalSubscriptionOrder = createServerFn({ method: "POST" })
       application_context: {
         brand_name: "GoLeads",
         user_action: "SUBSCRIBE_NOW",
-        return_url: `${safeOrigin}/plans?paypal=approved`,
-        cancel_url: `${safeOrigin}/plans?paypal=cancelled`,
+        return_url: `${safeOrigin}/plans?paypal=approved&enrollment_id=${encodeURIComponent(enrollmentRecord.id)}`,
+        cancel_url: `${safeOrigin}/plans?paypal=cancelled&enrollment_id=${encodeURIComponent(enrollmentRecord.id)}`,
       },
     };
     if (userEmail) {
@@ -244,6 +245,12 @@ export const preparePayPalSubscriptionOrder = createServerFn({ method: "POST" })
       };
     }
 
+    const approvalUrl = safePayPalApprovalUrl((createdSub.links || []).find((link) => link.rel === "approve")?.href, config.env);
+    if (!approvalUrl) {
+      await serviceRole.entities.PayPalSubscription.update(enrollmentRecord.id, { status: "verification_failed", status_note: "PayPal did not return a trusted approval URL." });
+      return { ok: false, code: "INVALID_APPROVAL_URL", message: "No se pudo abrir el pago con PayPal." };
+    }
+
     await serviceRole.entities.PayPalSubscription.update(enrollmentRecord.id, {
       paypal_subscription_id: createdSub.id,
       paypal_raw_status: String(createdSub.status || "APPROVAL_PENDING"),
@@ -252,6 +259,7 @@ export const preparePayPalSubscriptionOrder = createServerFn({ method: "POST" })
     return {
       ok: true,
       subscriptionId: createdSub.id,
+      approvalUrl,
       enrollmentId: enrollmentRecord.id,
       customId: enrollmentReference,
     };

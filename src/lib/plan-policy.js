@@ -28,7 +28,7 @@ export function customerBillingSummary({ config, verification, subscriptions = [
     access, quota,
     offer: { name: "GoLeads Pro", extraSearches: PLAN_SPEC.pro.cycleSearches, maxResults: PLAN_SPEC.pro.maxResults,
       price: remote?.amount && remote?.currency ? { amount: remote.amount, currency: remote.currency, intervalUnit: remote.intervalUnit, intervalCount: remote.intervalCount } : null,
-      checkout: ready ? { ready: true, testMode: config.env === "sandbox", clientId: config.clientId, planId: config.planId } : { ready: false } },
+      checkout: ready ? { ready: true, testMode: config.env === "sandbox" } : { ready: false } },
     subscription: subscription ? { id: subscription.id, subscriptionId: subscription.paypal_subscription_id, status: subscription.status,
       periodEnd: subscription.current_period_end_iso || null, cancelled: Boolean(subscription.cancel_at_period_end) } : null,
   };
