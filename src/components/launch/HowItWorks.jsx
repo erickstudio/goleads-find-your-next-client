@@ -1,9 +1,8 @@
-import { BriefcaseBusiness, Search, BookOpenCheck, Sparkles, ShieldCheck, UserCheck, ArrowRight, ArrowDown } from "lucide-react";
+import { Search, Sparkles, ShieldCheck, UserCheck, ArrowRight, ArrowDown } from "lucide-react";
 import { usePublicLocale } from "@/lib/PublicLocaleContext";
 
 export default function HowItWorks() {
   const { copy } = usePublicLocale();
-  const stepIcons = [BriefcaseBusiness, Search, BookOpenCheck];
   const flowIcons = [Search, Sparkles, ShieldCheck, UserCheck];
   const flow = copy.diagramFlow || [];
 
@@ -43,19 +42,6 @@ export default function HowItWorks() {
               );
             })}
           </div>
-        </div>
-
-        <div className="mt-12 grid gap-10 md:grid-cols-3">
-          {copy.steps.map((step, i) => {
-            const Icon = stepIcons[i];
-            return (
-              <article key={step.title} className="border-t border-border pt-6">
-                <div className="flex items-center justify-between"><Icon className="h-5 w-5 text-primary" aria-hidden="true" /><span className="font-mono text-xs text-muted-foreground">0{i + 1}</span></div>
-                <h3 className="mt-6 text-lg font-semibold">{step.title}</h3>
-                <p className="mt-3 text-sm leading-7 text-muted-foreground">{step.body}</p>
-              </article>
-            );
-          })}
         </div>
       </div>
     </section>
