@@ -192,5 +192,5 @@ test("Subscription entity prevents direct writes by ordinary users and permits o
   const schema = JSON.parse(await readFile("base44/entities/PayPalSubscription.jsonc", "utf8"));
   assert.deepEqual(schema.rls.create, { user_condition: { role: "admin" } });
   assert.deepEqual(schema.rls.update, { user_condition: { role: "admin" } });
-  assert.ok(schema.rls.read.$or.some((rule) => rule.owner_id === "{{user.id}}"));
+  assert.ok(schema.rls.read.$or.some((rule) => rule["data.owner_id"] === "{{user.id}}"));
 });
