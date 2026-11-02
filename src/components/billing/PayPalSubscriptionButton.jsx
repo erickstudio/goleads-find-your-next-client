@@ -287,8 +287,8 @@ export default function PayPalSubscriptionButton({
           <LoaderCircle className="h-4 w-4 animate-spin text-primary shrink-0" />
           <span>
             {isEs
-              ? "Verificando suscripción directamente con PayPal en el servidor (plan, cuenta comercial y custom_id)…"
-              : "Verifying subscription directly with PayPal on the server (plan, merchant account, and custom_id)…"}
+              ? "Confirmando tu suscripción con PayPal…"
+              : "Confirming your subscription with PayPal…"}
           </span>
         </div>
       )}
@@ -298,7 +298,7 @@ export default function PayPalSubscriptionButton({
           role="alert"
           className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200"
         >
-          {sdkError}
+          {isEs ? "El pago no está disponible ahora. Inténtalo de nuevo más tarde." : "Checkout is unavailable right now. Please try again later."}
         </div>
       )}
 
@@ -312,8 +312,8 @@ export default function PayPalSubscriptionButton({
         <ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />
         <span>
           {isEs
-            ? "El servidor crea el registro de contratación (custom_id) y verifica el estado real en PayPal antes de habilitar cualquier permiso."
-            : "The server creates the enrollment record (custom_id) and verifies live status on PayPal before granting any permissions."}
+            ? "Pago seguro con PayPal. Activamos tu plan al confirmar la suscripción."
+            : "Secure checkout with PayPal. Your plan starts when your subscription is confirmed."}
         </span>
       </div>
     </div>
