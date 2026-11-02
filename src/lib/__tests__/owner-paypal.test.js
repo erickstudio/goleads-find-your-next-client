@@ -48,8 +48,8 @@ test("Owner billing response does not pretend that an unpaid subscription exists
   assert.equal(summary.access.entitlementSource,"owner");assert.equal(summary.subscription,null);assert.equal(summary.offer.checkout.ready,false);
 });
 test("User-provided Live plan alias never leaks into Sandbox",async()=>{
-  const p=await load("src/lib/paypal-billing.server.js",{secrets:{...settings,PAYPAL_PLAN_ID_TEST:undefined,PAYPAL_SUSCRIPTION_ID:"P-LIVE-EXAMPLE"}});
-  assert.equal(p.getPayPalServerConfig({env:"sandbox"}).planId,"");assert.equal(p.getPayPalServerConfig({env:"live"}).planId,"P-LIVE-EXAMPLE");
+  const p=await load("src/lib/paypal-billing.server.js",{secrets:{...settings,PAYPAL_PLAN_ID_TEST:undefined,PAYPAL_SUSCRIPTION_ID:"P-LIVEEXAMPLE"}});
+  assert.equal(p.getPayPalServerConfig({env:"sandbox"}).planId,"");assert.equal(p.getPayPalServerConfig({env:"live"}).planId,"P-LIVEEXAMPLE");
 });
 test("Preparing a test plan cannot call Live APIs and reuses a matching active plan",async()=>{
   const calls=[];
