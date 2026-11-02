@@ -1,6 +1,5 @@
 import crypto from "node:crypto";
 import { Buffer } from "node:buffer";
-import { secrets } from "base44:runtime";
 
 // Honest pilot offer specification: separates agreed product terms from undecided commercial terms
 export const PILOT_OFFER_SPEC = {
@@ -64,23 +63,15 @@ export const PILOT_OFFER_SPEC = {
 };
 
 export function getStripeServerConfig() {
-  const secretKey = secrets.get("STRIPE_SECRET_KEY") || "";
-  const webhookSecret = secrets.get("STRIPE_WEBHOOK_SECRET") || "";
-  const testPriceId = secrets.get("STRIPE_TEST_PILOT_PRICE_ID") || "";
-
-  const isTestKey = secretKey.startsWith("sk_test_") || secretKey.startsWith("rk_test_");
-  const isLiveKey = secretKey.startsWith("sk_live_") || secretKey.startsWith("rk_live_");
-
   return {
-    hasStripeSecretKey: Boolean(secretKey),
-    hasWebhookSecret: Boolean(webhookSecret),
-    hasTestPriceId: Boolean(testPriceId),
-    keyMode: isTestKey ? "test" : isLiveKey ? "live" : "not_connected",
-    // Hard guard: this preparation step never charges live cards even if a live key were present
-    allowTestCheckoutInitiation: Boolean(secretKey && isTestKey && testPriceId),
-    secretKey,
-    webhookSecret,
-    testPriceId,
+    hasStripeSecretKey: false,
+    hasWebhookSecret: false,
+    hasTestPriceId: false,
+    keyMode: "not_connected",
+    allowTestCheckoutInitiation: false,
+    secretKey: "",
+    webhookSecret: "",
+    testPriceId: "",
   };
 }
 

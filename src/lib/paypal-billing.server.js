@@ -3,9 +3,6 @@ import { Buffer } from "node:buffer";
 import { secrets } from "base44:runtime";
 import { PILOT_OFFER_SPEC } from "@/lib/pilot-billing.server";
 
-export const DEFAULT_PAYPAL_PUBLIC_CLIENT_ID =
-  "BAAjPq8ShjwUsg-zT-d8XZ2T21qIDYvltuYTaDvaGU42zys0xukFCxej3yE3Vh2qBuOIno1S-ZLKF_ufU8";
-export const DEFAULT_PAYPAL_PLAN_ID = "P-45W768000B945962BNLT2VZY";
 export const PAYPAL_SDK_BASE_URL = "https://www.paypal.com/sdk/js";
 
 export const REQUIRED_PAYPAL_WEBHOOK_EVENTS = [
@@ -46,18 +43,18 @@ export function getPayPalServerConfig(overrides = {}) {
   const env = rawEnv === "live" ? "live" : "sandbox";
 
   const secretClientId = String(
-    overrides.clientId ?? secrets.get(env === "live" ? "PAYPAL_ID" : "PAYPAL_ID_TEST") ?? secrets.get("PAYPAL_CLIENT_ID") ?? ""
+    overrides.clientId ?? (env === "live" ? secrets.get("PAYPAL_ID") : secrets.get("PAYPAL_ID_TEST")) ?? ""
   ).trim();
-  const clientId = secretClientId || (env === "live" ? DEFAULT_PAYPAL_PUBLIC_CLIENT_ID : "");
+  const clientId = secretClientId;
 
   const clientSecret = String(
-    overrides.clientSecret ?? secrets.get(env === "live" ? "PAYPAL_SECRET" : "PAYPAL_SECRET_TEST") ?? (env === "live" ? secrets.get("PAYPAYL_SECRET") : undefined) ?? secrets.get("PAYPAL_CLIENT_SECRET") ?? ""
+    overrides.clientSecret ?? (env === "live" ? secrets.get("PAYPAYL_SECRET") : secrets.get("PAYPAL_SECRET_TEST")) ?? ""
   ).trim();
 
   const secretPlanId = String(
-    overrides.planId ?? (env === "sandbox" ? secrets.get("PAYPAL_PLAN_ID_TEST") : undefined) ?? secrets.get("PAYPAL_PLAN_ID") ?? (env === "live" && /^P-[A-Z0-9]+$/i.test(String(secrets.get("PAYPAL_SUSCRIPTION_ID") || "").trim()) ? String(secrets.get("PAYPAL_SUSCRIPTION_ID")).trim() : undefined) ?? ""
+    overrides.planId ?? (env === "sandbox" ? secrets.get("PAYPAL_PLAN_ID_TEST") : secrets.get("PAYPAL_PLAN_ID")) ?? (env === "live" && /^P-[A-Z0-9]+$/i.test(String(secrets.get("PAYPAL_SUSCRIPTION_ID") || "").trim()) ? String(secrets.get("PAYPAL_SUSCRIPTION_ID")).trim() : undefined) ?? ""
   ).trim();
-  const planId = secretPlanId || (env === "live" ? DEFAULT_PAYPAL_PLAN_ID : "");
+  const planId = secretPlanId;
 
   const webhookId = String(
     overrides.webhookId ?? (env === "sandbox" ? secrets.get("PAYPAL_WEBHOOK_ID_TEST") : undefined) ?? secrets.get("PAYPAL_WEBHOOK_ID") ?? ""
@@ -84,7 +81,7 @@ export function getPayPalServerConfig(overrides = {}) {
   }
   if (!clientSecret) {
     missingSecrets.push({
-      name: env === "sandbox" ? "PAYPAL_SECRET_TEST" : "PAYPAL_SECRET",
+      name: env === "sandbox" ? "PAYPAL_SECRET_TEST" : "PAYPAYL_SECRET",
       required: true,
       status: "missing",
       description:

@@ -63,7 +63,7 @@ export const getPayPalPlansWorkspaceData = createServerFn({ method: "GET" })
       ok: false,
       code: "MISSING_CREDENTIALS",
       message:
-        "Configura PAYPAL_CLIENT_SECRET en Secretos para que el servidor verifique el plan P-45W768000B945962BNLT2VZY y obtenga su precio, moneda y frecuencia directamente desde PayPal.",
+        "Configura las credenciales de PayPal en Secretos para que el servidor verifique el plan y obtenga su precio, moneda y frecuencia directamente desde PayPal.",
       plan: null,
     };
 

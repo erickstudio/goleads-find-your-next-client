@@ -39,7 +39,7 @@ async function load(relativePath, secretValues = {}, globals = {}) {
   return mod.namespace;
 }
 
-const testSecrets = { PAYPAL_ID: "live-id", PAYPAL_SECRET: "live-secret", PAYPAL_ID_TEST: "test-id", PAYPAL_SECRET_TEST: "test-secret", PAYPAL_PLAN_ID_TEST: "P-TEST", PAYPAL_WEBHOOK_ID_TEST: "WH-TEST" };
+const testSecrets = { PAYPAL_ID: "live-id", PAYPAYL_SECRET: "live-secret", PAYPAL_ID_TEST: "test-id", PAYPAL_SECRET_TEST: "test-secret", PAYPAL_PLAN_ID_TEST: "P-TEST", PAYPAL_WEBHOOK_ID_TEST: "WH-TEST" };
 const nowIso = "2026-11-10T00:00:00.000Z";
 const baseRecord = { id: "record-1", owner_id: "user-1", created_by_id: "service-account", enrollment_reference: "ref-1", paypal_environment: "sandbox", paypal_plan_id: "P-TEST", paypal_subscription_id: "I-TEST", status: "active", verified_at_iso: nowIso, current_period_end_iso: "2026-12-01T00:00:00.000Z", granted_search_allowance: 20, used_subscription_searches: 5 };
 function memoryDatabase(record = baseRecord) {
@@ -87,7 +87,7 @@ test("Sandbox reads only test aliases; Live reads live aliases and the existing 
   assert.equal(live.clientSecret, "live-secret");
   const typo = await load("src/lib/paypal-billing.server.js", { PAYPAL_ENV: "live", PAYPAL_ID: "live-id", PAYPAYL_SECRET: "legacy-live-secret" });
   assert.equal(typo.getPayPalServerConfig().clientSecret, "legacy-live-secret");
-  const liveOnly = await load("src/lib/paypal-billing.server.js", { PAYPAL_ID: "live-id", PAYPAL_SECRET: "live-secret" });
+  const liveOnly = await load("src/lib/paypal-billing.server.js", { PAYPAL_ID: "live-id", PAYPAYL_SECRET: "live-secret" });
   assert.equal(liveOnly.getPayPalServerConfig().canAuthenticateWithPayPal, false);
   assert.equal(billing.getPayPalServerConfig({ planSearchAllowance: "0.5" }).hasConfiguredAllowance, false);
 });
