@@ -377,7 +377,7 @@ export function verifyCandidateWithRecoveredSource(
   recoveredPage,
   queryContext,
   nowDate = new Date(),
-  maxResults = 5,
+
   recoveredBackupPage = null
 ) {
   const { locationQuery, timeWindowDays } = queryContext;
@@ -735,6 +735,7 @@ export async function verifyAndStructureCandidates({
   timeWindowDays,
   selectedServices,
   serviceDescription,
+  maxResults = 5,
   nowDate = new Date(),
 }) {
   const seenBusinesses = new Set();
