@@ -1,9 +1,11 @@
+import { useAuth } from "@/lib/AuthContext";
 import { Link, useLocation } from "@tanstack/react-router";
 import { usePreferences } from "@/lib/PreferencesContext";
 import { workspaceGroups } from "@/lib/workspace-navigation";
 
 export default function WorkspaceNavigation({ onNavigate }) {
-  const { t } = usePreferences();
+  const { t, lang } = usePreferences();
+  const { user } = useAuth();
   const { pathname } = useLocation();
   return (
     <nav aria-label={t("nav.mainAria")} className="space-y-6">
@@ -11,6 +13,7 @@ export default function WorkspaceNavigation({ onNavigate }) {
         <div key={group.key}>
           <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{t(`workspace.${group.key}`)}</p>
           <div className="space-y-1">
+            {group.key === "account" && <><Link to="/integrations" onClick={onNavigate} className="flex min-h-10 items-center rounded-lg px-3 py-2 text-[13px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">{lang === "es" ? "Integraciones" : "Integrations"}</Link>{user?.role === "admin" && <Link to="/admin/integrations" onClick={onNavigate} className="flex min-h-10 items-center rounded-lg px-3 py-2 text-[13px] font-medium text-muted-foreground hover:bg-secondary hover:text-foreground">{lang === "es" ? "Administración de pagos" : "Payment administration"}</Link>}</>}
             {group.items.map(({ to, key, icon: Icon }) => {
               const active = pathname === to || (to === "/app" && pathname.startsWith("/opportunities/"));
               return (
