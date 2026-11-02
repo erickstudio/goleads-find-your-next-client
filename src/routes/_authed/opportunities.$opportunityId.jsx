@@ -66,6 +66,7 @@ export const Route = createFileRoute("/_authed/opportunities/$opportunityId")({
     meta: [
       { title: "Opportunity details — goleads.app" },
       { name: "description", content: "Inspect verified expansion sources and service-fit hypotheses." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: OpportunityDetailScreen,

@@ -5,6 +5,7 @@ import BrandWordmark from "@/components/BrandWordmark";
 import { usePreferences } from "@/lib/PreferencesContext";
 
 export const Route = createFileRoute("/unsubscribe")({
+  headers: () => ({ "X-Robots-Tag": "noindex, nofollow" }),
   head: () => ({
     meta: [
       { title: "Unsubscribe — GoLeads" },
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/unsubscribe")({
         name: "description",
         content: "Manage your GoLeads marketing email preferences.",
       },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: UnsubscribePage,

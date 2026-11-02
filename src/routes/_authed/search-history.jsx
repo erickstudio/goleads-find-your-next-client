@@ -14,6 +14,7 @@ export const Route = createFileRoute("/_authed/search-history")({
         name: "description",
         content: "Review and rerun your previous prospect discovery queries.",
       },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: SearchHistoryPage,

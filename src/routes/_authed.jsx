@@ -15,6 +15,16 @@ function PendingWorkspace() {
 export const Route = createFileRoute("/_authed")({
   ssr: false,
   beforeLoad: requireSignedIn,
+  headers: () => ({
+    "X-Robots-Tag": "noindex, nofollow, noarchive",
+    "Cache-Control": "private, no-store, max-age=0",
+  }),
+  head: () => ({
+    meta: [
+      { name: "robots", content: "noindex, nofollow, noarchive" },
+      { name: "googlebot", content: "noindex, nofollow, noarchive" },
+    ],
+  }),
   errorComponent: AuthGateError,
   pendingComponent: PendingWorkspace,
   component: AuthedLayout,

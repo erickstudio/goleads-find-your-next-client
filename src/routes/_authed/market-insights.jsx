@@ -18,6 +18,7 @@ export const Route = createFileRoute("/_authed/market-insights")({
         content:
           "High-level summary trends about the businesses discovered in your workspace, including categories, regions, and signal types.",
       },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: MarketInsightsPage,

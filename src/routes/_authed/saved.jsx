@@ -43,6 +43,7 @@ export const Route = createFileRoute("/_authed/saved")({
     meta: [
       { title: "Saved leads — goleads.app" },
       { name: "description", content: "Review your saved leads, original evidence, dates, and notes." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: SavedOpportunitiesScreen,

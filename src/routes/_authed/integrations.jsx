@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { usePreferences } from "@/lib/PreferencesContext";
 import useGoogleIntegration from "@/hooks/useGoogleIntegration";
 
-export const Route = createFileRoute("/_authed/integrations")({ ssr: false, component: Integrations });
+export const Route = createFileRoute("/_authed/integrations")({ ssr: false, head: () => ({ meta: [{ title: "Integrations — GoLeads" }, { name: "robots", content: "noindex, nofollow" }] }), component: Integrations });
 function Integrations() {
   const { lang } = usePreferences(); const es = lang === "es";
   const google = useGoogleIntegration(); const [message, setMessage] = useState(""); const [busy,setBusy] = useState(false);
@@ -15,4 +15,3 @@ function Integrations() {
     <section className="rounded-xl border border-border bg-card p-6"><h2 className="text-lg font-semibold">MCP <span className="text-xs text-primary">Pro</span></h2><p className="mt-3 text-sm text-muted-foreground">{es ? "Permite a tu asistente de IA consultar tus leads guardados con acceso de lectura y autorización de tu cuenta." : "Let your AI assistant read your saved leads with account authorization and read-only access."}</p><Link to={pro ? "/connect" : "/plans"} className="mt-4 inline-flex text-sm font-medium text-primary hover:underline">{pro ? (es ? "Conectar un asistente →" : "Connect an assistant →") : (es ? "Ver Pro →" : "View Pro →")}</Link></section>
     <p className="text-xs leading-6 text-muted-foreground">{es ? "El envío de Gmail, Calendar y la sincronización directa con CRM aún no están disponibles. Puedes preparar tus mensajes y, con Pro, exportar CSV para importarlo en tu CRM." : "Gmail sending, Calendar and direct CRM sync are not available yet. You can prepare messages and, with Pro, export a CSV for your CRM."}</p>{message && <p role="alert" className="text-sm text-destructive">{message}</p>}</div>;
 }
-

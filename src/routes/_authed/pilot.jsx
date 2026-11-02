@@ -29,6 +29,7 @@ export const Route = createFileRoute("/_authed/pilot")({
         content:
           "Review the one-time paid pilot offer, undecided commercial terms, and test-mode payment verification.",
       },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: PilotOfferScreen,

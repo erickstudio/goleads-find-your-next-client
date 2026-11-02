@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authed/settings")({
         content:
           "Update your profile information, selected services, and default search preferences.",
       },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: AccountSettingsPage,

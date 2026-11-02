@@ -12,6 +12,7 @@ export const Route = createFileRoute("/_authed/onboarding")({
     meta: [
       { title: "Your services — goleads.app" },
       { name: "description", content: "Add and edit the business services you offer." },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: ServicesScreen,

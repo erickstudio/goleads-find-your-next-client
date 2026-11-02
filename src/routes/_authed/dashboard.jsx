@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { getExtendedWorkspaceData } from "@/lib/workspace-pages-fns";
 import { usePreferences } from "@/lib/PreferencesContext";
-export const Route = createFileRoute("/_authed/dashboard")({ ssr: false, loader: () => getExtendedWorkspaceData(), component: Dashboard });
+export const Route = createFileRoute("/_authed/dashboard")({ ssr: false, loader: () => getExtendedWorkspaceData(), head: () => ({ meta: [{ title: "Dashboard — GoLeads" }, { name: "robots", content: "noindex, nofollow" }] }), component: Dashboard });
 function Dashboard() {
   const data = Route.useLoaderData(); const { lang } = usePreferences(); const es = lang === "es";
   const q = data.quota;

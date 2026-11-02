@@ -19,6 +19,7 @@ export const Route = createFileRoute("/_authed/agent-settings")({
         content:
           "Toggle your AI Evidence Analyst and Search Strategist agents on or off and inspect their configuration settings.",
       },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: AgentSettingsPage,

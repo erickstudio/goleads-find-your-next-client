@@ -28,6 +28,7 @@ export const Route = createFileRoute("/_authed/outreach-planner")({
         content:
           "Prepare, edit and save an introduction for a business you want to approach.",
       },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: OutreachPlannerPage,

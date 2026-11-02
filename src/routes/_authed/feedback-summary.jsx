@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authed/feedback-summary")({
         content:
           "Track your lead relevance ratings, categorizations, and evaluation notes.",
       },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: FeedbackSummaryPage,

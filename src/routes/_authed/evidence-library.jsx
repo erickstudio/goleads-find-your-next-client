@@ -23,6 +23,7 @@ export const Route = createFileRoute("/_authed/evidence-library")({
         content:
           "Browse and filter all recovered public web evidence items by source, verification status, or signal type.",
       },
+      { name: "robots", content: "noindex, nofollow" },
     ],
   }),
   component: EvidenceLibraryPage,
