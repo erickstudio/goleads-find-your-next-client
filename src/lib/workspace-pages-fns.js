@@ -1,5 +1,10 @@
 import { isOwnerAccount } from "@/lib/owner-access.server";
 import { getPayPalServerConfig } from "@/lib/paypal-billing.server";
+import {
+  COMMUNICATION_EMAIL_TEMPLATES,
+  normalizePreferredEmailLanguage,
+  sendCommunicationEmailByProfileLanguage,
+} from "@/lib/email-communications.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth-middleware";
@@ -90,6 +95,8 @@ export const getExtendedWorkspaceData = createServerFn({ method: "GET" })
       isOwnerAccount(context.user)
     );
 
+    const preferredEmailLang = normalizePreferredEmailLanguage(profile);
+
     return {
       user: {
         id: userId,
@@ -98,6 +105,8 @@ export const getExtendedWorkspaceData = createServerFn({ method: "GET" })
         role: context.user.role || "user",
       },
       profile,
+      preferredEmailLang,
+      emailTemplatesByLang: COMMUNICATION_EMAIL_TEMPLATES,
       recentSearches,
       opportunities,
       evidenceItems,
@@ -106,6 +115,35 @@ export const getExtendedWorkspaceData = createServerFn({ method: "GET" })
       pilotEnrollments,
       quota,
     };
+  });
+
+export const sendProfileLanguageCommunicationEmail = createServerFn({ method: "POST" })
+  .middleware([requireUser])
+  .validator(
+    z.object({
+      emailKey: z.enum(["welcome", "newsletter", "promotion", "product_update"]),
+    })
+  )
+  .handler(async ({ data, context }) => {
+    const base44 = context.getBase44();
+    const serviceRole = base44.asServiceRole;
+    const userId = context.user.id;
+    const userEmail = context.user.email || "";
+
+    const profilesPage = await base44.entities.UserProfile.filter(
+      { created_by_id: userId },
+      { sort: "-created_date", limit: 1 }
+    );
+    const profile = filterOwned(profilesPage?.items, userId)[0] || null;
+
+    return await sendCommunicationEmailByProfileLanguage({
+      serviceRoleBase44: serviceRole,
+      recipientEmail: userEmail,
+      recipientUserId: userId,
+      emailKey: data.emailKey,
+      user: context.user,
+      profile,
+    });
   });
 
 export const saveSavedOpportunityOutreach = createServerFn({ method: "POST" })

@@ -2,8 +2,11 @@ import { useState, useEffect } from "react";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { SERVICE_EXAMPLES, normalizeServicesList } from "@/lib/leads-constants";
-import { saveUserProfile } from "@/lib/server-fns";
-import { getExtendedWorkspaceData } from "@/lib/workspace-pages-fns";
+import { saveUserProfile, updateUserPreferences } from "@/lib/server-fns";
+import {
+  getExtendedWorkspaceData,
+  sendProfileLanguageCommunicationEmail,
+} from "@/lib/workspace-pages-fns";
 import { usePreferences } from "@/lib/PreferencesContext";
 
 export const Route = createFileRoute("/_authed/settings")({
@@ -26,6 +29,8 @@ function AccountSettingsPage() {
   const data = Route.useLoaderData();
   const router = useRouter();
   const saveProfileFn = useServerFn(saveUserProfile);
+  const updatePrefsFn = useServerFn(updateUserPreferences);
+  const sendCommEmailFn = useServerFn(sendProfileLanguageCommunicationEmail);
   const {
     lang,
     setLang,
@@ -53,8 +58,46 @@ function AccountSettingsPage() {
     profile?.default_time_window_days || 90
   );
   const [isSaving, setIsSaving] = useState(false);
+  const [sendingEmailKey, setSendingEmailKey] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
+
+  const handleSendCommunicationEmail = async (emailKey) => {
+    setSendingEmailKey(emailKey);
+    setErrorMsg("");
+    setStatusMsg("");
+    try {
+      await updatePrefsFn({
+        data: {
+          ui_language: lang,
+          outreach_language: outreachLang,
+          theme_preference: theme,
+        },
+      });
+      const res = await sendCommEmailFn({ data: { emailKey } });
+      await router.invalidate();
+      if (res?.ok) {
+        setStatusMsg(
+          isEs
+            ? `Correo enviado a ${res.to} en ${res.language === "es" ? "español" : "inglés"} (plantilla ${res.templateName}).`
+            : `Email sent to ${res.to} in ${res.language === "es" ? "Spanish" : "English"} (template ${res.templateName}).`
+        );
+      } else {
+        setErrorMsg(
+          isEs
+            ? "No se pudo enviar el correo a esta dirección."
+            : "Could not deliver the email to this address."
+        );
+      }
+    } catch (err) {
+      setErrorMsg(
+        err?.message ||
+          (isEs ? "Error al enviar el correo." : "Failed to send email.")
+      );
+    } finally {
+      setSendingEmailKey("");
+    }
+  };
 
   useEffect(() => {
     if (profile) {
@@ -406,6 +449,93 @@ function AccountSettingsPage() {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+
+          <div className="rounded-md border border-border bg-secondary/40 p-4 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h3 className="text-xs font-semibold text-foreground">
+                  {isEs
+                    ? "Idioma de correos de comunicación"
+                    : "Communication emails language"}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isEs
+                    ? "Recibirás los correos de bienvenida, boletín, novedades y promociones en el idioma preferente seleccionado en tu perfil."
+                    : "You will receive welcome, newsletter, product update, and promotional emails in the preferred language selected in your profile."}
+                </p>
+              </div>
+              <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold bg-primary/15 text-primary border border-primary/30 shrink-0">
+                {lang === "es"
+                  ? "Idioma activo: Español (ES)"
+                  : "Active language: English (EN)"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+              {[
+                {
+                  key: "welcome",
+                  titleEs: "Bienvenida",
+                  titleEn: "Welcome",
+                  tplEs: "WelcomeEs",
+                  tplEn: "Welcome",
+                },
+                {
+                  key: "newsletter",
+                  titleEs: "Boletín informativo",
+                  titleEn: "Newsletter",
+                  tplEs: "NewsletterEs",
+                  tplEn: "Newsletter",
+                },
+                {
+                  key: "product_update",
+                  titleEs: "Novedades del producto",
+                  titleEn: "Product update",
+                  tplEs: "ProductUpdateEs",
+                  tplEn: "ProductUpdate",
+                },
+                {
+                  key: "promotion",
+                  titleEs: "Promoción",
+                  titleEn: "Promotion",
+                  tplEs: "PromotionEs",
+                  tplEn: "Promotion",
+                },
+              ].map((item) => {
+                const activeTpl = lang === "es" ? item.tplEs : item.tplEn;
+                const isSendingThis = sendingEmailKey === item.key;
+                return (
+                  <div
+                    key={item.key}
+                    className="flex items-center justify-between gap-2 rounded border border-border bg-card px-3 py-2 text-xs"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium text-foreground truncate">
+                        {isEs ? item.titleEs : item.titleEn}
+                      </div>
+                      <div className="text-[11px] font-mono text-muted-foreground">
+                        {activeTpl}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={Boolean(sendingEmailKey)}
+                      onClick={() => handleSendCommunicationEmail(item.key)}
+                      className="px-2.5 py-1 rounded text-xs font-medium bg-secondary text-foreground border border-border hover:bg-secondary/80 disabled:opacity-50 shrink-0"
+                    >
+                      {isSendingThis
+                        ? isEs
+                          ? "Enviando..."
+                          : "Sending..."
+                        : isEs
+                        ? "Enviar prueba"
+                        : "Send test"}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </section>

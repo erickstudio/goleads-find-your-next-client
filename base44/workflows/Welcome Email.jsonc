@@ -1,0 +1,83 @@
+{
+  "name": "Correo de bienvenida por idioma",
+  "description": "Env\u00eda el correo de bienvenida en espa\u00f1ol (WelcomeEs) o en ingl\u00e9s (Welcome) seg\u00fan el idioma preferente seleccionado en el perfil del usuario.",
+  "trigger": {
+    "config": {
+      "trigger_type": "entity",
+      "entity_name": "UserProfile",
+      "events": [
+        "create",
+        "update"
+      ]
+    },
+    "condition": "${ .trigger.data.onboarding_completed == true and (.trigger.old_data.onboarding_completed // false) != true and (.trigger.data.owner_email // \"\") != \"\" }"
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "welcome_email_by_language",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "check_profile_language": {
+          "switch": [
+            {
+              "when": "${ (.trigger.data.ui_language // \"en\") == \"es\" }",
+              "then": "send_welcome_es"
+            },
+            {
+              "when": "${ true }",
+              "then": "send_welcome_en"
+            }
+          ],
+          "x-base44": {
+            "title": "Verificar idioma del perfil",
+            "description": "Espa\u00f1ol o ingl\u00e9s"
+          }
+        }
+      },
+      {
+        "send_welcome_es": {
+          "call": "send_email",
+          "with": {
+            "template_name": "WelcomeEs",
+            "to": "${ .trigger.data.owner_email }",
+            "description": "Da la bienvenida en espa\u00f1ol con acceso directo al espacio de trabajo",
+            "category": "marketing",
+            "variables": {
+              "first_name": "${ .trigger.data.agency_or_freelancer_name // \"equipo\" }",
+              "cta_url": "https://goleads.space/app"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Enviar bienvenida en espa\u00f1ol",
+            "description": "Plantilla WelcomeEs"
+          }
+        }
+      },
+      {
+        "send_welcome_en": {
+          "call": "send_email",
+          "with": {
+            "template_name": "Welcome",
+            "to": "${ .trigger.data.owner_email }",
+            "description": "Greets the user in English with a direct link to the workspace",
+            "category": "marketing",
+            "variables": {
+              "first_name": "${ .trigger.data.agency_or_freelancer_name // \"there\" }",
+              "cta_url": "https://goleads.space/app"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Enviar bienvenida en ingl\u00e9s",
+            "description": "Plantilla Welcome"
+          }
+        }
+      }
+    ]
+  }
+}
