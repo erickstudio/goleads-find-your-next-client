@@ -17,7 +17,8 @@ function deduplicateByOpportunityId(records = []) {
 }
 
 function escapeCsvCell(val) {
-  const s = String(val ?? "").replace(/\r?\n/g, " ").trim();
+  let s = String(val ?? "").replace(/\r?\n/g, " ").trim();
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
   if (s.includes(",") || s.includes('"') || s.includes("\n")) {
     return `"${s.replace(/"/g, '""')}"`;
   }
