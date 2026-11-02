@@ -5,12 +5,13 @@ import { requireUser } from "@/lib/auth-middleware";
 import { computeQuotaUsage } from "@/lib/server-fns";
 import {
   getPayPalServerConfig,
-  toPublicPayPalConfigStatus,
   fetchPayPalAccessToken,
   fetchPayPalPlanDetails,
   fetchPayPalSubscriptionDetails,
   reconcilePayPalSubscriptionForUser,
 } from "@/lib/paypal-billing.server";
+
+import { customerBillingSummary } from "@/lib/plan-policy";
 
 function filterOwned(items = [], userId) {
   return (items || []).filter(
@@ -28,8 +29,6 @@ export const getPayPalPlansWorkspaceData = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const base44 = context.getBase44();
     const userId = context.user.id;
-    const userEmail = context.user.email || "";
-    const userRole = context.user.role || "user";
 
     const [searchesPage, enrollmentsPage, subsPage, profilesPage] =
       await Promise.all([
@@ -53,20 +52,9 @@ export const getPayPalPlansWorkspaceData = createServerFn({ method: "GET" })
 
     const recentSearches = filterOwned(searchesPage?.items, userId);
     const pilotEnrollments = filterOwned(enrollmentsPage?.items, userId);
-    const mySubscriptions = filterOwned(subsPage?.items, userId);
-    const profile = filterOwned(profilesPage?.items, userId)[0] || null;
-
-    const activeOrLatestSubscription =
-      mySubscriptions.find((s) =>
-        ["active", "trialing", "cancelled", "suspended", "payment_failed", "approval_pending_verification"].includes(
-          s.status
-        )
-      ) ||
-      mySubscriptions[0] ||
-      null;
-
     const config = getPayPalServerConfig();
-    const publicConfig = toPublicPayPalConfigStatus(config);
+    const mySubscriptions = filterOwned(subsPage?.items, userId).filter((s) => s.paypal_environment === config.env && s.paypal_plan_id === config.planId);
+    const profile = filterOwned(profilesPage?.items, userId)[0] || null;
 
     // Query plan directly from PayPal when server credentials are present
     let planVerification = {
@@ -88,21 +76,7 @@ export const getPayPalPlansWorkspaceData = createServerFn({ method: "GET" })
       mySubscriptions
     );
 
-    return {
-      user: {
-        id: userId,
-        email: userEmail,
-        role: userRole,
-      },
-      profile,
-      paypalConfig: publicConfig,
-      planVerification,
-      activeSubscription: activeOrLatestSubscription,
-      mySubscriptions,
-      pilotEnrollments,
-      quota,
-      webhookEndpointUrl: "https://goleads.space/api/paypal-webhook",
-    };
+    return { profile, ...customerBillingSummary({ config, verification: planVerification, subscriptions: mySubscriptions, quota }) };
   });
 
 /**
