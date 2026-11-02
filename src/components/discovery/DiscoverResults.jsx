@@ -9,7 +9,7 @@ export default function DiscoverResults({ d }) {
   const { t, lang, activeSearch, currentSearchStatus: status } = d;
   const isEs = lang === "es";
 
-  if (d.showExamples || !activeSearch || !["completed", "partial"].includes(status)) {
+  if (d.showExamples || activeSearch?.search_mode === "local" || (d.localSearchStatus && !d.activeLiveOpps.length && !d.dismissedLiveOpps.length) || !activeSearch || !["completed", "partial"].includes(status)) {
     return null;
   }
 
@@ -86,7 +86,7 @@ export default function DiscoverResults({ d }) {
       {/* Google Sheets, CRM & MCP Export Bar */}
       <GoogleSheetsExportPanel
         source="discover"
-        records={d.activeOpportunities}
+        records={d.activeLiveOpps}
         selectedIds={d.selectedOppIds}
         feedbackByOppId={d.feedbackByOppId}
       />
