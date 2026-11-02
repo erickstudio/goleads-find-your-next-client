@@ -13,8 +13,8 @@ export const LAUNCH_COPY = {
     "menu": "Open menu",
     "skip": "Skip to content",
     "beta": "FIND LEADS WITH AI",
-    "headline": "Find clients",
-    "headlineAccent": "for your services.",
+    "headline": "Freelancer or agency?",
+    "headlineAccent": "Find clients for your services.",
     "intro": "Find local businesses with Google Maps and opening or expansion opportunities with AI. Save leads, draft messages and export to your tools.",
     "cta": "Find clients",
     "ctaNote": "Start free: 3 searches a day and Google Sheets.",
@@ -49,7 +49,34 @@ export const LAUNCH_COPY = {
       "note": "Fictional example showing the product. Searches in your private workspace include links to the sources found."
     },
     "stepsEyebrow": "HOW IT WORKS",
-    "stepsTitle": "How to use GoLeads.",
+    "stepsTitle": "How GoLeads finds and selects clients.",
+    "diagramLabel": "SEARCH & CLIENT SELECTION FLOW",
+    "diagramFlow": [
+      {
+        "step": "01",
+        "tag": "Input",
+        "title": "Search criteria",
+        "detail": "Your services + sector + city"
+      },
+      {
+        "step": "02",
+        "tag": "Discovery",
+        "title": "AI & Google Maps",
+        "detail": "Opening signals & local listings"
+      },
+      {
+        "step": "03",
+        "tag": "Filter",
+        "title": "Source verification",
+        "detail": "Checks links, dates & service fit"
+      },
+      {
+        "step": "04",
+        "tag": "Selection",
+        "title": "Client pipeline",
+        "detail": "Save leads, draft message & export"
+      }
+    ],
     "steps": [
       {
         "title": "Add your services",
@@ -239,8 +266,8 @@ export const LAUNCH_COPY = {
     "menu": "Abrir menú",
     "skip": "Saltar al contenido",
     "beta": "BUSCA LEADS CON IA",
-    "headline": "Encuentra clientes",
-    "headlineAccent": "para tus servicios.",
+    "headline": "¿Freelancer o agencia?",
+    "headlineAccent": "Encuentra clientes para tus servicios.",
     "intro": "Encuentra negocios locales con Google Maps y oportunidades de apertura o expansión con IA. Guarda leads, redacta mensajes y exporta a tus herramientas.",
     "cta": "Buscar clientes",
     "ctaNote": "Empieza gratis: 3 búsquedas al día y Google Sheets.",
@@ -275,7 +302,34 @@ export const LAUNCH_COPY = {
       "note": "Ejemplo ficticio para mostrar el producto. Las búsquedas del espacio privado incluyen los enlaces de las fuentes encontradas."
     },
     "stepsEyebrow": "CÓMO FUNCIONA",
-    "stepsTitle": "Así usas GoLeads.",
+    "stepsTitle": "Proceso de búsqueda y selección de clientes.",
+    "diagramLabel": "DIAGRAMA DE BÚSQUEDA Y SELECCIÓN",
+    "diagramFlow": [
+      {
+        "step": "01",
+        "tag": "Entrada",
+        "title": "Tu búsqueda",
+        "detail": "Tus servicios + sector + ciudad"
+      },
+      {
+        "step": "02",
+        "tag": "Detección",
+        "title": "IA + Google Maps",
+        "detail": "Señales de apertura y negocios locales"
+      },
+      {
+        "step": "03",
+        "tag": "Filtro",
+        "title": "Verificación y encaje",
+        "detail": "Valida fuentes, fechas y necesidad"
+      },
+      {
+        "step": "04",
+        "tag": "Selección",
+        "title": "Clientes elegidos",
+        "detail": "Guarda leads, redacta y exporta"
+      }
+    ],
     "steps": [
       {
         "title": "Añade tus servicios",
