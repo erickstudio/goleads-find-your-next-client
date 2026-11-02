@@ -8,3 +8,12 @@ export function isPayPalSubscriptionAllowanceActive(sub, nowMs = Date.now()) {
   return (Number(sub.granted_search_allowance) || 0) > 0;
 }
 
+export function isProAccessGrantActive(grant, nowMs = Date.now()) {
+  if (!grant || grant.status !== "active") return false;
+  if (grant.grant_type === "access_code" && !grant.target_user_id && !grant.target_email) return false;
+  if (grant.expires_at_iso) {
+    const endMs = Date.parse(grant.expires_at_iso);
+    if (!Number.isFinite(endMs) || endMs <= nowMs) return false;
+  }
+  return (Number(grant.granted_search_allowance) || 0) > 0;
+}

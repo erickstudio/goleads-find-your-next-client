@@ -4,8 +4,12 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth-middleware";
 import { getPayPalServerConfig } from "@/lib/paypal-billing.server";
 import { planAccessForSubscriptions } from "@/lib/plan-policy";
+import { loadActiveUserProGrants } from "@/lib/plan-access.server";
 import { searchGoogleLocalBusinesses } from "@/lib/google-local.server";
-import { isPayPalSubscriptionAllowanceActive } from "@/lib/subscription-access";
+import {
+  isPayPalSubscriptionAllowanceActive,
+  isProAccessGrantActive,
+} from "@/lib/subscription-access";
 import {
   SEARCH_LIMITS,
   buildQueryCacheKey,
@@ -31,7 +35,8 @@ export function computeQuotaUsage(
   nowMs = Date.now(),
   pilotEnrollments = [],
   paypalSubscriptions = [],
-  ownerAccess = false
+  ownerAccess = false,
+  complimentaryGrants = []
 ) {
   const windowStartMs = nowMs - SEARCH_LIMITS.cacheTtlMs;
   const quotaSearches = searches.filter((s) => {
@@ -67,14 +72,29 @@ export function computeQuotaUsage(
     isPayPalSubscriptionAllowanceActive(sub, nowMs)
   );
 
-  const subscriptionGrantedTotal = activeVerifiedSubscriptions.reduce(
-    (sum, s) => sum + Math.max(0, Number(s.granted_search_allowance) || 0),
+  const activeComplimentaryGrants = (complimentaryGrants || []).filter((g) =>
+    isProAccessGrantActive(g, nowMs)
+  );
+  const compGrantedTotal = activeComplimentaryGrants.reduce(
+    (sum, g) => sum + Math.max(0, Number(g.granted_search_allowance) || 0),
     0
   );
-  const subscriptionUsedTotal = activeVerifiedSubscriptions.reduce(
-    (sum, s) => sum + Math.max(0, Number(s.used_subscription_searches) || 0),
+  const compUsedTotal = activeComplimentaryGrants.reduce(
+    (sum, g) => sum + Math.max(0, Number(g.used_searches) || 0),
     0
   );
+  const compRemaining = Math.max(0, compGrantedTotal - compUsedTotal);
+
+  const subscriptionGrantedTotal =
+    activeVerifiedSubscriptions.reduce(
+      (sum, s) => sum + Math.max(0, Number(s.granted_search_allowance) || 0),
+      0
+    ) + compGrantedTotal;
+  const subscriptionUsedTotal =
+    activeVerifiedSubscriptions.reduce(
+      (sum, s) => sum + Math.max(0, Number(s.used_subscription_searches) || 0),
+      0
+    ) + compUsedTotal;
   const subscriptionRemaining = Math.max(
     0,
     subscriptionGrantedTotal - subscriptionUsedTotal
@@ -91,11 +111,15 @@ export function computeQuotaUsage(
     pilotUsedTotal: pilotUsedTotal + subscriptionUsedTotal,
     pilotRemaining: pilotRemaining + subscriptionRemaining,
     stripePilotRemaining: pilotRemaining,
+    complimentaryRemaining: compRemaining,
     subscriptionGrantedTotal,
     subscriptionUsedTotal,
     subscriptionRemaining,
     remainingToday: ownerAccess ? Number.MAX_SAFE_INTEGER : baseRemainingToday + pilotRemaining + subscriptionRemaining,
-    ...planAccessForSubscriptions(paypalSubscriptions, nowMs, { isOwner: ownerAccess }),
+    ...planAccessForSubscriptions(paypalSubscriptions, nowMs, {
+      isOwner: ownerAccess,
+      complimentaryGrants: activeComplimentaryGrants,
+    }),
     maxConcurrentSearches: SEARCH_LIMITS.maxConcurrentSearches,
     cacheTtlHours: SEARCH_LIMITS.cacheTtlHours,
   };
@@ -241,12 +265,14 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
     const ownedSubscriptions = (subsPage?.items || []).filter(
       (s) => s.owner_id === userId && s.paypal_environment === paymentConfig.env && s.paypal_plan_id === paymentConfig.planId
     );
+    const complimentaryGrants = await loadActiveUserProGrants(base44, context.user);
     const quota = computeQuotaUsage(
       recentSearches,
       Date.now(),
       ownedEnrollments,
       ownedSubscriptions,
-      isOwnerAccount(context.user)
+      isOwnerAccount(context.user),
+      complimentaryGrants
     );
 
     return {
@@ -350,8 +376,12 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
     const ownedSubscriptions = (subsPage?.items || []).filter(
       (s) => s.owner_id === userId && s.paypal_environment === paymentConfig.env && s.paypal_plan_id === paymentConfig.planId
     );
+    const complimentaryGrants = await loadActiveUserProGrants(base44, context.user, nowMs);
 
-    const planAccess = planAccessForSubscriptions(ownedSubscriptions, nowMs, { isOwner: isOwnerAccount(context.user) });
+    const planAccess = planAccessForSubscriptions(ownedSubscriptions, nowMs, {
+      isOwner: isOwnerAccount(context.user),
+      complimentaryGrants,
+    });
     queryCacheKey += `:${planAccess.maxResultsPerSearch}`;
 
     // Check DB-level concurrent search within last 35 seconds
@@ -389,7 +419,8 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
         nowMs,
         ownedEnrollments,
         ownedSubscriptions,
-        isOwnerAccount(context.user)
+        isOwnerAccount(context.user),
+        complimentaryGrants
       );
 
       return {
@@ -407,7 +438,8 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       nowMs,
       ownedEnrollments,
       ownedSubscriptions,
-      isOwnerAccount(context.user)
+      isOwnerAccount(context.user),
+      complimentaryGrants
     );
     if (!quotaBefore.unlimitedSearches && quotaBefore.remainingToday <= 0) {
       throw new Error(
@@ -601,6 +633,21 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
                 }
               );
               activePilot.used_pilot_searches = updatedEnroll.used_pilot_searches;
+            } else {
+              const activeComp = complimentaryGrants.find(
+                (g) =>
+                  isProAccessGrantActive(g, nowCheckMs) &&
+                  (Number(g.granted_search_allowance) || 0) > (Number(g.used_searches) || 0)
+              );
+              if (activeComp && base44?.asServiceRole?.entities?.ProAccessGrant?.update) {
+                const updatedGrant = await base44.asServiceRole.entities.ProAccessGrant.update(
+                  activeComp.id,
+                  {
+                    used_searches: (Number(activeComp.used_searches) || 0) + 1,
+                  }
+                );
+                activeComp.used_searches = updatedGrant.used_searches;
+              }
             }
           }
         }
@@ -610,7 +657,8 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
           Date.now(),
           ownedEnrollments,
           ownedSubscriptions,
-          isOwnerAccount(context.user)
+          isOwnerAccount(context.user),
+          complimentaryGrants
         );
 
         return {

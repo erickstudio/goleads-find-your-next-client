@@ -1,0 +1,81 @@
+{
+  "name": "AdminCollaborator",
+  "type": "object",
+  "properties": {
+    "collaborator_email": {
+      "type": "string",
+      "description": "Email address of the collaborator granted limited admin panel access"
+    },
+    "collaborator_name": {
+      "type": "string",
+      "description": "Display name or role note for the collaborator"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Summary of delegated permissions"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "revoked"
+      ],
+      "default": "active"
+    },
+    "can_manage_pro_grants": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this collaborator can grant or revoke complimentary/beta Pro access"
+    },
+    "can_send_communications": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this collaborator can edit and send bilingual communication emails"
+    },
+    "can_view_diagnostics": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this collaborator can view payment setup diagnostics"
+    },
+    "granted_by_email": {
+      "type": "string"
+    },
+    "created_at_iso": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "collaborator_email",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.collaborator_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

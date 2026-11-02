@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { createFileRoute, Link, useRouter, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { getPayPalPlansWorkspaceData, cancelUserPayPalSubscription, confirmPayPalSubscriptionOnServer, recordPayPalCheckoutCancelOrError } from "@/lib/paypal-server-fns";
+import { redeemProInvitePassword } from "@/lib/superadmin-fns";
 import PayPalSubscriptionButton from "@/components/billing/PayPalSubscriptionButton";
 import { usePreferences } from "@/lib/PreferencesContext";
 
@@ -11,11 +12,23 @@ export const Route = createFileRoute("/_authed/plans")({ ssr: false, validateSea
   enrollment_id: typeof raw.enrollment_id === "string" && raw.enrollment_id.length <= 140 ? raw.enrollment_id : undefined,
 }), loader: () => getPayPalPlansWorkspaceData(), head: () => ({ meta: [{ title: "Plans — GoLeads" }, { name: "robots", content: "noindex, nofollow" }] }), component: Plans });
 function Plans() {
-  const { access, quota, offer, subscription } = Route.useLoaderData();
+  const { access, quota, offer, subscription, complimentaryGrant } = Route.useLoaderData();
   const { lang } = usePreferences(); const es = lang === "es";
   const router = useRouter();
   const cancel = useServerFn(cancelUserPayPalSubscription); const verify = useServerFn(confirmPayPalSubscriptionOnServer);
-  const [busy, setBusy] = useState(false); const [message, setMessage] = useState("");
+  const redeemCode = useServerFn(redeemProInvitePassword);
+  const [busy, setBusy] = useState(false); const [message, setMessage] = useState(""); const [inviteCode, setInviteCode] = useState("");
+  async function handleRedeemCode(e) {
+    e.preventDefault();
+    if (!inviteCode.trim()) return;
+    setBusy(true); setMessage("");
+    try {
+      const res = await redeemCode({ data: { password_or_code: inviteCode.trim() } });
+      setMessage(res?.message || (res?.ok ? (es ? "Acceso Pro activado." : "Pro access activated.") : (es ? "Código no válido." : "Invalid code.")));
+      if (res?.ok) { setInviteCode(""); await router.invalidate(); }
+    } catch (err) { setMessage(err?.message || (es ? "No se pudo verificar el código." : "Could not verify code.")); }
+    finally { setBusy(false); }
+  }
   const receipt = Route.useSearch(); const navigate = useNavigate(); const processed = useRef(""); const mounted = useRef(false);
   const recordCancel = useServerFn(recordPayPalCheckoutCancelOrError);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -71,7 +84,9 @@ function Plans() {
       {access.isOwner ? <div className="mt-4 space-y-3"><p className="font-semibold text-primary">{es ? "Pro de propietario activo" : "Owner Pro is active"}</p><p className="text-sm text-muted-foreground">{es ? "Tienes acceso completo sin contratar una suscripción. Este permiso pertenece solo a tu cuenta y no depende de un pago." : "You have full access without a paid subscription. This permission belongs only to your account and does not depend on a payment."}</p></div> : access.isPro ? <div className="mt-4 space-y-3"><p>{subscription?.cancelled ? (es ? "Renovación cancelada. Conservas Pro hasta el final del periodo pagado." : "Renewal cancelled. You keep Pro until your paid period ends.") : (es ? "Tu plan Pro está activo." : "Your Pro plan is active.")}</p>{subscription?.periodEnd && <p className="text-sm text-muted-foreground">{es ? "Fin del periodo: " : "Period ends: "}{new Date(subscription.periodEnd).toLocaleDateString(es ? "es" : "en")}</p>}{subscription?.id && !subscription.cancelled && <button disabled={busy} onClick={() => manage("cancel")} className="rounded-lg border border-border px-4 py-2 text-sm disabled:opacity-50">{es ? "Cancelar renovación" : "Cancel renewal"}</button>}</div> : null}
       {offer.checkout.testMode && <p role="status" className="mt-4 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{access.isPro && !access.isOwner ? (es ? "Suscripción de prueba activa. No se realizan cargos reales." : "Test subscription active. No real money is charged.") : (es ? "Pago de prueba: no se cobra dinero real. Prueba con una tarjeta demo desde el botón de tarjeta." : "Test checkout: no real money is charged. Use a demo card through the card button.")}</p>}
       {offer.checkout.ready && (!access.isPro || access.isOwner && offer.checkout.testMode) ? <div className="mt-5 max-w-sm"><PayPalSubscriptionButton clientId={offer.checkout.clientId} planId={offer.checkout.planId} testMode={offer.checkout.testMode} isEs={es} disabled={busy} onPendingChange={setBusy} onErrorMessage={setMessage} onVerified={async () => { setMessage(es ? "Suscripción confirmada con PayPal." : "Subscription confirmed with PayPal."); await router.invalidate(); }} onCancelled={() => setMessage(es ? "No completaste la suscripción." : "Subscription not completed.")} /></div> : !access.isPro ? <p className="mt-3 text-sm text-muted-foreground">{es ? "Las suscripciones no están disponibles en este momento. Puedes seguir usando Gratis." : "Subscriptions are currently unavailable. You can keep using Free."}</p> : null}
+      {complimentaryGrant && <p className="mt-3 text-xs text-muted-foreground">{es ? `Acceso Pro de invitación activo (${complimentaryGrant.usedSearches}/${complimentaryGrant.grantedSearches} búsquedas usadas${complimentaryGrant.expiresAt ? ` · vence ${complimentaryGrant.expiresAt.slice(0, 10)}` : ""}).` : `Complimentary Pro invite active (${complimentaryGrant.usedSearches}/${complimentaryGrant.grantedSearches} searches used${complimentaryGrant.expiresAt ? ` · expires ${complimentaryGrant.expiresAt.slice(0, 10)}` : ""}).`}</p>}
       {subscription?.subscriptionId && <button disabled={busy} onClick={() => manage("refresh")} className="mt-4 block text-sm text-primary hover:underline disabled:opacity-50">{es ? "Actualizar estado de mi suscripción" : "Refresh my subscription status"}</button>}
+      {!access.isPro && <form onSubmit={handleRedeemCode} className="mt-5 pt-4 border-t border-border flex flex-col sm:flex-row gap-2 max-w-md"><input type="password" value={inviteCode} onChange={(e) => setInviteCode(e.target.value)} placeholder={es ? "Contraseña o código de invitación Pro (Beta)" : "Pro invite password or code (Beta)"} className="flex-1 h-9 px-3 rounded-lg border border-input bg-background text-xs" /><button type="submit" disabled={busy || !inviteCode.trim()} className="px-3.5 h-9 rounded-lg bg-secondary text-foreground border border-border text-xs font-medium hover:bg-secondary/80 disabled:opacity-50">{es ? "Activar código" : "Redeem code"}</button></form>}
     </section>{message && <p role="status" className="rounded-lg border border-border bg-card p-4 text-sm">{message}</p>}<Link to="/integrations" className="inline-flex text-sm font-medium text-primary hover:underline">{es ? "Ver mis integraciones →" : "View my integrations →"}</Link>
   </div>;
 }

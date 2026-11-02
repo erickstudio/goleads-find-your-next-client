@@ -1,0 +1,121 @@
+{
+  "name": "ProAccessGrant",
+  "type": "object",
+  "properties": {
+    "grant_type": {
+      "type": "string",
+      "enum": [
+        "direct_user",
+        "access_code"
+      ],
+      "default": "direct_user",
+      "description": "Whether Pro access was granted directly to a user email or via a redeemable access password/code"
+    },
+    "target_email": {
+      "type": "string",
+      "description": "Lowercase email of the user receiving complimentary/beta Pro access"
+    },
+    "target_user_id": {
+      "type": "string",
+      "description": "Authenticated user ID once linked or redeemed"
+    },
+    "access_code_hash": {
+      "type": "string",
+      "description": "SHA-256 hash of the beta access password/code when grant_type is access_code"
+    },
+    "access_code_label": {
+      "type": "string",
+      "description": "Admin-facing label or masked identifier for the password/code"
+    },
+    "reason": {
+      "type": "string",
+      "enum": [
+        "beta_feedback",
+        "invite_tester",
+        "password_access",
+        "partner"
+      ],
+      "default": "beta_feedback"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Notes on why complimentary Pro access was granted (e.g. beta testing in exchange for feedback)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "revoked",
+        "expired"
+      ],
+      "default": "active"
+    },
+    "granted_search_allowance": {
+      "type": "number",
+      "default": 100,
+      "description": "Extra live discovery searches included with this complimentary Pro grant"
+    },
+    "used_searches": {
+      "type": "number",
+      "default": 0,
+      "description": "Searches consumed from this complimentary Pro grant"
+    },
+    "max_redemptions": {
+      "type": "number",
+      "default": 1
+    },
+    "redemption_count": {
+      "type": "number",
+      "default": 0
+    },
+    "expires_at_iso": {
+      "type": "string",
+      "description": "ISO timestamp when complimentary Pro access expires"
+    },
+    "granted_by_email": {
+      "type": "string"
+    },
+    "created_at_iso": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "grant_type",
+    "reason",
+    "status",
+    "granted_search_allowance"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.target_user_id": "{{user.id}}"
+        },
+        {
+          "data.target_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

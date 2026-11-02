@@ -1,4 +1,5 @@
 import { isOwnerAccount } from "@/lib/owner-access.server";
+import { loadActiveUserProGrants } from "@/lib/plan-access.server";
 import { getPayPalServerConfig } from "@/lib/paypal-billing.server";
 import {
   COMMUNICATION_EMAIL_TEMPLATES,
@@ -87,12 +88,14 @@ export const getExtendedWorkspaceData = createServerFn({ method: "GET" })
     const config = getPayPalServerConfig();
     const paypalSubscriptions = (subsPage?.items || []).filter((sub) => sub.owner_id === userId && sub.paypal_environment === config.env && sub.paypal_plan_id === config.planId);
 
+    const complimentaryGrants = await loadActiveUserProGrants(base44, context.user);
     const quota = computeQuotaUsage(
       recentSearches,
       Date.now(),
       pilotEnrollments,
       paypalSubscriptions,
-      isOwnerAccount(context.user)
+      isOwnerAccount(context.user),
+      complimentaryGrants
     );
 
     const preferredEmailLang = normalizePreferredEmailLanguage(profile);

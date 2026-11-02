@@ -1,0 +1,131 @@
+{
+  "name": "EmailCampaignContent",
+  "type": "object",
+  "properties": {
+    "email_key": {
+      "type": "string",
+      "enum": [
+        "newsletter",
+        "promotion",
+        "product_update"
+      ],
+      "description": "Communication template identifier"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Summary of the bilingual email configuration"
+    },
+    "subject_es": {
+      "type": "string"
+    },
+    "subject_en": {
+      "type": "string"
+    },
+    "eyebrow_es": {
+      "type": "string"
+    },
+    "eyebrow_en": {
+      "type": "string"
+    },
+    "headline_es": {
+      "type": "string"
+    },
+    "headline_en": {
+      "type": "string"
+    },
+    "subheadline_es": {
+      "type": "string"
+    },
+    "subheadline_en": {
+      "type": "string"
+    },
+    "section_title_es": {
+      "type": "string"
+    },
+    "section_title_en": {
+      "type": "string"
+    },
+    "body_es": {
+      "type": "string"
+    },
+    "body_en": {
+      "type": "string"
+    },
+    "card1_title_es": {
+      "type": "string"
+    },
+    "card1_body_es": {
+      "type": "string"
+    },
+    "card1_title_en": {
+      "type": "string"
+    },
+    "card1_body_en": {
+      "type": "string"
+    },
+    "card2_title_es": {
+      "type": "string"
+    },
+    "card2_body_es": {
+      "type": "string"
+    },
+    "card2_title_en": {
+      "type": "string"
+    },
+    "card2_body_en": {
+      "type": "string"
+    },
+    "cta_label_es": {
+      "type": "string"
+    },
+    "cta_label_en": {
+      "type": "string"
+    },
+    "cta_url": {
+      "type": "string"
+    },
+    "updated_by_email": {
+      "type": "string"
+    },
+    "updated_at_iso": {
+      "type": "string"
+    },
+    "last_sent_at_iso": {
+      "type": "string"
+    },
+    "last_sent_count": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "email_key",
+    "subject_es",
+    "subject_en",
+    "headline_es",
+    "headline_en"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

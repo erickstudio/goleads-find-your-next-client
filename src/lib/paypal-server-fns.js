@@ -1,4 +1,5 @@
 import { isOwnerAccount } from "@/lib/owner-access.server";
+import { loadActiveUserProGrants } from "@/lib/plan-access.server";
 import crypto from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -71,15 +72,27 @@ export const getPayPalPlansWorkspaceData = createServerFn({ method: "GET" })
       planVerification = await fetchPayPalPlanDetails(config);
     }
 
+    const complimentaryGrants = await loadActiveUserProGrants(base44, context.user);
     const quota = computeQuotaUsage(
       recentSearches,
       Date.now(),
       pilotEnrollments,
       mySubscriptions,
-      isOwnerAccount(context.user)
+      isOwnerAccount(context.user),
+      complimentaryGrants
     );
 
-    return { profile, ...customerBillingSummary({ config, verification: planVerification, subscriptions: mySubscriptions, quota, isOwner: isOwnerAccount(context.user) }) };
+    return {
+      profile,
+      ...customerBillingSummary({
+        config,
+        verification: planVerification,
+        subscriptions: mySubscriptions,
+        complimentaryGrants,
+        quota,
+        isOwner: isOwnerAccount(context.user),
+      }),
+    };
   });
 
 /**
