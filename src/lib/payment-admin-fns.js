@@ -1,3 +1,4 @@
+import { inspectPendingPayPalSetting } from "@/lib/pending-setting.server";
 import { createServerFn } from "@tanstack/react-start";
 import { requireUser } from "@/lib/auth-middleware";
 import { assertAdministrator } from "@/lib/plan-policy";
@@ -11,6 +12,6 @@ export const getPaymentAdminDiagnostics = createServerFn({ method: "GET" }).midd
     // No credential values, even for administrators.
     const { clientId: _clientId, ...safeStatus } = status;
     const verification = config.canAuthenticateWithPayPal ? await fetchPayPalPlanDetails(config) : { ok: false, message: "Faltan credenciales del servidor." };
-    return { configuration: safeStatus, verification, webhookUrl: "https://goleads.space/api/paypal-webhook" };
+    return { configuration: safeStatus, verification, pendingSetting: await inspectPendingPayPalSetting(), webhookUrl: "https://goleads.space/api/paypal-webhook" };
   });
 
