@@ -16,6 +16,9 @@ export default function DiscoverState({ d }) {
   } = d;
   const isEs = lang === "es";
 
+  if (isSearching && d.searchMode !== "web") return <section role="status" className="rounded-xl border border-primary/40 bg-card p-8 text-center"><LoaderCircle className="mx-auto h-5 w-5 animate-spin text-primary" /><h2 className="mt-4 text-sm font-semibold">{isEs ? "Buscando negocios…" : "Searching for businesses…"}</h2><p className="mt-3 text-xs text-muted-foreground">{d.searchMode === "local" ? (isEs ? "Consultando Google Maps para tu sector y ciudad." : "Searching Google Maps for your category and city.") : (isEs ? "Consultando negocios locales y anuncios web. Revisaremos las fuentes de los anuncios por separado." : "Searching local businesses and web announcements. Announcement sources are checked separately.")}</p></section>;
+  if (!isSearching && activeSearch?.search_mode === "local" && status !== "failed") return d.localSearchStatus ? null : <p className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">{isEs ? "Las fichas locales se muestran solo al realizar la búsqueda. Vuelve a buscar para consultar Google Maps en vivo." : "Local listings are displayed only when you run a search. Search again to query Google Maps live."}</p>;
+
   // State 2: Búsqueda en curso
   if (isSearching) {
     return (
