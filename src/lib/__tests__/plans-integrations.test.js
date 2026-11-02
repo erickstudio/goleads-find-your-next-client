@@ -10,7 +10,7 @@ async function load(file, { secrets = {}, fetch = () => { throw new Error("Unexp
   const cache = new Map();
   async function get(spec, parent = process.cwd() + "/root.js") {
     let key = spec.startsWith("@/") ? path.resolve("src", spec.slice(2)) : spec.startsWith(".") ? path.resolve(path.dirname(parent), spec) : spec;
-    if (path.isAbsolute(key) && !path.extname(key)) key += ".js";
+    if (path.isAbsolute(key) && !key.endsWith(".js") && !key.endsWith(".jsx")) key += ".js";
     if (cache.has(key)) return cache.get(key);
     let exports;
     if (spec === "@tanstack/react-start") exports = { createServerFn: () => { const builder = { middleware: () => builder, validator: () => builder, handler: (fn) => fn }; return builder; } };
