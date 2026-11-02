@@ -13,8 +13,21 @@ export const getPaymentAdminDiagnostics = createServerFn({ method: "GET" }).midd
     const config = getPayPalServerConfig();
     const status = toPublicPayPalConfigStatus(config);
     // No credential values, even for administrators.
-    const { clientId: _clientId, ...safeStatus } = status;
-    const verification = config.canAuthenticateWithPayPal ? await fetchPayPalPlanDetails(config) : { ok: false, message: "Faltan credenciales del servidor." };
-    return { configuration: safeStatus, verification, administrator: { id: context.user.id, email: context.user.email }, pendingSetting: await inspectPendingPayPalSetting(), webhookUrl: "https://goleads.space/api/paypal-webhook" };
+    const { clientId: _clientId, sdkUrl: _sdkUrl, ...safeStatus } = status;
+    const [verification, pendingSetting] = await Promise.all([
+      config.canAuthenticateWithPayPal
+        ? fetchPayPalPlanDetails(config).catch((err) => ({
+            ok: false,
+            message: err?.message || "No se pudo verificar el plan con PayPal.",
+          }))
+        : Promise.resolve({ ok: false, message: "Faltan credenciales del servidor." }),
+      inspectPendingPayPalSetting().catch(() => null),
+    ]);
+    return {
+      configuration: safeStatus,
+      verification,
+      administrator: { id: context.user.id, email: context.user.email },
+      pendingSetting,
+      webhookUrl: "https://goleads.space/api/paypal-webhook",
+    };
   });
-

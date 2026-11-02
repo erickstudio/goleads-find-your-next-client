@@ -19,7 +19,7 @@ export async function inspectPendingPayPalSetting(fetchImpl = fetch) {
       }
     }
     const response = await fetchImpl(`${config.apiBaseUrl}/v1/notifications/webhooks`, {
-      method: "GET", signal: AbortSignal.timeout(15000), headers: { Authorization: `Bearer ${auth.accessToken}`, Accept: "application/json" },
+      method: "GET", signal: AbortSignal.timeout(8000), headers: { Authorization: `Bearer ${auth.accessToken}`, Accept: "application/json" },
     }).catch(() => null);
     const payload = response?.ok ? await response.json().catch(() => ({})) : null;
     const matches = (payload?.webhooks || []).filter((h) => h.url === "https://goleads.space/api/paypal-webhook");
@@ -31,4 +31,3 @@ export async function inspectPendingPayPalSetting(fetchImpl = fetch) {
   }));
   return { setting: "PAYPAL_SUSCRIPTION_ID", kind, environments };
 }
-

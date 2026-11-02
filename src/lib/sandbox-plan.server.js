@@ -16,8 +16,11 @@ export async function ensureSandboxProPlan(fetchImpl = fetch) {
     return response.json();
   }
   const name = "GoLeads Pro Sandbox 9.99 monthly";
-  const existing = await request("/v1/billing/plans?page_size=20&total_required=true");
-  let id = existing.plans?.find((p) => p.name === name && p.status === "ACTIVE")?.id;
+  const existing = await request("/v1/billing/plans?page_size=20&total_required=true").catch((err) => {
+    if (config.planId) return { plans: [] };
+    throw err;
+  });
+  let id = existing.plans?.find((p) => p.name === name && p.status === "ACTIVE")?.id || config.planId || "";
   let created = false;
   if (!id) {
     const product = await request("/v1/catalogs/products", "POST", {
@@ -38,4 +41,3 @@ export async function ensureSandboxProPlan(fetchImpl = fetch) {
   }
   return { planId: plan.id, amount: plan.amount, currency: plan.currency, intervalUnit: plan.intervalUnit, intervalCount: plan.intervalCount, status: plan.status, created, environment: "sandbox" };
 }
-
