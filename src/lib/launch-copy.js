@@ -6,6 +6,7 @@ export const LAUNCH_COPY = {
       "How it works",
       "Why GoLeads",
       "Integrations",
+      "Plans",
       "FAQ"
     ],
     "signIn": "Sign in",
@@ -14,12 +15,12 @@ export const LAUNCH_COPY = {
     "beta": "FIND LEADS WITH AI",
     "headline": "Find clients",
     "headlineAccent": "for your services.",
-    "intro": "Use AI to find businesses opening or growing. Save the leads that interest you and prepare messages to offer your services.",
+    "intro": "Find local businesses with Google Maps and opening or expansion opportunities with AI. Save leads, draft messages and export to your tools.",
     "cta": "Find clients",
-    "ctaNote": "Add your services and start searching.",
+    "ctaNote": "Start free: 3 searches a day and Google Sheets.",
     "previewLink": "See an example",
     "audience": "For freelancers, agencies and service providers.",
-    "principle": "Search by business category and city. Review the details and decide who to contact.",
+    "principle": "Search by category and city. Review which businesses fit your services and prepare your first message.",
     "preview": {
       "label": "PRODUCT EXAMPLE · FICTIONAL DATA",
       "title": "An example lead",
@@ -56,11 +57,11 @@ export const LAUNCH_COPY = {
       },
       {
         "title": "Find leads with AI",
-        "body": "Choose a business category, city and time frame. GoLeads searches for opening and expansion announcements."
+        "body": "Choose a category and city. Combine local businesses from Google Maps with opening and expansion announcements found with AI."
       },
       {
         "title": "Save leads and prepare messages",
-        "body": "Review the businesses found, save the ones that interest you and choose the service to offer in your introduction."
+        "body": "Save web leads that interest you, draft a message and export them to Google Sheets. Pro adds Docs, Drive, CSV and MCP."
       }
     ],
     "benefitsEyebrow": "WHY GOLEADS",
@@ -68,7 +69,7 @@ export const LAUNCH_COPY = {
     "benefits": [
       {
         "title": "Find leads with AI",
-        "body": "Discover businesses announcing an opening or expansion in the category and city you choose."
+        "body": "Find local businesses and opening or expansion announcements. Review sources before deciding who to approach."
       },
       {
         "title": "Offer any business service",
@@ -83,24 +84,29 @@ export const LAUNCH_COPY = {
         "body": "Keep prospects, notes and drafts together so you can return to your work."
       }
     ],
-    "statusEyebrow": "INTEGRATIONS · COMING SOON",
-    "statusTitle": "Connect your work tools.",
-    "statusNote": "We are building these connections so you can export leads and save documents from GoLeads. They are not available in this beta yet.",
+    "statusEyebrow": "INTEGRATIONS",
+    "statusTitle": "From a lead to your next step.",
+    "statusNote": "Connect your own Google account from Integrations. Select saved leads or web results and choose where to export them. Google Maps listings are displayed live and separately.",
     "statuses": [
       {
         "name": "Google Sheets",
-        "badge": "In development",
+        "badge": "Free and Pro",
         "body": "Export selected leads to a spreadsheet in your Google account."
       },
       {
-        "name": "Google Drive",
-        "badge": "Coming soon",
-        "body": "Save the documents and proposals you prepare for clients."
+        "name": "Workspace · Google Docs + Drive",
+        "badge": "Pro",
+        "body": "Create a document with leads and outreach drafts in your Drive. Requires your Google connection."
       },
       {
-        "name": "HubSpot CRM",
-        "badge": "Coming soon",
-        "body": "Send leads to your CRM so your team can continue the sales follow-up."
+        "name": "CSV + MCP",
+        "badge": "Pro",
+        "body": "Download leads to import into a CRM, or let your AI assistant read saved leads through OAuth."
+      },
+      {
+        "name": "Gmail · Calendar · CRM",
+        "badge": "Coming later",
+        "body": "Automatic email sending, Calendar and direct CRM synchronization are not available yet."
       }
     ],
     "faqTitle": "Frequently asked questions.",
@@ -115,7 +121,7 @@ export const LAUNCH_COPY = {
       },
       {
         "q": "Are these businesses ready to buy?",
-        "a": "Not necessarily. GoLeads finds businesses with opening or expansion announcements. You confirm whether they need your service, who decides and their budget."
+        "a": "Not necessarily. A local listing does not confirm buying intent or an opening. Web announcements are checked separately. You confirm the need, contact and budget."
       },
       {
         "q": "What can I do with my leads?",
@@ -123,7 +129,7 @@ export const LAUNCH_COPY = {
       },
       {
         "q": "Can I connect Google Sheets or a CRM?",
-        "a": "Google Sheets is the first integration in development. Google Drive and HubSpot are planned for later. Exporting through these connections is not available in this beta yet."
+        "a": "Sheets is included in Free. Pro adds CSV, Google Docs/Drive documents and MCP for AI assistants. Direct CRM synchronization is not available yet."
       },
       {
         "q": "Does the app send emails automatically?",
@@ -160,6 +166,10 @@ export const LAUNCH_COPY = {
         {
           "title": "Retention and requests",
           "body": "A formal retention schedule, operator identity and direct privacy-request contact have not yet been published. The support page explains the current limitations. This summary is not a claim of legal certification or compliance."
+        },
+        {
+          "title": "Google Maps",
+          "body": "Local queries are processed through Google Maps. Listings are displayed live and are not stored as leads. See Google’s privacy policy: https://policies.google.com/privacy"
         }
       ]
     },
@@ -186,6 +196,10 @@ export const LAUNCH_COPY = {
         {
           "title": "Before a commercial launch",
           "body": "The operator’s legal identity, jurisdiction, support channel and final privacy and commercial policies still need publication. These preview limits do not replace rights you may have under applicable law."
+        },
+        {
+          "title": "Google Maps",
+          "body": "Use of Google Maps listings is subject to Google Maps terms: https://maps.google.com/help/terms_maps/ . A listing does not establish an opening, expansion or buying intent."
         }
       ]
     },
@@ -218,6 +232,7 @@ export const LAUNCH_COPY = {
       "Cómo funciona",
       "Por qué GoLeads",
       "Integraciones",
+      "Planes",
       "Preguntas"
     ],
     "signIn": "Entrar",
@@ -226,12 +241,12 @@ export const LAUNCH_COPY = {
     "beta": "BUSCA LEADS CON IA",
     "headline": "Encuentra clientes",
     "headlineAccent": "para tus servicios.",
-    "intro": "Busca con IA negocios que abren o crecen. Guarda los leads que te interesan y prepara mensajes para ofrecer tus servicios.",
+    "intro": "Encuentra negocios locales con Google Maps y oportunidades de apertura o expansión con IA. Guarda leads, redacta mensajes y exporta a tus herramientas.",
     "cta": "Buscar clientes",
-    "ctaNote": "Añade tus servicios y empieza a buscar.",
+    "ctaNote": "Empieza gratis: 3 búsquedas al día y Google Sheets.",
     "previewLink": "Ver un ejemplo",
     "audience": "Para freelancers, agencias y proveedores de servicios.",
-    "principle": "Busca negocios por sector y ciudad. Revisa sus datos y decide a quién contactar.",
+    "principle": "Busca por sector y ciudad. Revisa qué negocio encaja con tus servicios y prepara tu primer contacto.",
     "preview": {
       "label": "EJEMPLO DEL PRODUCTO · DATOS FICTICIOS",
       "title": "Ejemplo de un lead",
@@ -268,11 +283,11 @@ export const LAUNCH_COPY = {
       },
       {
         "title": "Busca clientes con IA",
-        "body": "Elige el tipo de negocio, la ciudad y el periodo. GoLeads busca anuncios de apertura y expansión."
+        "body": "Elige sector y ciudad. Combina negocios locales de Google Maps con anuncios de apertura y expansión encontrados con IA."
       },
       {
         "title": "Guarda leads y prepara mensajes",
-        "body": "Revisa los negocios encontrados, guarda los que te interesan y elige qué servicio ofrecer en tu mensaje de contacto."
+        "body": "Guarda los leads web que te interesen, redacta un mensaje y expórtalos a Google Sheets. Pro añade Docs, Drive, CSV y MCP."
       }
     ],
     "benefitsEyebrow": "POR QUÉ GOLEADS",
@@ -280,7 +295,7 @@ export const LAUNCH_COPY = {
     "benefits": [
       {
         "title": "Busca leads con IA",
-        "body": "Encuentra negocios que anuncian una apertura o expansión en el sector y la ciudad que elijas."
+        "body": "Busca negocios locales y detecta aperturas o expansiones. Mira las fuentes antes de decidir a quién ofrecer tus servicios."
       },
       {
         "title": "Ofrece cualquier servicio",
@@ -295,24 +310,29 @@ export const LAUNCH_COPY = {
         "body": "Mantén tus prospectos, notas y borradores en un solo lugar para retomar tu trabajo."
       }
     ],
-    "statusEyebrow": "INTEGRACIONES · PRÓXIMAMENTE",
-    "statusTitle": "Conecta tus herramientas de trabajo.",
-    "statusNote": "Estamos preparando estas conexiones para que puedas exportar leads y guardar documentos desde GoLeads. Todavía no están disponibles en esta beta.",
+    "statusEyebrow": "INTEGRACIONES",
+    "statusTitle": "Del lead a tu siguiente acción.",
+    "statusNote": "Conecta tu propia cuenta de Google desde Integraciones. Selecciona leads guardados o resultados web y elige dónde exportarlos. Las fichas de Google Maps se muestran en vivo y por separado.",
     "statuses": [
       {
         "name": "Google Sheets",
-        "badge": "En preparación",
-        "body": "Exporta los leads que selecciones a una hoja de cálculo de tu cuenta de Google."
+        "badge": "Gratis y Pro",
+        "body": "Exporta los leads seleccionados a una hoja de cálculo de tu cuenta de Google."
       },
       {
-        "name": "Google Drive",
-        "badge": "Próximamente",
-        "body": "Guarda los documentos y propuestas que prepares para tus clientes."
+        "name": "Workspace · Google Docs + Drive",
+        "badge": "Pro",
+        "body": "Crea un documento con leads y borradores de contacto en tu Drive. Requiere conectar tu Google."
       },
       {
-        "name": "HubSpot CRM",
+        "name": "CSV + MCP",
+        "badge": "Pro",
+        "body": "Descarga tus leads para importarlos en un CRM o permite que tu asistente de IA consulte tus leads guardados mediante OAuth."
+      },
+      {
+        "name": "Gmail · Calendar · CRM",
         "badge": "Próximamente",
-        "body": "Envía tus leads al CRM para continuar el seguimiento comercial con tu equipo."
+        "body": "El envío automático de correos, Calendar y la sincronización directa con CRM aún no están disponibles."
       }
     ],
     "faqTitle": "Preguntas frecuentes.",
@@ -335,7 +355,7 @@ export const LAUNCH_COPY = {
       },
       {
         "q": "¿Puedo conectar Google Sheets o un CRM?",
-        "a": "Estamos preparando Google Sheets como primera integración. Google Drive y HubSpot están previstos para después. Estas conexiones todavía no están disponibles para exportar desde esta beta."
+        "a": "Sheets está incluido en Gratis. Pro añade CSV, documentos en Google Docs/Drive y acceso MCP para asistentes de IA. La sincronización directa con CRM todavía no está disponible."
       },
       {
         "q": "¿La app envía correos automáticamente?",
@@ -372,6 +392,10 @@ export const LAUNCH_COPY = {
         {
           "title": "Conservación y solicitudes",
           "body": "Aún no se han publicado un plazo formal de conservación, la identidad legal del operador ni un contacto directo para solicitudes de privacidad. Ayuda explica las limitaciones actuales. Este resumen no implica certificación legal ni de cumplimiento."
+        },
+        {
+          "title": "Google Maps",
+          "body": "Las consultas locales se procesan mediante Google Maps. Sus fichas se muestran en vivo y no se guardan como leads. Consulta la política de privacidad de Google: https://policies.google.com/privacy"
         }
       ]
     },
@@ -398,6 +422,10 @@ export const LAUNCH_COPY = {
         {
           "title": "Antes del lanzamiento comercial",
           "body": "Falta publicar la identidad legal del operador, jurisdicción, canal de ayuda y políticas definitivas de privacidad y contratación. Estos límites de la vista previa no sustituyen derechos que correspondan por ley."
+        },
+        {
+          "title": "Google Maps",
+          "body": "El uso de las fichas de Google Maps está sujeto a los términos de Google Maps: https://maps.google.com/help/terms_maps/ . Una ficha no demuestra apertura, expansión ni intención de compra."
         }
       ]
     },
