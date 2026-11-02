@@ -1,3 +1,4 @@
+import { isOwnerAccount } from "@/lib/owner-access.server";
 import { getPayPalServerConfig } from "@/lib/paypal-billing.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -85,7 +86,8 @@ export const getExtendedWorkspaceData = createServerFn({ method: "GET" })
       recentSearches,
       Date.now(),
       pilotEnrollments,
-      paypalSubscriptions
+      paypalSubscriptions,
+      isOwnerAccount(context.user)
     );
 
     return {

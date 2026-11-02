@@ -1,3 +1,4 @@
+import { isOwnerAccount } from "@/lib/owner-access.server";
 import crypto from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
@@ -73,10 +74,11 @@ export const getPayPalPlansWorkspaceData = createServerFn({ method: "GET" })
       recentSearches,
       Date.now(),
       pilotEnrollments,
-      mySubscriptions
+      mySubscriptions,
+      isOwnerAccount(context.user)
     );
 
-    return { profile, ...customerBillingSummary({ config, verification: planVerification, subscriptions: mySubscriptions, quota }) };
+    return { profile, ...customerBillingSummary({ config, verification: planVerification, subscriptions: mySubscriptions, quota, isOwner: isOwnerAccount(context.user) }) };
   });
 
 /**

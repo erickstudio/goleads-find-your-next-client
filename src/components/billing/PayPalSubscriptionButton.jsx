@@ -122,7 +122,7 @@ export default function PayPalSubscriptionButton({
 
         buttonsInstance = paypal.Buttons({
           style: {
-            shape: "rect",
+            shape: "pill",
             color: "gold",
             layout: "vertical",
             label: "subscribe",

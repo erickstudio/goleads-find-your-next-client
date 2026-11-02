@@ -1,3 +1,4 @@
+import { isOwnerAccount } from "@/lib/owner-access.server";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth-middleware";
@@ -29,7 +30,8 @@ export function computeQuotaUsage(
   searches = [],
   nowMs = Date.now(),
   pilotEnrollments = [],
-  paypalSubscriptions = []
+  paypalSubscriptions = [],
+  ownerAccess = false
 ) {
   const windowStartMs = nowMs - SEARCH_LIMITS.cacheTtlMs;
   const quotaSearches = searches.filter((s) => {
@@ -92,8 +94,8 @@ export function computeQuotaUsage(
     subscriptionGrantedTotal,
     subscriptionUsedTotal,
     subscriptionRemaining,
-    remainingToday: baseRemainingToday + pilotRemaining + subscriptionRemaining,
-    ...planAccessForSubscriptions(paypalSubscriptions, nowMs),
+    remainingToday: ownerAccess ? Number.MAX_SAFE_INTEGER : baseRemainingToday + pilotRemaining + subscriptionRemaining,
+    ...planAccessForSubscriptions(paypalSubscriptions, nowMs, { isOwner: ownerAccess }),
     maxConcurrentSearches: SEARCH_LIMITS.maxConcurrentSearches,
     cacheTtlHours: SEARCH_LIMITS.cacheTtlHours,
   };
@@ -243,7 +245,8 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
       recentSearches,
       Date.now(),
       ownedEnrollments,
-      ownedSubscriptions
+      ownedSubscriptions,
+      isOwnerAccount(context.user)
     );
 
     return {
@@ -348,7 +351,7 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       (s) => s.owner_id === userId && s.paypal_environment === paymentConfig.env && s.paypal_plan_id === paymentConfig.planId
     );
 
-    const planAccess = planAccessForSubscriptions(ownedSubscriptions, nowMs);
+    const planAccess = planAccessForSubscriptions(ownedSubscriptions, nowMs, { isOwner: isOwnerAccount(context.user) });
     queryCacheKey += `:${planAccess.maxResultsPerSearch}`;
 
     // Check DB-level concurrent search within last 35 seconds
@@ -385,7 +388,8 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
         recentSearches,
         nowMs,
         ownedEnrollments,
-        ownedSubscriptions
+        ownedSubscriptions,
+        isOwnerAccount(context.user)
       );
 
       return {
@@ -402,9 +406,10 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       recentSearches,
       nowMs,
       ownedEnrollments,
-      ownedSubscriptions
+      ownedSubscriptions,
+      isOwnerAccount(context.user)
     );
-    if (quotaBefore.remainingToday <= 0) {
+    if (!quotaBefore.unlimitedSearches && quotaBefore.remainingToday <= 0) {
       throw new Error(
         `Search allowance reached (${quotaBefore.usedToday} of ${quotaBefore.maxDaily} daily searches used${
           quotaBefore.pilotGrantedTotal > 0
@@ -568,7 +573,7 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
         });
 
         // If base daily searches were already exhausted, deduct 1 search from active PayPal subscription or Stripe pilot
-        if (quotaBefore.baseRemainingToday <= 0 && quotaBefore.pilotRemaining > 0) {
+        if (!quotaBefore.unlimitedSearches && quotaBefore.baseRemainingToday <= 0 && quotaBefore.pilotRemaining > 0) {
           const nowCheckMs = Date.now();
           const activeSub = ownedSubscriptions.find((s) => isPayPalSubscriptionAllowanceActive(s, nowCheckMs) &&
             Number(s.granted_search_allowance) > Number(s.used_subscription_searches || 0));
@@ -604,7 +609,8 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
           [updatedSearch, ...recentSearches],
           Date.now(),
           ownedEnrollments,
-          ownedSubscriptions
+          ownedSubscriptions,
+          isOwnerAccount(context.user)
         );
 
         return {

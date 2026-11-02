@@ -47,7 +47,7 @@ export function getPayPalServerConfig(overrides = {}) {
   ).trim();
 
   const secretPlanId = String(
-    overrides.planId ?? (env === "sandbox" ? secrets.get("PAYPAL_PLAN_ID_TEST") : undefined) ?? secrets.get("PAYPAL_PLAN_ID") ?? ""
+    overrides.planId ?? (env === "sandbox" ? secrets.get("PAYPAL_PLAN_ID_TEST") : undefined) ?? secrets.get("PAYPAL_PLAN_ID") ?? (env === "live" && /^P-[A-Z0-9]+$/i.test(String(secrets.get("PAYPAL_SUSCRIPTION_ID") || "").trim()) ? String(secrets.get("PAYPAL_SUSCRIPTION_ID")).trim() : undefined) ?? ""
   ).trim();
   const planId = secretPlanId || (env === "live" ? DEFAULT_PAYPAL_PLAN_ID : "");
 

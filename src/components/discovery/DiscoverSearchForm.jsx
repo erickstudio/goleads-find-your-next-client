@@ -153,7 +153,7 @@ export default function DiscoverSearchForm({ d }) {
             <p className="font-medium text-primary">{t("discover.liveSearchBadge")}</p>
             <p>
               {t("discover.quotaRemaining", {
-                remaining: quota.remainingToday,
+                remaining: quota.isOwner ? (isEs ? "Sin límite" : "Unlimited") : quota.remainingToday,
                 max: quota.maxDaily,
               })}{" "}
               · {t("discover.maxResultsNote", { max: quota.maxResultsPerSearch })}
