@@ -8,22 +8,6 @@
       "search_strategist"
     ],
     "entity_overrides": {
-      "EvidenceItem": {
-        "operations": [],
-        "description": null
-      },
-      "LeadSearch": {
-        "operations": [],
-        "description": null
-      },
-      "Opportunity": {
-        "operations": [],
-        "description": null
-      },
-      "OpportunityFeedback": {
-        "operations": [],
-        "description": null
-      },
       "PayPalSubscription": {
         "operations": [],
         "description": null
@@ -40,15 +24,15 @@
         "operations": [],
         "description": null
       },
-      "SavedOpportunity": {
-        "operations": [],
-        "description": null
-      },
-      "UserProfile": {
-        "operations": [],
-        "description": null
-      },
       "User": {
+        "operations": [],
+        "description": null
+      },
+      "AdminCollaborator": {
+        "operations": [],
+        "description": null
+      },
+      "ProAccessGrant": {
         "operations": [],
         "description": null
       }
