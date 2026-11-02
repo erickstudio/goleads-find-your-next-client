@@ -11,13 +11,16 @@ async function load(file, { secrets = {}, fetch = () => { throw new Error("Unexp
     let key = spec.startsWith("@/") ? path.resolve("src",spec.slice(2)) : spec.startsWith(".") ? path.resolve(path.dirname(parent),spec) : spec;
     if (path.isAbsolute(key) && !key.endsWith(".js") && !key.endsWith(".jsx")) key += ".js";
     if (cache.has(key)) return cache.get(key);
-    let values = mocks[spec];
-    if (!values && spec === "@tanstack/react-start") values = { createServerFn: () => { const b={middleware:()=>b,validator:()=>b,handler:(fn)=>fn};return b;} };
-    if (!values && key.endsWith("/auth-middleware.js")) values = { requireUser:{} };
-    if (!values && spec === "base44:runtime") values = { secrets:{get:(name)=>secrets[name]} };
-    if (!values && (spec === "zod" || spec.startsWith("node:"))) values = await import(spec);
-    const mod = values ? new vm.SyntheticModule(Object.keys(values),function(){for(const [name,value] of Object.entries(values))this.setExport(name,value);},{context}) : new vm.SourceTextModule(await readFile(key,"utf8"),{identifier:key,context});
-    cache.set(key,mod);await mod.link((child)=>get(child,key));return mod;
+    const pending = (async () => {
+      let values = mocks[spec];
+      if (!values && spec === "@tanstack/react-start") values = { createServerFn: () => { const b={middleware:()=>b,validator:()=>b,handler:(fn)=>fn};return b;} };
+      if (!values && key.endsWith("/auth-middleware.js")) values = { requireUser:{} };
+      if (!values && spec === "base44:runtime") values = { secrets:{get:(name)=>secrets[name]} };
+      if (!values && (spec === "zod" || spec.startsWith("node:"))) values = await import(spec);
+      const mod = values ? new vm.SyntheticModule(Object.keys(values),function(){for(const [name,value] of Object.entries(values))this.setExport(name,value);},{context}) : new vm.SourceTextModule(await readFile(key,"utf8"),{identifier:key,context});
+      await mod.link((child)=>get(child,key));return mod;
+    })();
+    cache.set(key,pending);return pending;
   }
   const mod=await get(path.resolve(file));await mod.evaluate();return mod.namespace;
 }
