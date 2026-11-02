@@ -1,45 +1,79 @@
 {
   "auth": "oauth",
+  "login_path": null,
+  "consent_path": null,
   "tools": {
-    "entity_overrides": {
-      "EvidenceItem": {
-        "operations": []
-      },
-      "LeadSearch": {
-        "operations": []
-      },
-      "Opportunity": {
-        "operations": []
-      },
-      "OpportunityFeedback": {
-        "operations": []
-      },
-      "PayPalSubscription": {
-        "operations": []
-      },
-      "PayPalWebhookEvent": {
-        "operations": []
-      },
-      "PaymentWebhookEvent": {
-        "operations": []
-      },
-      "PilotEnrollment": {
-        "operations": []
-      },
-      "SavedOpportunity": {
-        "operations": []
-      },
-      "UserProfile": {
-        "operations": []
-      },
-      "User": {
-        "operations": []
-      }
-    },
     "excluded_agents": [
       "evidence_analyst",
       "search_strategist"
     ],
-    "functions": []
+    "entity_overrides": {
+      "EvidenceItem": {
+        "operations": [],
+        "description": null
+      },
+      "LeadSearch": {
+        "operations": [],
+        "description": null
+      },
+      "Opportunity": {
+        "operations": [],
+        "description": null
+      },
+      "OpportunityFeedback": {
+        "operations": [],
+        "description": null
+      },
+      "PayPalSubscription": {
+        "operations": [],
+        "description": null
+      },
+      "PayPalWebhookEvent": {
+        "operations": [],
+        "description": null
+      },
+      "PaymentWebhookEvent": {
+        "operations": [],
+        "description": null
+      },
+      "PilotEnrollment": {
+        "operations": [],
+        "description": null
+      },
+      "SavedOpportunity": {
+        "operations": [],
+        "description": null
+      },
+      "UserProfile": {
+        "operations": [],
+        "description": null
+      },
+      "User": {
+        "operations": [],
+        "description": null
+      }
+    },
+    "functions": [
+      {
+        "name": "list_saved_leads",
+        "title": null,
+        "description": "Read up to 50 of your own saved GoLeads leads. Requires an active GoLeads Pro subscription. No billing data or write operations.",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20
+            }
+          },
+          "additionalProperties": false
+        },
+        "annotations": null,
+        "handler": "/api/mcp-leads",
+        "disabled": false
+      }
+    ]
   }
 }
