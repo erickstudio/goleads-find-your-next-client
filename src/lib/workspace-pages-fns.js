@@ -1,5 +1,5 @@
 import { isOwnerAccount } from "@/lib/owner-access.server";
-import { loadActiveUserProGrants } from "@/lib/plan-access.server";
+import { loadActiveUserProGrants } from "@/lib/subscription-access";
 import { getPayPalServerConfig } from "@/lib/paypal-billing.server";
 import {
   COMMUNICATION_EMAIL_TEMPLATES,

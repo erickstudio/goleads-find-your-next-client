@@ -1,5 +1,5 @@
 import { isOwnerAccount } from "@/lib/owner-access.server";
-import { loadActiveUserProGrants } from "@/lib/plan-access.server";
+import { loadActiveUserProGrants } from "@/lib/subscription-access";
 import crypto from "node:crypto";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";

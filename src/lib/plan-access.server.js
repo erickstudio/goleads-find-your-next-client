@@ -1,22 +1,7 @@
 import { isOwnerAccount } from "@/lib/owner-access.server";
 import { getPayPalServerConfig } from "@/lib/paypal-billing.server";
 import { planAccessForSubscriptions, assertProAccess } from "@/lib/plan-policy";
-import { isProAccessGrantActive } from "@/lib/subscription-access";
-
-export async function loadActiveUserProGrants(base44, user, nowMs = Date.now()) {
-  if (!user?.id || !base44?.asServiceRole?.entities?.ProAccessGrant?.filter) return [];
-  const email = String(user.email || "").trim().toLowerCase();
-  const page = await base44.asServiceRole.entities.ProAccessGrant.filter(
-    { status: "active" },
-    { limit: 50, sort: "-created_date" }
-  ).catch(() => ({ items: [] }));
-  return (page?.items || []).filter((g) => {
-    if (!isProAccessGrantActive(g, nowMs)) return false;
-    if (g.target_user_id && g.target_user_id === user.id) return true;
-    if (email && g.target_email && String(g.target_email).trim().toLowerCase() === email) return true;
-    return false;
-  });
-}
+import { loadActiveUserProGrants } from "@/lib/subscription-access";
 
 export async function loadPlanAccess(context) {
   if (!context.user?.id) throw Object.assign(new Error("Unauthorized"), { status: 401 });

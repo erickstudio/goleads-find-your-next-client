@@ -4,11 +4,11 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth-middleware";
 import { getPayPalServerConfig } from "@/lib/paypal-billing.server";
 import { planAccessForSubscriptions } from "@/lib/plan-policy";
-import { loadActiveUserProGrants } from "@/lib/plan-access.server";
 import { searchGoogleLocalBusinesses } from "@/lib/google-local.server";
 import {
   isPayPalSubscriptionAllowanceActive,
   isProAccessGrantActive,
+  loadActiveUserProGrants,
 } from "@/lib/subscription-access";
 import {
   SEARCH_LIMITS,
