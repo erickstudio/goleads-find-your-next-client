@@ -82,6 +82,7 @@ export default function DiscoverSearchForm({ d }) {
         }}
         className="space-y-5"
       >
+        <fieldset><legend className="mb-2 text-xs font-medium">{isEs ? "¿Dónde quieres buscar?" : "Where do you want to search?"}</legend><div className="flex flex-wrap gap-2">{[["hybrid", isEs ? "IA + negocios locales" : "AI + local businesses"], ["web", isEs ? "Aperturas y expansión · IA" : "Openings and expansion · AI"], ["local", isEs ? "Negocios locales · Google Maps" : "Local businesses · Google Maps"]].map(([value,label]) => <button key={value} type="button" disabled={isSearching} aria-pressed={d.searchMode === value} onClick={() => d.setSearchMode(value)} className={`rounded-lg border px-3 py-2 text-xs focus-visible:ring-2 focus-visible:ring-ring ${d.searchMode === value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}>{label}</button>)}</div><p className="mt-2 text-[11px] leading-5 text-muted-foreground">{isEs ? "El periodo solo filtra los anuncios web. Las fichas de Google Maps muestran negocios locales y no confirman aperturas." : "The time window filters web announcements only. Google Maps listings show local businesses and do not confirm openings."}</p></fieldset>
         <div className="grid gap-4 md:grid-cols-12">
           <div className="md:col-span-5">
             <label htmlFor="business-category" className="mb-2 block text-xs font-medium">
