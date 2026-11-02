@@ -75,7 +75,7 @@ export default function useDiscoveryWorkspace() {
   const [timeWindowDays, setTimeWindowDays] = useState(
     searchParams.window || initialSearch?.time_window_days || profile?.default_time_window_days || 90
   );
-  const [searchMode, setSearchMode] = useState("hybrid");
+  const [searchMode, setSearchMode] = useState(initialSearch?.search_mode || "hybrid");
   const [localPlaces, setLocalPlaces] = useState([]);
   const [localSearchStatus, setLocalSearchStatus] = useState(null);
   const [activeSearch, setActiveSearch] = useState(initialSearch);
