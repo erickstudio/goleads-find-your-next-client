@@ -12,7 +12,7 @@ export default function PublicHeader() {
   const { isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
   const isEs = lang === "es";
-  const hashes = ["how-it-works", "evidence-first", "integrations", "faq"];
+  const hashes = ["how-it-works", "evidence-first", "integrations", "plans", "faq"];
 
   return (
     <header className="relative z-20 border-b border-border/60 bg-background/90">
@@ -27,7 +27,7 @@ export default function PublicHeader() {
           <BrandWordmark size="lg" />
         </Link>
         <nav
-          className="hidden items-center gap-5 text-sm text-muted-foreground lg:flex"
+          className="hidden items-center gap-5 text-sm text-muted-foreground xl:flex"
           aria-label={copy.menu}
         >
           {copy.nav.map((label, i) => (
@@ -42,7 +42,7 @@ export default function PublicHeader() {
             </Link>
           ))}
         </nav>
-        <div className="hidden items-center gap-4 lg:flex">
+        <div className="hidden items-center gap-4 xl:flex">
           <PreferenceControls compact />
           <Link
             to={isAuthenticated ? "/app" : "/login"}
@@ -64,7 +64,7 @@ export default function PublicHeader() {
           <SheetTrigger asChild>
             <button
               type="button"
-              className="rounded-lg border border-border p-2.5 lg:hidden"
+              className="rounded-lg border border-border p-2.5 xl:hidden"
               aria-label={copy.menu}
             >
               <Menu className="h-5 w-5" />
