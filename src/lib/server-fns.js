@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth-middleware";
 import { getPayPalServerConfig } from "@/lib/paypal-billing.server";
+import { planAccessForSubscriptions } from "@/lib/plan-policy";
+import { searchGoogleLocalBusinesses } from "@/lib/google-local.server";
 import { isPayPalSubscriptionAllowanceActive } from "@/lib/subscription-access";
 import {
   SEARCH_LIMITS,
@@ -91,7 +93,7 @@ export function computeQuotaUsage(
     subscriptionUsedTotal,
     subscriptionRemaining,
     remainingToday: baseRemainingToday + pilotRemaining + subscriptionRemaining,
-    maxResultsPerSearch: SEARCH_LIMITS.maxResultsPerSearch,
+    ...planAccessForSubscriptions(paypalSubscriptions, nowMs),
     maxConcurrentSearches: SEARCH_LIMITS.maxConcurrentSearches,
     cacheTtlHours: SEARCH_LIMITS.cacheTtlHours,
   };
@@ -215,7 +217,7 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
       const targetSearchId = latestLiveSearch.cached_from_search_id || latestLiveSearch.id;
       latestOpportunities = allUserOpportunities
         .filter((o) => o.search_id === targetSearchId)
-        .slice(0, SEARCH_LIMITS.maxResultsPerSearch);
+        .slice(0, 20);
     }
 
     const ownedSaved = deduplicateByOpportunityId(
@@ -254,7 +256,7 @@ export const getWorkspaceBootstrap = createServerFn({ method: "GET" })
       profile,
       recentSearches,
       latestLiveSearch,
-      latestOpportunities,
+      latestOpportunities: latestOpportunities.slice(0, quota.maxResultsPerSearch),
       allUserOpportunities,
       savedOpportunities: ownedSaved,
       feedbackRecords: ownedFeedback,
@@ -279,6 +281,7 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
         .max(120, "Keep location under 120 characters"),
       time_window_days: z.union([z.literal(30), z.literal(90), z.literal(180)]),
       force_retry: z.boolean().optional(),
+      mode: z.enum(["hybrid", "web", "local"]).default("hybrid"),
     })
   )
   .handler(async ({ data, context }) => {
@@ -291,7 +294,8 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
     const businessCategory = data.business_category.trim();
     const locationQuery = data.location_query.trim();
     const timeWindowDays = data.time_window_days;
-    const queryCacheKey = buildQueryCacheKey(
+    const mode = data.mode;
+    let queryCacheKey = `${mode}:` + buildQueryCacheKey(
       businessCategory,
       locationQuery,
       timeWindowDays
@@ -344,6 +348,9 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       (s) => s.owner_id === userId && s.paypal_environment === paymentConfig.env && s.paypal_plan_id === paymentConfig.planId
     );
 
+    const planAccess = planAccessForSubscriptions(ownedSubscriptions, nowMs);
+    queryCacheKey += `:${planAccess.maxResultsPerSearch}`;
+
     // Check DB-level concurrent search within last 35 seconds
     const activeDbSearch = recentSearches.find((s) => {
       if (s.status !== "searching") return false;
@@ -359,7 +366,7 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
     // 3. Check 24-hour private per-user query cache
     const cacheCutoffMs = nowMs - SEARCH_LIMITS.cacheTtlMs;
     const cachedSearch = recentSearches.find((s) => {
-      if (s.query_cache_key !== queryCacheKey) return false;
+      if (mode !== "web" || s.query_cache_key !== queryCacheKey) return false;
       if (!["completed", "partial", "empty"].includes(s.status)) return false;
       if (s.cached_from_search_id) return false;
       const ts = new Date(s.completed_at || s.executed_at || s.created_date || 0).getTime();
@@ -369,7 +376,7 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
     if (cachedSearch) {
       const cachedOppsPage = await base44.entities.Opportunity.filter(
         { created_by_id: userId, search_id: cachedSearch.id },
-        { sort: "-created_date", limit: SEARCH_LIMITS.maxResultsPerSearch }
+        { sort: "-created_date", limit: planAccess.maxResultsPerSearch }
       );
       const cachedOpportunities = (cachedOppsPage?.items || []).filter(
         (o) => o.created_by_id === userId && (!o.owner_id || o.owner_id === userId)
@@ -429,24 +436,24 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
       });
 
       try {
-        const { candidates, attemptsUsed } = await queryBuiltInWebSearchWithRetry(base44, {
-          businessCategory,
-          locationQuery,
-          timeWindowDays,
-          nowIso,
+        // One Places request per explicit search; no Places content is persisted in lead entities.
+        const [web, local] = await Promise.allSettled([
+          mode === "local" ? Promise.resolve({ candidates: [], attemptsUsed: 0 }) : queryBuiltInWebSearchWithRetry(base44, {
+            businessCategory, locationQuery, timeWindowDays, nowIso, maxResults: mode === "hybrid" ? Math.ceil(planAccess.maxResultsPerSearch / 2) : planAccess.maxResultsPerSearch,
+          }),
+          mode === "web" ? Promise.resolve({ status: "not_requested", places: [] }) : searchGoogleLocalBusinesses(base44, {
+            businessCategory, locationQuery, maxResults: mode === "hybrid" ? Math.floor(planAccess.maxResultsPerSearch / 2) : planAccess.maxResultsPerSearch,
+          }),
+        ]);
+        const localResult = local.status === "fulfilled" ? local.value : { status: "unavailable", places: [] };
+        if ((mode === "local" && localResult.status === "unavailable") || (web.status === "rejected" && localResult.status !== "ok")) {
+          throw new Error("La búsqueda no está disponible en este momento. Inténtalo de nuevo. / Search is temporarily unavailable. Please try again.");
+        }
+        const { candidates, attemptsUsed } = web.status === "fulfilled" ? web.value : { candidates: [], attemptsUsed: 0 };
+        const { allOpportunities, verifiedCount, needsReviewCount } = await verifyAndStructureCandidates({
+          rawCandidates: candidates, businessCategory, locationQuery, timeWindowDays, selectedServices,
+          serviceDescription, nowDate: now, maxResults: mode === "hybrid" ? Math.ceil(planAccess.maxResultsPerSearch / 2) : planAccess.maxResultsPerSearch,
         });
-
-        const { allOpportunities, verifiedCount, needsReviewCount } =
-          await verifyAndStructureCandidates({
-            base44,
-            rawCandidates: candidates,
-            businessCategory,
-            locationQuery,
-            timeWindowDays,
-            selectedServices,
-            serviceDescription,
-            nowDate: now,
-          });
 
         const savedOpportunityRecords = [];
         for (const oppDraft of allOpportunities) {
@@ -537,6 +544,17 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
           } with opening or expansion evidence confirmed from recovered source pages.`;
         }
 
+        if (mode === "local") {
+          finalStatus = localResult.places.length ? "completed" : "empty";
+          statusReason = "Local business search complete. Google Maps listings do not confirm an opening or expansion. Local listings are shown live and are not stored in search history.";
+        } else if (localResult.places.length && savedOpportunityRecords.length === 0) {
+          finalStatus = "partial";
+          statusReason = "Local businesses found. No recent opening or expansion announcements were verified.";
+        }
+        if (mode === "hybrid" && (web.status === "rejected" || localResult.status !== "ok")) {
+          finalStatus = "partial";
+          statusReason += " One search source is temporarily unavailable; available results are shown.";
+        }
         const updatedSearch = await base44.entities.LeadSearch.update(searchRecord.id, {
           status: finalStatus,
           honest_status_reason: statusReason,
@@ -551,19 +569,8 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
         // If base daily searches were already exhausted, deduct 1 search from active PayPal subscription or Stripe pilot
         if (quotaBefore.baseRemainingToday <= 0 && quotaBefore.pilotRemaining > 0) {
           const nowCheckMs = Date.now();
-          const activeSub = ownedSubscriptions.find((s) => {
-            if (!["active", "trialing", "cancelled"].includes(s.status)) return false;
-            if (s.current_period_end_iso) {
-              const endMs = new Date(s.current_period_end_iso).getTime();
-              if (!Number.isNaN(endMs) && endMs <= nowCheckMs) return false;
-            } else if (s.status === "cancelled") {
-              return false;
-            }
-            return (
-              (Number(s.granted_search_allowance) || 0) >
-              (Number(s.used_subscription_searches) || 0)
-            );
-          });
+          const activeSub = ownedSubscriptions.find((s) => isPayPalSubscriptionAllowanceActive(s, nowCheckMs) &&
+            Number(s.granted_search_allowance) > Number(s.used_subscription_searches || 0));
 
           if (activeSub) {
             const updatedSub = await base44.asServiceRole.entities.PayPalSubscription.update(
@@ -602,6 +609,9 @@ export const runLeadDiscoverySearch = createServerFn({ method: "POST" })
         return {
           search: updatedSearch,
           opportunities: savedOpportunityRecords,
+          localPlaces: localResult.places,
+          localSearchStatus: localResult.status,
+          searchMode: mode,
           fromCache: false,
           cachedAt: null,
           attemptsUsed,
