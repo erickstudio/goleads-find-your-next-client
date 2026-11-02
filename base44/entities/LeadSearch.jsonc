@@ -6,6 +6,11 @@
       "type": "string",
       "description": "Authenticated user ID derived on the server"
     },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional summary of the search parameters and outcome"
+    },
     "business_category": {
       "type": "string",
       "description": "Target business category searched"

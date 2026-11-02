@@ -6,6 +6,11 @@
       "type": "string",
       "description": "Unique Stripe event ID (evt_...) used for idempotent processing"
     },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional summary of the webhook event processing"
+    },
     "event_type": {
       "type": "string",
       "description": "Stripe webhook event type"

@@ -10,6 +10,11 @@
       "type": "string",
       "description": "Parent Opportunity ID"
     },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional summary description of the source evidence"
+    },
     "source_title": {
       "type": "string"
     },

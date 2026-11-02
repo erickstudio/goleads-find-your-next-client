@@ -14,11 +14,11 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "GoLeads — Evidence-first business discovery" },
+      { title: "GoLeads — Find clients for your services with AI & Google Maps" },
       {
         name: "description",
         content:
-          "GoLeads beta preview: explore public opening and expansion signals, source evidence and possible service fit.",
+          "GoLeads helps freelancers, agencies, and service providers find local businesses with Google Maps and verified opening or expansion signals with AI, draft outreach messages, and export leads.",
       },
     ],
     links: [{ rel: "stylesheet", href: appCss }, { rel: "icon", type: "image/png", href: "https://media.base44.com/images/public/6ae63656edc313a907ad5680/c09d3f492_LogosdeGoLeads.png" }],

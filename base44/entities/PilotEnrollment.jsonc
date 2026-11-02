@@ -10,6 +10,11 @@
       "type": "string",
       "description": "Authenticated user email derived on the server"
     },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional description of the pilot enrollment record"
+    },
     "offer_code": {
       "type": "string",
       "description": "Identifier of the pilot offer version"

@@ -7,7 +7,7 @@ import vm from "node:vm";
 async function load(file, { secrets = {}, fetch = () => { throw new Error("Unexpected provider call"); }, mocks = {} } = {}) {
   const context = vm.createContext({ URL, URLSearchParams, Response, Request, Headers, AbortSignal, setTimeout, clearTimeout, console, fetch, crypto:globalThis.crypto });
   const cache = new Map();
-  async function get(spec, parent = process.cwd() + "/root.js") {
+  async function get(spec, parent = path.resolve("root.js")) {
     let key = spec.startsWith("@/") ? path.resolve("src",spec.slice(2)) : spec.startsWith(".") ? path.resolve(path.dirname(parent),spec) : spec;
     if (path.isAbsolute(key) && !key.endsWith(".js") && !key.endsWith(".jsx")) key += ".js";
     if (cache.has(key)) return cache.get(key);

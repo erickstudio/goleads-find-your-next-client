@@ -10,6 +10,11 @@
       "type": "string",
       "description": "Opportunity ID"
     },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional summary description of the saved lead"
+    },
     "business_name": {
       "type": "string"
     },

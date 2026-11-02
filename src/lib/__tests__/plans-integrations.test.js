@@ -8,7 +8,7 @@ import vm from "node:vm";
 async function load(file, { secrets = {}, fetch = () => { throw new Error("Unexpected provider request"); } } = {}) {
   const ctx = vm.createContext({ URL, URLSearchParams, Response, Request, Headers, AbortSignal, setTimeout, clearTimeout, console, fetch, crypto: globalThis.crypto });
   const cache = new Map();
-  async function get(spec, parent = process.cwd() + "/root.js") {
+  async function get(spec, parent = path.resolve("root.js")) {
     let key = spec.startsWith("@/") ? path.resolve("src", spec.slice(2)) : spec.startsWith(".") ? path.resolve(path.dirname(parent), spec) : spec;
     if (path.isAbsolute(key) && !key.endsWith(".js") && !key.endsWith(".jsx")) key += ".js";
     if (cache.has(key)) return cache.get(key);
@@ -85,4 +85,3 @@ test("Provider failure returns unavailable, never example businesses", async () 
   const result=await p.searchGoogleLocalBusinesses({asServiceRole:{connectors:{callApi:async () => {throw new Error("Provider failed");}}}},{businessCategory:"Cafe",locationQuery:"Panama"});
   assert.equal(result.status,"unavailable"); assert.equal(result.places.length,0);
 });
-

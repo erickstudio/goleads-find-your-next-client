@@ -10,7 +10,7 @@ async function load(relativePath, secretValues = {}, globals = {}) {
   const context = vm.createContext({ URL, URLSearchParams, Request, Response, Headers, TextDecoder, Uint8Array,
     AbortSignal, setTimeout, clearTimeout, console, ...globals });
   const cache = new Map();
-  async function moduleFor(specifier, parent = process.cwd() + "/") {
+  async function moduleFor(specifier, parent = path.resolve("root.js")) {
     let key = specifier;
     if (!specifier.startsWith("node:") && specifier !== "base44:runtime") {
       key = specifier.startsWith("@/") ? path.resolve("src", specifier.slice(2)) : path.resolve(path.dirname(parent), specifier);

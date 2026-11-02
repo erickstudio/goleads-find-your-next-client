@@ -10,6 +10,11 @@
       "type": "string",
       "description": "Authenticated GoLeads user email derived on the server"
     },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional summary description of the subscription state"
+    },
     "enrollment_reference": {
       "type": "string",
       "description": "Internal server-generated reference sent to PayPal as custom_id"

@@ -10,6 +10,11 @@
       "type": "string",
       "description": "Authenticated user email derived on the server"
     },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional profile summary or description"
+    },
     "selected_services": {
       "type": "array",
       "items": {

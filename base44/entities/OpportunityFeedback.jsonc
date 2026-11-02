@@ -10,6 +10,11 @@
       "type": "string",
       "description": "Target Opportunity ID"
     },
+    "description": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional summary description of the relevance evaluation"
+    },
     "business_name": {
       "type": "string"
     },
