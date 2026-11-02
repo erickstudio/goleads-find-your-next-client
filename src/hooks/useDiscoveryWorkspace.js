@@ -75,6 +75,9 @@ export default function useDiscoveryWorkspace() {
   const [timeWindowDays, setTimeWindowDays] = useState(
     searchParams.window || initialSearch?.time_window_days || profile?.default_time_window_days || 90
   );
+  const [searchMode, setSearchMode] = useState("hybrid");
+  const [localPlaces, setLocalPlaces] = useState([]);
+  const [localSearchStatus, setLocalSearchStatus] = useState(null);
   const [activeSearch, setActiveSearch] = useState(initialSearch);
   const [liveOpportunities, setLiveOpportunities] = useState(() =>
     resolveOpportunitiesForSearch(initialSearch, allUserOpportunities)
@@ -215,6 +218,8 @@ export default function useDiscoveryWorkspace() {
       setRequestError(t("discover.validationMissingFields"));
       return;
     }
+    setLocalPlaces([]);
+    setLocalSearchStatus(null);
     setIsSearching(true);
     setRequestError("");
     setActionBanner("");
@@ -229,12 +234,15 @@ export default function useDiscoveryWorkspace() {
           location_query: loc,
           time_window_days: timeWindowDays,
           force_retry: Boolean(forceRetry),
+          mode: searchMode,
         },
       });
       const returnedSearch = res?.search || null;
       const returnedOpps = res?.opportunities || [];
       if (returnedSearch) setActiveSearch(returnedSearch);
       setLiveOpportunities(returnedOpps);
+      setLocalPlaces(res?.localPlaces || []);
+      setLocalSearchStatus(res?.localSearchStatus || "not_requested");
       if (res?.quota) setQuota(res.quota);
       setFromCacheInfo(
         res?.fromCache
@@ -629,6 +637,7 @@ export default function useDiscoveryWorkspace() {
 
   return {
     lang,
+    searchMode, setSearchMode, localPlaces, localSearchStatus,
     outreachLang,
     t,
     profile,
