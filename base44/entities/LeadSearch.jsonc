@@ -85,6 +85,16 @@
     "completed_at": {
       "type": "string",
       "description": "ISO timestamp when search finished"
+    },
+    "search_mode": {
+      "type": "string",
+      "enum": [
+        "hybrid",
+        "web",
+        "local"
+      ],
+      "default": "web",
+      "description": "Source mode chosen by the user. Does not contain Google Places content."
     }
   },
   "required": [
