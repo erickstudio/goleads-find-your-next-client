@@ -1,3 +1,4 @@
+import GoogleLocalResults from "@/components/discovery/GoogleLocalResults";
 import { createFileRoute } from "@tanstack/react-router";
 import { getWorkspaceBootstrap } from "@/lib/server-fns";
 import { validateDiscoverySearch } from "@/lib/discovery-search";
@@ -19,6 +20,6 @@ export const Route = createFileRoute("/_authed/app")({
 function DiscoverPage() {
   const d = useDiscoveryWorkspace();
   return (
-    <div className="space-y-6"><DiscoverHeading d={d} /><DiscoverSearchForm d={d} /><DiscoverStrategist d={d} />{d.actionBanner && <div role="status" className="flex items-center justify-between gap-4 rounded-xl border border-primary/25 bg-primary/5 p-4 text-xs"><span>{d.actionBanner}</span><button type="button" onClick={() => d.setActionBanner("")} className="text-primary hover:underline">{d.t("common.dismiss")}</button></div>}<DiscoverState d={d} /><DiscoverResults d={d} /><DiscoverExamples d={d} /></div>
+    <div className="space-y-6"><DiscoverHeading d={d} /><DiscoverSearchForm d={d} /><DiscoverStrategist d={d} />{d.actionBanner && <div role="status" className="flex items-center justify-between gap-4 rounded-xl border border-primary/25 bg-primary/5 p-4 text-xs"><span>{d.actionBanner}</span><button type="button" onClick={() => d.setActionBanner("")} className="text-primary hover:underline">{d.t("common.dismiss")}</button></div>}<DiscoverState d={d} /><GoogleLocalResults d={d} /><DiscoverResults d={d} /><DiscoverExamples d={d} /></div>
   );
 }
