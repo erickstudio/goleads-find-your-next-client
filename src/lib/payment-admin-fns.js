@@ -1,0 +1,16 @@
+import { createServerFn } from "@tanstack/react-start";
+import { requireUser } from "@/lib/auth-middleware";
+import { assertAdministrator } from "@/lib/plan-policy";
+import { getPayPalServerConfig, fetchPayPalPlanDetails, toPublicPayPalConfigStatus } from "@/lib/paypal-billing.server";
+
+export const getPaymentAdminDiagnostics = createServerFn({ method: "GET" }).middleware([requireUser])
+  .handler(async ({ context }) => {
+    assertAdministrator(context.user); // Before config access or provider calls.
+    const config = getPayPalServerConfig();
+    const status = toPublicPayPalConfigStatus(config);
+    // No credential values, even for administrators.
+    const { clientId: _clientId, ...safeStatus } = status;
+    const verification = config.canAuthenticateWithPayPal ? await fetchPayPalPlanDetails(config) : { ok: false, message: "Faltan credenciales del servidor." };
+    return { configuration: safeStatus, verification, webhookUrl: "https://goleads.space/api/paypal-webhook" };
+  });
+
