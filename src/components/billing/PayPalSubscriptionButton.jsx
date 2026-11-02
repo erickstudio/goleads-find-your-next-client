@@ -5,7 +5,7 @@ import { preparePayPalSubscriptionOrder, confirmPayPalSubscriptionOnServer, reco
 
 export default function PayPalSubscriptionButton({ clientId, planId, testMode = false, ...props }) {
   const options = useMemo(() => ({ clientId, components: "buttons", intent: "subscription", vault: true, currency: "USD",
-    enableFunding: "card", dataNamespace: "goleadsPaypal", dataSdkIntegrationSource: "button-factory",
+    enableFunding: "card", dataSdkIntegrationSource: "button-factory", debug: testMode,
     ...(testMode ? { buyerCountry: "US" } : {}),
   }), [clientId, testMode]);
   if (!clientId || !planId) return null;
