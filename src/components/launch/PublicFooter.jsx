@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import BrandWordmark from "@/components/BrandWordmark";
 import { usePublicLocale } from "@/lib/PublicLocaleContext";
+import { openCookieSettings } from "@/components/launch/CookieConsentBanner";
 
 export default function PublicFooter() {
   const { lang, copy } = usePublicLocale();
@@ -21,12 +22,19 @@ export default function PublicFooter() {
               </a>
             </p>
           </div>
-          <nav aria-label={copy.legalLabel} className="flex gap-6 text-sm text-muted-foreground">
+          <nav aria-label={copy.legalLabel} className="flex flex-wrap gap-6 text-sm text-muted-foreground">
             {[["/privacy", "privacy"], ["/terms", "terms"], ["/support", "support"]].map(([to, key]) => (
               <Link key={to} to={to} search={{ lang }} className="hover:text-foreground">
                 {copy[key]}
               </Link>
             ))}
+            <button
+              type="button"
+              onClick={openCookieSettings}
+              className="hover:text-foreground text-left focus:outline-none focus:ring-2 focus:ring-ring rounded"
+            >
+              {lang === "es" ? "Configuración de cookies" : "Cookie settings"}
+            </button>
           </nav>
         </div>
         <div className="mt-10 border-t border-border/60 pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-muted-foreground">

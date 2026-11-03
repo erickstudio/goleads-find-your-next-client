@@ -51,10 +51,15 @@ function RootDocument({ children }) {
       </head>
       <body data-react-root="true">
         {children}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){window.dataLayer.push(arguments);}gtag('consent','default',{analytics_storage:'denied',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied'});`,
+          }}
+        />
         <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZV6LMG6KDP" />
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-ZV6LMG6KDP');`,
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){window.dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-ZV6LMG6KDP');`,
           }}
         />
         <Base44Scripts />
