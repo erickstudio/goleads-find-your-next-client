@@ -117,6 +117,11 @@ export const EXAMPLE_OPPORTUNITIES = [
     website_url: "https://example.com/lomalinda-roasters",
     public_email: "hello@lomalindaroasters.demo",
     public_phone: "+1 (512) 840-2910",
+    place_id: "demo-place-loma-linda-austin",
+    place_name: "Loma Linda Specialty Roasters & Bakery",
+    place_address: "1402 S Congress Ave, Austin, TX 78704, USA",
+    place_url: "https://www.google.com/maps/search/?api=1&query=Loma+Linda+Specialty+Roasters+Austin+TX",
+    place_business_status: "OPERATIONAL",
     signal_type: "New opening",
     signal_summary:
       "Transitioning from wholesale-only coffee roasting to a public retail cafe and packaged bean storefront in East Austin.",

@@ -359,15 +359,59 @@ export default function OpportunityCard({
           )}
         </div>
 
-        {/* Service Fit Hypothesis Column */}
-        <div className="md:col-span-5 bg-accent/60 rounded-md p-3 border border-primary/25 space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-medium text-foreground">{t("card.possibleServiceFitTitle")}</span>
-            <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30">
-              {t("common.hypothesisBadge")}
-            </span>
+        {/* Service Fit Hypothesis + Matched Google Places Venue Column */}
+        <div className="md:col-span-5 space-y-2.5">
+          {(opp.place_address || opp.place_url || opp.place_name) && (
+            <div className="bg-secondary/60 rounded-md p-3 border border-border space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <span className="font-medium text-foreground">
+                  {isEs ? "Google Places (mismo local)" : "Google Places (same venue)"}
+                </span>
+                <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                  {opp.place_business_status === "CLOSED_TEMPORARILY"
+                    ? isEs
+                      ? "Cerrado temp."
+                      : "Temp. closed"
+                    : opp.place_business_status === "CLOSED_PERMANENTLY"
+                    ? isEs
+                      ? "Cerrado"
+                      : "Closed"
+                    : isEs
+                    ? "Local activo"
+                    : "Active venue"}
+                </span>
+              </div>
+              {opp.place_name && opp.place_name !== opp.business_name && (
+                <p className="text-xs font-medium text-foreground">{opp.place_name}</p>
+              )}
+              {opp.place_address && (
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {opp.place_address}
+                </p>
+              )}
+              {opp.place_url && (
+                <a
+                  href={safePublicUrl(opp.place_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center text-xs font-medium text-primary hover:underline"
+                >
+                  {isEs ? "Ver ficha del local en Google Maps ↗" : "View venue on Google Maps ↗"}
+                </a>
+              )}
+            </div>
+          )}
+
+          <div className="bg-accent/60 rounded-md p-3 border border-primary/25 space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-foreground">{t("card.possibleServiceFitTitle")}</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-primary/15 text-primary border border-primary/30">
+                {t("common.hypothesisBadge")}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">{fitText}</p>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">{fitText}</p>
         </div>
       </div>
     </article>

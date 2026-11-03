@@ -85,3 +85,48 @@ test("Provider failure returns unavailable, never example businesses", async () 
   const result=await p.searchGoogleLocalBusinesses({asServiceRole:{connectors:{callApi:async () => {throw new Error("Provider failed");}}}},{businessCategory:"Cafe",locationQuery:"Panama"});
   assert.equal(result.status,"unavailable"); assert.equal(result.places.length,0);
 });
+test("Structured export combines AI opportunities with same-venue Google Places data and standalone Places listings", async () => {
+  const eb = await load("src/lib/export-builder.js");
+  const table = eb.buildStructuredExportTable({
+    records: [
+      {
+        id: "opp-1",
+        business_name: "Café Horizonte",
+        business_category: "Cafés",
+        location: "Panamá",
+        website_url: "https://cafehorizonte.pa",
+        public_email: "hola@cafehorizonte.pa",
+        public_phone: "+507 6000-1111",
+        signal_type: "Nueva sucursal",
+        signal_summary: "Apertura en Obarrio",
+        verification_status: "verified",
+        source_title: "Prensa Local",
+        source_url: "https://prensa.pa/cafe",
+      },
+    ],
+    localPlaces: [
+      {
+        placeId: "pl-1",
+        name: "Cafe Horizonte",
+        address: "Calle 54 Obarrio, Panamá",
+        businessStatus: "OPERATIONAL",
+        url: "https://maps.google.com/?cid=1",
+      },
+      {
+        placeId: "pl-2",
+        name: "Bistro Casco",
+        address: "Casco Antiguo, Panamá",
+        businessStatus: "OPERATIONAL",
+        url: "https://maps.google.com/?cid=2",
+        public_email: "reservas@bistrocasco.pa",
+        public_phone: "+507 6000-2222",
+      },
+    ],
+    lang: "es",
+  });
+  assert.equal(table.rows.length, 2);
+  assert.equal(table.items[0].placeAddress, "Calle 54 Obarrio, Panamá");
+  assert.equal(table.items[0].publicEmail, "hola@cafehorizonte.pa");
+  assert.equal(table.items[1].businessName, "Bistro Casco");
+  assert.equal(table.items[1].publicEmail, "reservas@bistrocasco.pa");
+});

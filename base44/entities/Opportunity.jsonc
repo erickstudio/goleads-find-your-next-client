@@ -36,6 +36,26 @@
       "type": "string",
       "description": "Publicly available business contact phone number if published, or empty if unavailable"
     },
+    "place_id": {
+      "type": "string",
+      "description": "Google Places ID of the matched local business venue when available"
+    },
+    "place_name": {
+      "type": "string",
+      "description": "Display name on Google Places for the matched venue"
+    },
+    "place_address": {
+      "type": "string",
+      "description": "Formatted street address from Google Places for the matched venue"
+    },
+    "place_url": {
+      "type": "string",
+      "description": "Google Maps URL for the matched venue"
+    },
+    "place_business_status": {
+      "type": "string",
+      "description": "Operational status reported by Google Places (e.g. OPERATIONAL)"
+    },
     "signal_type": {
       "type": "string",
       "description": "Opening or expansion signal classification"

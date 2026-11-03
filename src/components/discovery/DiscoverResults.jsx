@@ -87,6 +87,7 @@ export default function DiscoverResults({ d }) {
       <GoogleSheetsExportPanel
         source="discover"
         records={d.activeLiveOpps}
+        localPlaces={d.localPlaces}
         selectedIds={d.selectedOppIds}
         feedbackByOppId={d.feedbackByOppId}
       />

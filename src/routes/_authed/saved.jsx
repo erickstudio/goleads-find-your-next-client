@@ -451,6 +451,33 @@ function SavedOpportunitiesScreen() {
                   </div>
 
                   <div className="space-y-3">
+                    {(item.place_address || item.place_url) && (
+                      <div className="bg-secondary/60 rounded-md p-3 border border-border space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium text-foreground">
+                            {lang === "es"
+                              ? "Google Places (mismo local)"
+                              : "Google Places (same venue)"}
+                          </span>
+                          {item.place_url && (
+                            <a
+                              href={safePublicUrl(item.place_url)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline font-medium"
+                            >
+                              Google Maps ↗
+                            </a>
+                          )}
+                        </div>
+                        {item.place_address && (
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            {item.place_address}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <div className="bg-accent/60 rounded-md p-3 border border-primary/25 space-y-1">
                       <div className="text-xs font-medium text-foreground">
                         {t("card.possibleServiceFitTitle")}

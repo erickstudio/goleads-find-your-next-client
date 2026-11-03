@@ -630,7 +630,25 @@ function OpportunityDetailScreen() {
                   {opp.public_phone}
                 </a>
               )}
+              {opp.place_url && (
+                <a
+                  href={safePublicUrl(opp.place_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline font-medium"
+                >
+                  {isEs ? "Google Maps (mismo local) ↗" : "Google Maps (same venue) ↗"}
+                </a>
+              )}
             </div>
+            {opp.place_address && (
+              <p className="text-xs text-muted-foreground pt-1">
+                <span className="font-medium text-foreground">
+                  {isEs ? "Dirección Google Places:" : "Google Places address:"}
+                </span>{" "}
+                {opp.place_address}
+              </p>
+            )}
           </div>
 
           <div className="flex items-center gap-2 shrink-0">

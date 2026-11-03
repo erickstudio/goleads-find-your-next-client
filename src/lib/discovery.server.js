@@ -960,10 +960,21 @@ export async function verifyAndStructureCandidates({
           cleanWebsite = "";
         }
       }
+      let websiteContacts = null;
+      if (
+        cleanWebsite &&
+        cleanWebsite !== finalSourceUrl &&
+        (!recovered?.extractedEmail || !recovered?.extractedPhone)
+      ) {
+        websiteContacts = await fetchUntrustedSourcePage(cleanWebsite).catch(() => null);
+      }
+
       const cleanPublicEmail =
+        sanitizePublicEmail(websiteContacts?.extractedEmail) ||
         sanitizePublicEmail(recovered?.extractedEmail) ||
         sanitizePublicEmail(cand.public_email);
       const cleanPublicPhone =
+        sanitizePublicPhone(websiteContacts?.extractedPhone) ||
         sanitizePublicPhone(recovered?.extractedPhone) ||
         sanitizePublicPhone(cand.public_phone);
 

@@ -1,8 +1,24 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth-middleware";
+import { buildStructuredExportTable } from "@/lib/export-builder";
 
 const GOOGLE_SHEETS_CONNECTOR_ID = "6ae79347cd3d8383bd8d098a";
+
+const LocalPlaceExportSchema = z.object({
+  placeId: z.string().trim().max(160).optional(),
+  name: z.string().trim().min(1).max(200),
+  address: z.string().trim().max(300).optional(),
+  businessStatus: z.string().trim().max(80).optional(),
+  url: z.string().trim().max(500).optional(),
+  category: z.string().trim().max(160).optional(),
+  location: z.string().trim().max(200).optional(),
+  website_url: z.string().trim().max(500).optional(),
+  public_email: z.string().trim().max(160).optional(),
+  public_phone: z.string().trim().max(60).optional(),
+  signal_type: z.string().trim().max(160).optional(),
+  signal_summary: z.string().trim().max(600).optional(),
+});
 
 function deduplicateByOpportunityId(records = []) {
   const seen = new Set();
@@ -55,8 +71,10 @@ export const exportLeadsToGoogleSheets = createServerFn({ method: "POST" })
     z.object({
       source: z.enum(["saved", "discover"]).default("saved"),
       opportunity_ids: z.array(z.string().trim().min(1).max(120)).max(100).optional(),
+      local_places: z.array(LocalPlaceExportSchema).max(50).optional(),
       stage_filter: z.string().max(40).optional(),
       spreadsheet_title: z.string().trim().max(120).optional(),
+      language: z.enum(["en", "es"]).optional(),
     })
   )
   .handler(async ({ data, context }) => {
@@ -124,84 +142,31 @@ export const exportLeadsToGoogleSheets = createServerFn({ method: "POST" })
         }
         return true;
       });
-    } else {
+    } else if (!requestedIds || requestedIds.size > 0) {
       targetRecords = ownedOpps.filter((opp) => {
         if (requestedIds && requestedIds.size > 0) {
           return requestedIds.has(opp.id);
         }
-        return true;
+        return false;
       });
     }
 
-    if (targetRecords.length === 0) {
+    const { headers, rows } = buildStructuredExportTable({
+      records: targetRecords,
+      localPlaces: data.local_places || [],
+      savedByOppId,
+      feedbackByOppId,
+      lang: data.language || "es",
+    });
+
+    if (rows.length === 0) {
       throw new Error("No leads matched the current selection to export.");
     }
-
-    const headers = [
-      "lead_id",
-      "business_name",
-      "business_category",
-      "location",
-      "website_url",
-      "public_email",
-      "public_phone",
-      "signal_type",
-      "signal_summary",
-      "source_verification_status",
-      "user_commercial_stage",
-      "user_relevance_verdict",
-      "publication_date",
-      "event_date",
-      "source_title",
-      "source_url",
-      "supporting_excerpt",
-      "service_fit_hypothesis",
-      "target_services",
-      "outreach_draft",
-      "qualification_notes",
-      "retrieved_at_utc",
-    ];
-
-    const rows = targetRecords.map((rec) => {
-      const oppId = rec.opportunity_id || rec.id;
-      const savedMatch = savedByOppId.get(oppId);
-      const fbMatch = feedbackByOppId.get(oppId);
-      const servicesArr = Array.isArray(rec.inferred_service_categories)
-        ? rec.inferred_service_categories
-        : Array.isArray(savedMatch?.inferred_service_categories)
-        ? savedMatch.inferred_service_categories
-        : [];
-
-      return [
-        String(oppId || ""),
-        String(rec.business_name || ""),
-        String(rec.business_category || ""),
-        String(rec.location || ""),
-        String(rec.website_url || savedMatch?.website_url || ""),
-        String(rec.public_email || savedMatch?.public_email || ""),
-        String(rec.public_phone || savedMatch?.public_phone || ""),
-        String(rec.signal_type || ""),
-        String(rec.signal_summary || ""),
-        String(rec.verification_status || "needs_review"),
-        String(savedMatch?.review_stage || rec.review_stage || "unsaved"),
-        String(fbMatch?.verdict || "unrated"),
-        String(rec.publication_date || ""),
-        String(rec.event_date || ""),
-        String(rec.source_title || ""),
-        String(rec.source_url || ""),
-        String(rec.supporting_excerpt || ""),
-        String(rec.service_fit_inference || ""),
-        servicesArr.join("; "),
-        String(savedMatch?.outreach_draft || rec.outreach_draft || ""),
-        String(savedMatch?.qualification_notes || rec.qualification_notes || ""),
-        String(rec.retrieval_date || ""),
-      ];
-    });
 
     const todayStr = new Date().toISOString().slice(0, 10);
     const title =
       data.spreadsheet_title ||
-      `GoLeads CRM & MCP Export (${todayStr}) — ${rows.length} leads`;
+      `GoLeads Export (${todayStr}) — ${rows.length} leads (IA + Google Places)`;
 
     const allValues = [headers, ...rows];
 
@@ -210,7 +175,7 @@ export const exportLeadsToGoogleSheets = createServerFn({ method: "POST" })
       sheets: [
         {
           properties: {
-            title: "Leads",
+            title: "Leads (IA + Places)",
             gridProperties: { frozenRowCount: 1 },
           },
           data: [
@@ -222,7 +187,13 @@ export const exportLeadsToGoogleSheets = createServerFn({ method: "POST" })
                   userEnteredValue: { stringValue: String(cell ?? "") },
                   userEnteredFormat:
                     rowIndex === 0
-                      ? { textFormat: { bold: true } }
+                      ? {
+                          backgroundColor: { red: 0.19, green: 0.14, blue: 0.48 },
+                          textFormat: {
+                            bold: true,
+                            foregroundColor: { red: 1, green: 1, blue: 1 },
+                          },
+                        }
                       : undefined,
                 })),
               })),
