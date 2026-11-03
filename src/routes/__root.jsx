@@ -51,6 +51,12 @@ function RootDocument({ children }) {
       </head>
       <body data-react-root="true">
         {children}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZV6LMG6KDP" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-ZV6LMG6KDP');`,
+          }}
+        />
         <Base44Scripts />
         <Scripts />
       </body>
