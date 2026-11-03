@@ -173,6 +173,158 @@ function isRootHomepageUrl(rawUrl) {
   }
 }
 
+const DISALLOWED_EMAIL_DOMAINS = new Set([
+  "example.com",
+  "example.org",
+  "example.net",
+  "test.com",
+  "domain.com",
+  "email.com",
+  "yoursite.com",
+  "yourdomain.com",
+  "company.com",
+  "sentry.io",
+  "wixpress.com",
+  "cloudflare.com",
+  "googleapis.com",
+  "w3.org",
+  "schema.org",
+]);
+
+const DISALLOWED_EMAIL_EXTENSIONS = [
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".svg",
+  ".webp",
+  ".css",
+  ".js",
+  ".woff",
+  ".woff2",
+  ".ttf",
+  ".ico",
+];
+
+export function sanitizePublicEmail(rawEmail) {
+  if (!rawEmail || typeof rawEmail !== "string") return "";
+  let cleaned = decodeHtmlEntities(rawEmail)
+    .replace(/^mailto:/i, "")
+    .split("?")[0]
+    .trim()
+    .toLowerCase();
+  if (
+    !cleaned ||
+    cleaned.length > 160 ||
+    ["null", "undefined", "none", "n/a", "not stated", "not available", "no disponible", "unknown"].includes(cleaned)
+  ) {
+    return "";
+  }
+  if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,12}$/i.test(cleaned)) {
+    return "";
+  }
+  if (DISALLOWED_EMAIL_EXTENSIONS.some((ext) => cleaned.endsWith(ext))) {
+    return "";
+  }
+  const [localPart, domain] = cleaned.split("@");
+  if (!localPart || !domain || DISALLOWED_EMAIL_DOMAINS.has(domain)) {
+    return "";
+  }
+  if (/^(noreply|no-reply|donotreply|do-not-reply|mailer-daemon|postmaster)/i.test(localPart)) {
+    return "";
+  }
+  return cleaned;
+}
+
+export function sanitizePublicPhone(rawPhone) {
+  if (!rawPhone || typeof rawPhone !== "string") return "";
+  let cleaned = decodeHtmlEntities(rawPhone)
+    .replace(/^tel:/i, "")
+    .replace(/^(?:phone|tel|teléfono|telefono)\s*[:.-]?\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const lower = cleaned.toLowerCase();
+  if (
+    !cleaned ||
+    cleaned.length > 40 ||
+    ["null", "undefined", "none", "n/a", "not stated", "not available", "no disponible", "unknown"].includes(lower)
+  ) {
+    return "";
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) {
+    return "";
+  }
+  if (!/^[+\d()\s.\-xextEXT]+$/.test(cleaned)) {
+    return "";
+  }
+  const digits = cleaned.replace(/\D/g, "");
+  if (digits.length < 7 || digits.length > 15) {
+    return "";
+  }
+  if (/^0+$/.test(digits) || digits === "1234567" || digits === "1234567890" || /55501\d{2}$/.test(digits)) {
+    return "";
+  }
+  return cleaned;
+}
+
+export function extractPublicContactsFromHtml(rawHtml = "", plainText = "") {
+  let publicEmail = "";
+  let publicPhone = "";
+
+  const mailtoMatches = String(rawHtml).matchAll(/href=["']mailto:([^"'?&\s]+)["']/gi);
+  for (const m of mailtoMatches) {
+    const candidate = sanitizePublicEmail(m[1]);
+    if (candidate) {
+      publicEmail = candidate;
+      break;
+    }
+  }
+
+  if (!publicEmail) {
+    const jsonLdEmails = String(rawHtml).matchAll(/"email"\s*:\s*"([^"]+)"/gi);
+    for (const m of jsonLdEmails) {
+      const candidate = sanitizePublicEmail(m[1]);
+      if (candidate) {
+        publicEmail = candidate;
+        break;
+      }
+    }
+  }
+
+  if (!publicEmail && plainText) {
+    const textEmails = String(plainText).matchAll(/\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,10}\b/g);
+    for (const m of textEmails) {
+      const candidate = sanitizePublicEmail(m[0]);
+      if (candidate) {
+        publicEmail = candidate;
+        break;
+      }
+    }
+  }
+
+  const telMatches = String(rawHtml).matchAll(/href=["']tel:([^"'?&\s]+)["']/gi);
+  for (const m of telMatches) {
+    const candidate = sanitizePublicPhone(decodeURIComponent(m[1] || ""));
+    if (candidate) {
+      publicPhone = candidate;
+      break;
+    }
+  }
+
+  if (!publicPhone) {
+    const jsonLdPhones = String(rawHtml).matchAll(/"telephone"\s*:\s*"([^"]+)"/gi);
+    for (const m of jsonLdPhones) {
+      const candidate = sanitizePublicPhone(m[1]);
+      if (candidate) {
+        publicPhone = candidate;
+        break;
+      }
+    }
+  }
+
+  return { publicEmail, publicPhone };
+}
+
 /**
  * Safely fetches an external source URL as untrusted content and extracts plain-text
  * metadata (title, publication date from JSON-LD / meta tags, description, and clean body text).
@@ -311,6 +463,9 @@ export async function fetchUntrustedSourcePage(rawUrl) {
       };
     }
 
+    const { publicEmail: extractedEmail, publicPhone: extractedPhone } =
+      extractPublicContactsFromHtml(rawHtml, plainText);
+
     return {
       ok: true,
       httpStatus: response.status,
@@ -319,6 +474,8 @@ export async function fetchUntrustedSourcePage(rawUrl) {
       extractedTitle,
       extractedPubDate,
       extractedDescription,
+      extractedEmail,
+      extractedPhone,
       plainText,
     };
   } catch (err) {
@@ -621,7 +778,8 @@ Strict retrieval rules:
 2. NEVER return generic directory pages, reservation pages, delivery aggregators, or generic business homepages that lack a dated opening/expansion announcement.
 3. Return ONLY real businesses with actual public URLs found in web search results. If fewer than ${Math.min(20, Math.max(1, maxResults))} businesses have verifiable recent opening or expansion evidence, return fewer results (or an empty array). Never pad or invent businesses, URLs, or dates.
 4. Keep publication_date (YYYY-MM-DD when the article/announcement was published) separate from event_date (when the opening/expansion happened or is planned). NEVER deduce a publication_date or event_date from website copyright notices (e.g., "© 2026"), the current retrieval date, or a bare year on a page. If either date is not explicitly confirmed in the source, return an empty string "" for that date.
-5. Set recency_basis to "announcement_date" only if the confirmed article publication_date is on or after ${cutoffDate}, "event_date" only if the confirmed event_date is on or after ${cutoffDate}, or "unverified_date" if the date cannot be confirmed.`;
+5. Set recency_basis to "announcement_date" only if the confirmed article publication_date is on or after ${cutoffDate}, "event_date" only if the confirmed event_date is on or after ${cutoffDate}, or "unverified_date" if the date cannot be confirmed.
+6. Include public_email and public_phone ONLY if a public business contact email or phone number for cold outreach is explicitly published in the public source or official business announcement. Never guess or fabricate contact details; if not publicly available, return an empty string "" for that field.`;
 
   const responseSchema = {
     type: "object",
@@ -635,6 +793,14 @@ Strict retrieval rules:
             business_category: { type: "string" },
             location: { type: "string" },
             website_url: { type: "string" },
+            public_email: {
+              type: "string",
+              description: "Public business contact email ONLY if explicitly published in the source or official business listing, else empty string",
+            },
+            public_phone: {
+              type: "string",
+              description: "Public business contact phone number ONLY if explicitly published in the source or official business listing, else empty string",
+            },
             signal_type: {
               type: "string",
               description: "Short label such as 'New location opening', 'Grand opening', 'Expansion', or 'Reopening'",
@@ -794,6 +960,13 @@ export async function verifyAndStructureCandidates({
           cleanWebsite = "";
         }
       }
+      const cleanPublicEmail =
+        sanitizePublicEmail(recovered?.extractedEmail) ||
+        sanitizePublicEmail(cand.public_email);
+      const cleanPublicPhone =
+        sanitizePublicPhone(recovered?.extractedPhone) ||
+        sanitizePublicPhone(cand.public_phone);
+
       const oppDraft = {
         business_name: String(cand.business_name || "").trim().slice(0, 200),
         business_category: String(cand.business_category || businessCategory || "")
@@ -805,6 +978,8 @@ export async function verifyAndStructureCandidates({
           .trim()
           .slice(0, 200),
         website_url: cleanWebsite,
+        public_email: cleanPublicEmail,
+        public_phone: cleanPublicPhone,
         signal_type: String(cand.signal_type || "Opening / expansion signal")
           .trim()
           .slice(0, 140),

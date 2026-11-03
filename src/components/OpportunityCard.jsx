@@ -180,6 +180,32 @@ export default function OpportunityCard({
               ) : (
                 <span className="text-muted-foreground/80">{t("common.websiteUnknown")}</span>
               )}
+              {opp.public_email && (
+                <>
+                  <span>·</span>
+                  <a
+                    href={`mailto:${opp.public_email}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-primary hover:underline font-medium break-all"
+                    title={isEs ? "Correo público disponible" : "Public email available"}
+                  >
+                    {opp.public_email}
+                  </a>
+                </>
+              )}
+              {opp.public_phone && (
+                <>
+                  <span>·</span>
+                  <a
+                    href={`tel:${opp.public_phone}`}
+                    onClick={(e) => e.stopPropagation()}
+                    className="text-primary hover:underline font-medium"
+                    title={isEs ? "Teléfono público disponible" : "Public phone available"}
+                  >
+                    {opp.public_phone}
+                  </a>
+                </>
+              )}
             </div>
           </div>
         </div>

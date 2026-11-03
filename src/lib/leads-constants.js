@@ -115,6 +115,8 @@ export const EXAMPLE_OPPORTUNITIES = [
     business_category: "Food & Beverage / Specialty Retail",
     location: "Austin, TX, USA",
     website_url: "https://example.com/lomalinda-roasters",
+    public_email: "hello@lomalindaroasters.demo",
+    public_phone: "+1 (512) 840-2910",
     signal_type: "New opening",
     signal_summary:
       "Transitioning from wholesale-only coffee roasting to a public retail cafe and packaged bean storefront in East Austin.",

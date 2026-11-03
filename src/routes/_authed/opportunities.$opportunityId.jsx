@@ -614,6 +614,22 @@ function OpportunityDetailScreen() {
               ) : (
                 <span className="text-muted-foreground/80">{t("common.websiteUnknown")}</span>
               )}
+              {opp.public_email && (
+                <a
+                  href={`mailto:${opp.public_email}`}
+                  className="text-primary hover:underline font-medium break-all"
+                >
+                  {opp.public_email}
+                </a>
+              )}
+              {opp.public_phone && (
+                <a
+                  href={`tel:${opp.public_phone}`}
+                  className="text-primary hover:underline font-medium"
+                >
+                  {opp.public_phone}
+                </a>
+              )}
             </div>
           </div>
 

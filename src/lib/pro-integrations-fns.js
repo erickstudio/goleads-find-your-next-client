@@ -47,7 +47,7 @@ export const exportLeadsToCsv = createServerFn({ method: "POST" }).middleware([r
   .handler(async ({ context, data }) => {
     await requireProContext(context);
     const leads = await selectedOwnedLeads(context, data.opportunity_ids);
-    return { csv: encodeCsv([["Business", "Location", "Website", "Source", "Stage", "Email draft"], ...leads.map((r) => [r.business_name, r.location, r.website_url, r.source_url, r.review_stage || "saved", r.outreach_draft])]), count: leads.length };
+    return { csv: encodeCsv([["Business", "Location", "Website", "Public email", "Public phone", "Source", "Stage", "Email draft"], ...leads.map((r) => [r.business_name, r.location, r.website_url, r.public_email || "", r.public_phone || "", r.source_url, r.review_stage || "saved", r.outreach_draft])]), count: leads.length };
   });
 
 export const exportLeadsToWorkspaceDocument = createServerFn({ method: "POST" }).middleware([requireUser]).validator(selection)
@@ -58,7 +58,7 @@ export const exportLeadsToWorkspaceDocument = createServerFn({ method: "POST" })
     const connection = await context.getBase44().asServiceRole.connectors.getCurrentAppUserConnection(SHEETS_CONNECTOR_ID);
     if (!connection?.accessToken) throw new Error("Conecta tu cuenta de Google para crear el documento.");
     const name = `GoLeads — ${leads.length} leads — ${new Date().toISOString().slice(0, 10)}`;
-    const content = name + "\n\n" + leads.map((r) => [r.business_name, r.location, r.website_url, r.source_url, r.service_fit_inference, r.outreach_draft].filter(Boolean).join("\n")).join("\n\n---\n\n");
+    const content = name + "\n\n" + leads.map((r) => [r.business_name, r.location, r.website_url, r.public_email ? `Email: ${r.public_email}` : "", r.public_phone ? `Tel: ${r.public_phone}` : "", r.source_url, r.service_fit_inference, r.outreach_draft].filter(Boolean).join("\n")).join("\n\n---\n\n");
     const boundary = "goleads_" + crypto.randomUUID();
     const body = `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name, mimeType: "application/vnd.google-apps.document" })}\r\n--${boundary}\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n${content}\r\n--${boundary}--`;
     const result = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink", {
@@ -68,4 +68,3 @@ export const exportLeadsToWorkspaceDocument = createServerFn({ method: "POST" })
     const file = await result.json();
     return { url: file.webViewLink || `https://docs.google.com/document/d/${file.id}/edit`, name: file.name, count: leads.length };
   });
-

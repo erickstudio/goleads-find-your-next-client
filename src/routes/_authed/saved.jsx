@@ -321,6 +321,28 @@ function SavedOpportunitiesScreen() {
                       >
                         {item.source_title || t("saved.sourceLink")}
                       </a>
+                      {item.public_email && (
+                        <>
+                          <span>·</span>
+                          <a
+                            href={`mailto:${item.public_email}`}
+                            className="text-primary hover:underline font-medium break-all"
+                          >
+                            {item.public_email}
+                          </a>
+                        </>
+                      )}
+                      {item.public_phone && (
+                        <>
+                          <span>·</span>
+                          <a
+                            href={`tel:${item.public_phone}`}
+                            className="text-primary hover:underline font-medium"
+                          >
+                            {item.public_phone}
+                          </a>
+                        </>
+                      )}
                     </div>
                   </div>
 

@@ -27,6 +27,14 @@
     "website_url": {
       "type": "string"
     },
+    "public_email": {
+      "type": "string",
+      "description": "Publicly available business contact email if published, or empty if unavailable"
+    },
+    "public_phone": {
+      "type": "string",
+      "description": "Publicly available business contact phone number if published, or empty if unavailable"
+    },
     "signal_type": {
       "type": "string"
     },
