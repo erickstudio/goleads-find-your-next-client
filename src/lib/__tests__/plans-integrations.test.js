@@ -130,3 +130,67 @@ test("Structured export combines AI opportunities with same-venue Google Places 
   assert.equal(table.items[1].businessName, "Bistro Casco");
   assert.equal(table.items[1].publicEmail, "reservas@bistrocasco.pa");
 });
+
+test("MCP config locks down all entities (no writes, no billing/admin exposure) and exposes only read-only list_saved_leads", async () => {
+  const raw = JSON.parse(await readFile(path.resolve("base44/mcp/config.json"), "utf8"));
+  assert.equal(raw.auth, "oauth");
+  assert.equal(raw.login_path, "/login");
+  assert.equal(raw.consent_path, "/oauth/consent");
+  const requiredBlockedEntities = [
+    "SavedOpportunity",
+    "Opportunity",
+    "EvidenceItem",
+    "LeadSearch",
+    "OpportunityFeedback",
+    "UserProfile",
+    "EmailCampaignContent",
+    "PayPalSubscription",
+    "PayPalWebhookEvent",
+    "PaymentWebhookEvent",
+    "PilotEnrollment",
+    "User",
+    "AdminCollaborator",
+    "ProAccessGrant",
+  ];
+  for (const entity of requiredBlockedEntities) {
+    assert.deepEqual(raw.tools.entity_overrides[entity]?.operations, [], `${entity} must opt out of direct MCP tools`);
+  }
+  assert.equal(raw.tools.functions.length, 1);
+  assert.equal(raw.tools.functions[0].name, "list_saved_leads");
+  assert.equal(raw.tools.functions[0].handler, "/api/mcp-leads");
+  assert.equal(raw.tools.functions[0].annotations.read_only_hint, true);
+  assert.equal(raw.tools.functions[0].annotations.destructive_hint, false);
+});
+
+test("MCP leads route enforces Free vs Subscription Pro vs Admin Grant Pro, empty state, expired Pro, and strict per-user isolation", async () => {
+  const p = await load("src/lib/plan-policy.js");
+  // 1. Free account: canMcp is false and assertProAccess throws 403 PRO_REQUIRED
+  const freeAccess = p.planAccessForSubscriptions([], now);
+  assert.equal(freeAccess.canMcp, false);
+  assert.throws(() => p.assertProAccess(freeAccess), { status: 403, code: "PRO_REQUIRED" });
+
+  // 2. Pro by subscription: canMcp is true
+  const subAccess = p.planAccessForSubscriptions([paid], now);
+  assert.equal(subAccess.canMcp, true);
+  assert.equal(subAccess.entitlementSource, "subscription");
+
+  // 3. Pro granted by administrator: canMcp is true
+  const adminGrant = {
+    id: "grant-1",
+    grant_type: "direct_user",
+    target_user_id: "u-grant",
+    status: "active",
+    granted_search_allowance: 100,
+    used_searches: 5,
+    expires_at_iso: "2026-12-15T00:00:00Z",
+  };
+  const grantAccess = p.planAccessForSubscriptions([], now, { complimentaryGrants: [adminGrant] });
+  assert.equal(grantAccess.canMcp, true);
+  assert.equal(grantAccess.entitlementSource, "complimentary");
+
+  // 4. Expired Pro grant or expired subscription loses MCP access
+  const expiredGrantAccess = p.planAccessForSubscriptions([], now, {
+    complimentaryGrants: [{ ...adminGrant, expires_at_iso: "2026-10-01T00:00:00Z" }],
+  });
+  assert.equal(expiredGrantAccess.canMcp, false);
+});

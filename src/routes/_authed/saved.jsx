@@ -227,17 +227,41 @@ function SavedOpportunitiesScreen() {
       )}
 
       {filteredList.length === 0 ? (
-        <div className="bg-card rounded-lg border border-border p-8 text-center space-y-2">
-          <h2 className="text-sm font-semibold text-foreground">
+        <div className="bg-card rounded-xl border border-dashed border-border p-8 text-center space-y-3">
+          <h2 className="text-base font-semibold text-foreground">
             {savedList.length === 0
               ? t("saved.emptyAllTitle")
               : t("saved.emptyStageTitle", {
                   stage: t(`saved.stages.${stageFilter}`),
                 })}
           </h2>
-          <p className="text-xs text-muted-foreground max-w-md mx-auto">
+          <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
             {savedList.length === 0 ? t("saved.emptyAllBody") : t("saved.emptyStageBody")}
           </p>
+          <div className="pt-2 flex flex-wrap justify-center gap-2">
+            {savedList.length === 0 ? (
+              <Link
+                to="/app"
+                className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+              >
+                {lang === "es" ? "Encuentra clientes" : "Find clients"}
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleSelectStageFilter("all")}
+                className="inline-flex items-center rounded-lg border border-border bg-secondary px-4 py-2 text-xs font-semibold text-foreground hover:bg-secondary/80"
+              >
+                {t("saved.stages.all")}
+              </button>
+            )}
+            <Link
+              to="/connect"
+              className="inline-flex items-center rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20"
+            >
+              {lang === "es" ? "Conectar asistente (MCP)" : "Connect assistant (MCP)"}
+            </Link>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">

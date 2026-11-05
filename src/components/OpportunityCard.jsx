@@ -223,10 +223,10 @@ export default function OpportunityCard({
                   onSave(opp);
                 }
               }}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-colors focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 ${
+              className={`px-3.5 py-1.5 rounded-md text-xs font-semibold border transition-colors focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 ${
                 isSaved
                   ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25"
-                  : "bg-card text-foreground border-border hover:bg-secondary"
+                  : "bg-primary text-primary-foreground border-primary hover:bg-primary/90"
               }`}
               title={isSaved ? t("card.unsaveTitle") : t("card.saveTitle")}
             >
@@ -239,7 +239,7 @@ export default function OpportunityCard({
             params={{ opportunityId: opp.id }}
             search={detailSearchParams}
             onClick={(e) => e.stopPropagation()}
-            className="px-3 py-1.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+            className="px-3 py-1.5 rounded-md text-xs font-medium bg-secondary text-foreground border border-border hover:bg-secondary/80 transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
           >
             {t("card.viewDetailsBtn")}
           </Link>
