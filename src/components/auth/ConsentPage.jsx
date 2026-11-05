@@ -243,10 +243,10 @@ export function ConsentPage() {
     >
       {error && <div className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
       <div className="mb-4 rounded-lg border border-primary/25 bg-primary/5 p-3 text-xs text-muted-foreground leading-relaxed">
-        <strong className="text-foreground">GoLeads MCP · Pro:</strong>{" "}
+        <strong className="text-foreground">GoLeads MCP (Solo lectura / Read-only):</strong>{" "}
         {t("auth.consentSubtitle", { client, appName })}.{" "}
         <span>
-          Solo lectura de tus propios leads guardados (requiere GoLeads Pro activo; sin acceso a pagos ni escrituras). / Read-only access to your own saved leads (requires active GoLeads Pro; no billing or write access).
+          Solo lectura de tus propios leads guardados (Plan Gratis: consulta básica hasta 5 leads; Plan Pro: consulta completa hasta 50 leads; no puede crear, modificar ni eliminar nada). / Read-only access to your own saved leads (Free: basic query up to 5 leads; Pro: full query up to 50 leads; cannot create, modify, or delete anything).
         </span>
       </div>
       <p className="mb-3 text-sm font-medium text-foreground">

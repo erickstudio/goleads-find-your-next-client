@@ -12,18 +12,18 @@ export default function McpTroubleshooting({ es }) {
           <ul className="space-y-2 text-xs text-muted-foreground leading-relaxed list-disc pl-4">
             <li>
               {es
-                ? "Solo lectura de tus propios leads guardados (hasta 50 por consulta, filtrables por etapa: saved, researching, qualified, archived)."
-                : "Read-only access to your own saved leads (up to 50 per request, filterable by stage: saved, researching, qualified, archived)."}
+                ? "Plan Gratis (consulta básica): hasta 5 leads guardados con nombre, categoría, ubicación, tipo de señal, estado de verificación, fuente y etapa."
+                : "Free Plan (basic query): up to 5 saved leads with business name, category, location, signal type, verification status, source URL, and stage."}
             </li>
             <li>
               {es
-                ? "Incluye nombre del negocio, ubicación, web, email/teléfono público, dirección y enlace de Google Maps, señal verificada y borrador de contacto."
-                : "Includes business name, location, website, public email/phone, Google Maps address & URL, verified signal, and outreach draft."}
+                ? "Plan Pro (consulta completa): hasta 50 leads guardados incluyendo web, email/teléfono público, dirección y enlace de Google Maps, notas y borrador de contacto."
+                : "Pro Plan (full query): up to 50 saved leads including website, public email/phone, Google Maps address & URL, notes, and outreach draft."}
             </li>
             <li>
               {es
-                ? "No expone pagos, suscripciones, datos administrativos, otros usuarios ni operaciones de creación, edición o borrado."
-                : "Never exposes payments, subscriptions, administrative data, other users, or any create/update/delete operations."}
+                ? "100% solo lectura: no puede crear, modificar ni eliminar ningún dato, ni expone pagos ni datos administrativos."
+                : "100% read-only: cannot create, modify, or delete any data, and never exposes payments or administrative data."}
             </li>
           </ul>
         </section>
@@ -94,12 +94,12 @@ export default function McpTroubleshooting({ es }) {
           </div>
           <div className="rounded-lg bg-secondary/40 border border-border p-3 space-y-1">
             <p className="font-semibold text-foreground">
-              {es ? "Si pasas a Gratis o vence tu Pro" : "If on Free plan or Pro expires"}
+              {es ? "Si estás en Gratis o vence tu Pro" : "If on Free plan or Pro expires"}
             </p>
             <p>
               {es
-                ? "El servidor MCP rechazará la consulta con un mensaje claro indicando que se requiere un plan GoLeads Pro activo."
-                : "The MCP server will decline the query with a clear message stating that an active GoLeads Pro plan is required."}
+                ? "Tu conexión MCP sigue funcionando automáticamente en modo de consulta básica de solo lectura (hasta 5 leads con campos básicos) y sin poder modificar nada."
+                : "Your MCP connection continues working automatically in basic read-only query mode (up to 5 leads with basic fields) and cannot modify anything."}
             </p>
           </div>
         </div>

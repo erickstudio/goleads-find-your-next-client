@@ -259,7 +259,7 @@ function SavedOpportunitiesScreen() {
               to="/connect"
               className="inline-flex items-center rounded-lg border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary hover:bg-primary/20"
             >
-              {lang === "es" ? "Conectar asistente (MCP)" : "Connect assistant (MCP)"}
+              MCP
             </Link>
           </div>
         </div>

@@ -73,7 +73,7 @@ function Plans() {
     ["Google Sheets", "✓", "✓"],
     ["CSV", "—", "✓"],
     ["Workspace · Google Docs + Drive", "—", "✓"],
-    [es ? "MCP para tus asistentes de IA" : "MCP for your AI assistants", "—", "✓"],
+    ["MCP (Solo lectura / Read-only)", es ? "Básico (5 leads)" : "Basic (5 leads)", es ? "Completo (50 leads)" : "Full (50 leads)"],
   ];
   return <div className="space-y-7"><header><p className="text-xs font-semibold uppercase tracking-widest text-primary">{es ? "Planes y pagos" : "Plans and payments"}</p><h1 className="mt-2 text-3xl font-semibold">{es ? "Más clientes potenciales. Más tiempo para vender." : "More prospects. More time to sell."}</h1><p className="mt-3 text-sm text-muted-foreground">{es ? "Empieza gratis y conecta tus herramientas cuando necesites más." : "Start free and connect more tools as you grow."}</p></header>
     <section className="grid gap-4 sm:grid-cols-3" aria-label={es ? "Tu plan y consumo" : "Your plan and usage"}>{[[es ? "Tu plan" : "Your plan", access.isOwner ? (es ? "Pro · Propietario" : "Pro · Owner") : access.isPro ? "Pro" : (es ? "Gratis" : "Free")], [es ? "Disponibles hoy · gratis" : "Free searches left today", access.isOwner ? (es ? "Sin límite" : "Unlimited") : quota.baseRemainingToday], [es ? "Adicionales disponibles" : "Extra searches remaining", access.isOwner ? (es ? "Sin límite" : "Unlimited") : quota.subscriptionRemaining]].map(([label,value]) => <div key={label} className="rounded-xl border border-border bg-card p-5"><p className="text-xs text-muted-foreground">{label}</p><p className="mt-2 text-3xl font-semibold">{value}</p></div>)}</section>

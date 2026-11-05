@@ -43,13 +43,13 @@ export default function McpClientGuides({ mcpEndpoint, es }) {
       <div className="space-y-1">
         <h2 className="text-base font-semibold text-foreground">
           {es
-            ? "2. Cómo agregar GoLeads MCP en cada app de IA (Requiere Pro)"
-            : "2. How to add GoLeads MCP in each AI app (Pro required)"}
+            ? "2. Cómo agregar GoLeads MCP en cada app de IA (Gratis básico / Pro completo)"
+            : "2. How to add GoLeads MCP in each AI app (Free basic / Pro full)"}
         </h2>
         <p className="text-xs text-muted-foreground">
           {es
-            ? "Selecciona tu asistente para ver los pasos de conexión y autorización OAuth con tu cuenta GoLeads Pro."
-            : "Select your assistant below for step-by-step connection and OAuth authorization instructions with your GoLeads Pro account."}
+            ? "Selecciona tu asistente para ver los pasos de conexión y autorización OAuth de solo lectura con tu cuenta GoLeads."
+            : "Select your assistant below for step-by-step connection and read-only OAuth authorization instructions with your GoLeads account."}
         </p>
       </div>
 
@@ -98,7 +98,7 @@ export default function McpClientGuides({ mcpEndpoint, es }) {
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 shrink-0"
             >
-              {es ? "Conectar asistente en Claude" : "Connect assistant in Claude"}
+              {es ? "Agregar MCP en Claude" : "Add MCP in Claude"}
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
@@ -106,8 +106,8 @@ export default function McpClientGuides({ mcpEndpoint, es }) {
           <ol className="list-decimal space-y-2.5 pl-5 text-xs sm:text-sm text-foreground/90 leading-relaxed">
             <li>
               {es
-                ? "Haz clic en «Conectar asistente en Claude» arriba (o entra en Claude → Settings → Connectors → Add custom connector)."
-                : "Click 'Connect assistant in Claude' above (or open Claude → Settings → Connectors → Add custom connector)."}
+                ? "Haz clic en «Agregar MCP en Claude» arriba (o entra en Claude → Settings → Connectors → Add custom connector)."
+                : "Click 'Add MCP in Claude' above (or open Claude → Settings → Connectors → Add custom connector)."}
             </li>
             <li>
               {es
@@ -116,8 +116,8 @@ export default function McpClientGuides({ mcpEndpoint, es }) {
             </li>
             <li>
               {es
-                ? "Claude abrirá la pantalla de consentimiento de GoLeads (/oauth/consent). Inicia sesión con tu cuenta GoLeads Pro y pulsa «Aprobar»."
-                : "Claude will open the GoLeads consent page (/oauth/consent). Sign in with your GoLeads Pro account and click 'Approve'."}
+                ? "Claude abrirá la pantalla de consentimiento de GoLeads (/oauth/consent). Inicia sesión con tu cuenta GoLeads (Gratis o Pro) y pulsa «Aprobar»."
+                : "Claude will open the GoLeads consent page (/oauth/consent). Sign in with your GoLeads account (Free or Pro) and click 'Approve'."}
             </li>
             <li>
               {es

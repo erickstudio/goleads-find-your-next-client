@@ -28,7 +28,7 @@ export default function DiscoverHeading({ d }) {
             to="/connect"
             className="rounded-lg border border-primary/30 bg-primary/10 px-3.5 py-2 text-xs font-semibold text-primary hover:bg-primary/20"
           >
-            {isEs ? "Conectar asistente" : "Connect assistant"}
+            MCP
           </Link>
         </div>
       </div>

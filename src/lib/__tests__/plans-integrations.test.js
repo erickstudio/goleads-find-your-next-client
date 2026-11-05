@@ -162,19 +162,57 @@ test("MCP config locks down all entities (no writes, no billing/admin exposure) 
   assert.equal(raw.tools.functions[0].annotations.destructive_hint, false);
 });
 
-test("MCP leads route enforces Free vs Subscription Pro vs Admin Grant Pro, empty state, expired Pro, and strict per-user isolation", async () => {
+test("MCP leads supports Free basic read-only queries (max 5 leads, basic fields) and Pro full read-only queries (up to 50 leads, enriched fields) without write access", async () => {
   const p = await load("src/lib/plan-policy.js");
-  // 1. Free account: canMcp is false and assertProAccess throws 403 PRO_REQUIRED
+  const mcpRoute = p;
+
+  const sampleLeads = Array.from({ length: 8 }, (_, idx) => ({
+    id: `saved-${idx + 1}`,
+    opportunity_id: `opp-${idx + 1}`,
+    business_name: `Business ${idx + 1}`,
+    business_category: "Restaurants",
+    location: "Panamá",
+    website_url: `https://example${idx + 1}.com`,
+    public_email: `contact${idx + 1}@example.com`,
+    public_phone: "+507 6000-0000",
+    place_name: `Place ${idx + 1}`,
+    place_address: "Calle 50, Panamá",
+    place_business_status: "OPERATIONAL",
+    place_url: "https://maps.google.com/?cid=1",
+    signal_type: "New Opening",
+    signal_summary: "Opening new branch",
+    verification_status: "verified",
+    source_title: "Local Press",
+    source_url: "https://press.pa/item",
+    review_stage: "saved",
+    qualification_notes: "Private note",
+    outreach_draft: "Hello!",
+  }));
+
+  // 1. Free account: basic MCP enabled (max 5 leads, only basic fields, no email/phone/notes/drafts)
   const freeAccess = p.planAccessForSubscriptions([], now);
-  assert.equal(freeAccess.canMcp, false);
-  assert.throws(() => p.assertProAccess(freeAccess), { status: 403, code: "PRO_REQUIRED" });
+  assert.equal(freeAccess.canMcpBasic, true);
+  assert.equal(freeAccess.canMcpFull, false);
+  assert.equal(freeAccess.maxMcpLeads, 5);
+  const freeFormatted = mcpRoute.formatMcpLeadsForPlan(sampleLeads, freeAccess, 20);
+  assert.equal(freeFormatted.accessTier, "basic");
+  assert.equal(freeFormatted.maxAllowedLimit, 5);
+  assert.equal(freeFormatted.leads.length, 5);
+  assert.equal(freeFormatted.leads[0].business, "Business 1");
+  assert.equal("publicEmail" in freeFormatted.leads[0], false);
+  assert.equal("emailDraft" in freeFormatted.leads[0], false);
 
-  // 2. Pro by subscription: canMcp is true
+  // 2. Pro by subscription: full MCP enabled (up to 50 leads, includes contact, Maps, notes, drafts)
   const subAccess = p.planAccessForSubscriptions([paid], now);
-  assert.equal(subAccess.canMcp, true);
-  assert.equal(subAccess.entitlementSource, "subscription");
+  assert.equal(subAccess.canMcpFull, true);
+  assert.equal(subAccess.maxMcpLeads, 50);
+  const proFormatted = mcpRoute.formatMcpLeadsForPlan(sampleLeads, subAccess, 20);
+  assert.equal(proFormatted.accessTier, "full");
+  assert.equal(proFormatted.leads.length, 8);
+  assert.equal(proFormatted.leads[0].publicEmail, "contact1@example.com");
+  assert.equal(proFormatted.leads[0].emailDraft, "Hello!");
 
-  // 3. Pro granted by administrator: canMcp is true
+  // 3. Pro granted by administrator: full MCP enabled
   const adminGrant = {
     id: "grant-1",
     grant_type: "direct_user",
@@ -185,12 +223,12 @@ test("MCP leads route enforces Free vs Subscription Pro vs Admin Grant Pro, empt
     expires_at_iso: "2026-12-15T00:00:00Z",
   };
   const grantAccess = p.planAccessForSubscriptions([], now, { complimentaryGrants: [adminGrant] });
-  assert.equal(grantAccess.canMcp, true);
-  assert.equal(grantAccess.entitlementSource, "complimentary");
+  assert.equal(grantAccess.canMcpFull, true);
 
-  // 4. Expired Pro grant or expired subscription loses MCP access
+  // 4. Expired Pro falls back to basic read-only MCP
   const expiredGrantAccess = p.planAccessForSubscriptions([], now, {
     complimentaryGrants: [{ ...adminGrant, expires_at_iso: "2026-10-01T00:00:00Z" }],
   });
-  assert.equal(expiredGrantAccess.canMcp, false);
+  assert.equal(expiredGrantAccess.canMcpBasic, true);
+  assert.equal(expiredGrantAccess.canMcpFull, false);
 });

@@ -37,7 +37,7 @@ export const workspaceGroups = [
     key: "account",
     items: [
       { to: "/integrations", key: "integrations", icon: Blocks },
-      { to: "/connect", key: "connect", icon: Plug, badge: "Pro" },
+      { to: "/connect", key: "connect", icon: Plug },
       { to: "/plans", key: "plans", icon: CreditCard },
       { to: "/onboarding", key: "services", icon: BriefcaseBusiness },
       { to: "/dashboard", key: "dashboard", icon: Gauge },

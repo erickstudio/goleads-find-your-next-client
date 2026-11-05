@@ -54,14 +54,14 @@
     "functions": [
       {
         "name": "list_saved_leads",
-        "title": "List saved leads",
-        "description": "Read up to 50 of your own saved GoLeads leads (business name, category, location, website, public email/phone, Google Maps venue details, expansion signal, source URL, review stage, and outreach draft). Requires an active GoLeads Pro plan. Read-only: no write operations, administrative data, or payment information.",
+        "title": "List saved leads (read-only)",
+        "description": "Read-only query of your own saved GoLeads leads. Free accounts can run basic read-only queries (up to 5 recent saved leads with business name, category, location, signal type, verification status, source URL, and stage). GoLeads Pro accounts can run full read-only queries (up to 50 saved leads including website, public email/phone, Google Maps venue details, signal summary, notes, and outreach draft). Strictly read-only: cannot create, modify, or delete any data.",
         "input_schema": {
           "type": "object",
           "properties": {
             "limit": {
               "type": "integer",
-              "description": "Maximum number of saved leads to return (1-50, defaults to 20).",
+              "description": "Maximum number of saved leads to return (up to 5 on Free plan, up to 50 on Pro plan).",
               "default": 20
             },
             "stage": {

@@ -4,7 +4,7 @@ import {
   Copy,
   Check,
   Sparkles,
-  Lock,
+  ShieldCheck,
   CheckCircle2,
   AlertCircle,
   RefreshCw,
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_authed/connect")({
   loader: () => getCurrentPlanAccess(),
   head: () => ({
     meta: [
-      { title: "Conectar asistente (MCP) — GoLeads" },
+      { title: "MCP — GoLeads" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -54,19 +54,19 @@ function Connect() {
   const isPro = Boolean(access?.isPro);
   const entitlementLabel = access?.isOwner
     ? es
-      ? "Pro activo · Propietario"
-      : "Pro active · Owner"
+      ? "MCP Completo · Propietario (Solo lectura)"
+      : "Full MCP · Owner (Read-only)"
     : access?.entitlementSource === "complimentary"
     ? es
-      ? "Pro activo · Otorgado por administrador"
-      : "Pro active · Administrator grant"
+      ? "MCP Completo · Pro otorgado por admin (Solo lectura)"
+      : "Full MCP · Admin Pro grant (Read-only)"
     : isPro
     ? es
-      ? "Pro activo · Suscripción"
-      : "Pro active · Subscription"
+      ? "MCP Completo · Suscripción Pro (Solo lectura)"
+      : "Full MCP · Pro Subscription (Read-only)"
     : es
-    ? "Plan Gratis · Requiere Pro para MCP"
-    : "Free Plan · Pro required for MCP";
+    ? "MCP Básico · Plan Gratis (Solo lectura · máx. 5 leads)"
+    : "Basic MCP · Free Plan (Read-only · max 5 leads)";
 
   const handleCopyEndpoint = async () => {
     try {
@@ -97,12 +97,20 @@ function Connect() {
           message:
             payload?.error ||
             (es
-              ? "Tu cuenta actual no tiene acceso Pro para usar MCP."
-              : "Your current account does not have Pro access to use MCP."),
+              ? "No se pudo verificar tu sesión MCP."
+              : "Could not verify your MCP session."),
         });
         return;
       }
       const count = Number(payload?.count) || 0;
+      const tierText =
+        payload?.accessTier === "full"
+          ? es
+            ? "modo Pro completo (hasta 50 leads con contacto, Google Maps y borradores)"
+            : "full Pro mode (up to 50 leads with contact info, Google Maps, and drafts)"
+          : es
+          ? "modo Gratis básico (hasta 5 leads con datos básicos)"
+          : "basic Free mode (up to 5 leads with basic fields)";
       setTestState({
         loading: false,
         checked: true,
@@ -111,11 +119,11 @@ function Connect() {
         message:
           count === 0
             ? es
-              ? "Conexión verificada. Tu cuenta Pro está lista para MCP, pero aún no tienes leads guardados. Ve a «Encuentra clientes» y pulsa «Guardar lead» para poder consultarlos desde tu asistente."
-              : "Connection verified. Your Pro account is ready for MCP, but you have 0 saved leads so far. Go to 'Find leads' and click 'Save lead' so your assistant can read them."
+              ? `Conexión verificada en ${tierText} (solo lectura, sin permisos para modificar nada), pero aún tienes 0 leads guardados. Ve a «Encuentra clientes» y pulsa «Guardar lead» para poder consultarlos.`
+              : `Connection verified in ${tierText} (read-only, cannot modify anything), but you have 0 saved leads so far. Go to 'Find clients' and click 'Save lead' to query them.`
             : es
-            ? `Conexión verificada: tu herramienta MCP responde correctamente y tiene acceso de lectura a ${count} lead(s) guardado(s).`
-            : `Connection verified: your MCP tool responds properly with read-only access to ${count} saved lead(s).`,
+            ? `Conexión verificada en ${tierText} (solo lectura): responde con ${count} lead(s) guardado(s).`
+            : `Connection verified in ${tierText} (read-only): returned ${count} saved lead(s).`,
       });
     } catch {
       setTestState({
@@ -136,27 +144,23 @@ function Connect() {
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 border border-primary/30 px-3 py-1 text-xs font-semibold text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              {es ? "Requiere GoLeads Pro · OAuth 2.0" : "Requires GoLeads Pro · OAuth 2.0"}
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {es
+                ? "Solo lectura · No puede modificar ni borrar nada"
+                : "Read-only · Cannot modify or delete anything"}
             </span>
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${
-                isPro
-                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
-                  : "bg-amber-500/15 text-amber-800 dark:text-amber-300 border-amber-500/35"
-              }`}
-            >
-              {isPro ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+            <span className="inline-flex items-center gap-1.5 rounded-full border bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 px-3 py-1 text-xs font-medium">
+              <CheckCircle2 className="h-3.5 w-3.5" />
               {entitlementLabel}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            {es ? "Conectar asistente (MCP)" : "Connect assistant (MCP)"}
+            MCP
           </h1>
           <p className="text-sm text-muted-foreground max-w-2xl leading-relaxed">
             {es
-              ? "Conecta Claude, ChatGPT, Cursor u otros clientes MCP para consultar tus propios leads guardados en modo de solo lectura. Disponible exclusivamente con GoLeads Pro activo."
-              : "Connect Claude, ChatGPT, Cursor, or other MCP clients to query your own saved leads in read-only mode. Available exclusively with an active GoLeads Pro plan."}
+              ? "Conecta Claude, ChatGPT, Cursor u otros clientes MCP para consultar tus propios leads guardados en modo estricto de solo lectura. Disponible en Plan Gratis para consultas básicas y en Plan Pro para consultas completas."
+              : "Connect Claude, ChatGPT, Cursor, or other MCP clients to query your own saved leads in strict read-only mode. Available on the Free plan for basic queries and on the Pro plan for full queries."}
           </p>
         </div>
 
@@ -172,48 +176,83 @@ function Connect() {
               to="/plans"
               className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
             >
-              {es ? "Pasar a Pro" : "Upgrade to Pro"}
+              {es ? "Ampliar a Pro" : "Upgrade to Pro"}
             </Link>
           )}
         </div>
       </header>
 
-      {!isPro && (
-        <section
-          role="status"
-          className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-5 space-y-3"
+      {/* Free Basic vs Pro Full Comparison */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div
+          className={`rounded-xl border p-4 space-y-2 ${
+            !isPro ? "border-primary/40 bg-primary/5" : "border-border bg-card"
+          }`}
         >
-          <div className="flex items-start gap-3">
-            <Lock className="h-5 w-5 text-amber-600 dark:text-amber-300 shrink-0 mt-0.5" />
-            <div className="space-y-1.5">
-              <h2 className="text-sm font-semibold text-foreground">
-                {es
-                  ? "El servidor MCP requiere una cuenta GoLeads Pro"
-                  : "The MCP server requires a GoLeads Pro account"}
-              </h2>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                {es
-                  ? "Tu cuenta actual es Gratis (incluye búsquedas diarias y exportación a Google Sheets). Para usar el servidor MCP con tu asistente de IA necesitas activar GoLeads Pro por suscripción o mediante un acceso Pro otorgado por el administrador. Si conectas una cuenta gratuita, las consultas MCP te indicarán que necesitas activar Pro."
-                  : "Your account is currently on the Free plan (which includes daily searches and Google Sheets export). To use the MCP server with your AI assistant, activate GoLeads Pro via subscription or an administrator Pro grant. If you connect a Free account, MCP queries will explain that Pro is required."}
-              </p>
-              <div className="pt-1 flex flex-wrap gap-2">
-                <Link
-                  to="/plans"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-                >
-                  {es ? "Ver planes y activar Pro" : "View plans & activate Pro"}
-                </Link>
-                <Link
-                  to="/integrations"
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground hover:bg-secondary"
-                >
-                  {es ? "Exportar a Google Sheets (Gratis)" : "Export to Google Sheets (Free)"}
-                </Link>
-              </div>
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-foreground">
+              {es ? "Plan Gratis · Consultas básicas" : "Free Plan · Basic queries"}
+            </h2>
+            {!isPro && (
+              <span className="rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                {es ? "Tu plan actual" : "Your current plan"}
+              </span>
+            )}
           </div>
-        </section>
-      )}
+          <ul className="space-y-1.5 text-xs text-muted-foreground list-disc pl-4 leading-relaxed">
+            <li>
+              {es
+                ? "Hasta 5 leads guardados por consulta."
+                : "Up to 5 saved leads per query."}
+            </li>
+            <li>
+              {es
+                ? "Datos básicos: nombre del negocio, categoría, ubicación, tipo de señal, estado de verificación, URL de la fuente y etapa."
+                : "Basic fields: business name, category, location, signal type, verification status, source URL, and stage."}
+            </li>
+            <li>
+              {es
+                ? "100% solo lectura: no puede crear, editar ni borrar nada."
+                : "100% read-only: cannot create, edit, or delete anything."}
+            </li>
+          </ul>
+        </div>
+
+        <div
+          className={`rounded-xl border p-4 space-y-2 ${
+            isPro ? "border-primary/40 bg-primary/5" : "border-border bg-card"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              {es ? "Plan Pro · Consultas completas" : "Pro Plan · Full queries"}
+            </h2>
+            {isPro && (
+              <span className="rounded bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                {es ? "Tu plan actual" : "Your current plan"}
+              </span>
+            )}
+          </div>
+          <ul className="space-y-1.5 text-xs text-muted-foreground list-disc pl-4 leading-relaxed">
+            <li>
+              {es
+                ? "Hasta 50 leads guardados por consulta."
+                : "Up to 50 saved leads per query."}
+            </li>
+            <li>
+              {es
+                ? "Incluye correo y teléfono público, sitio web, dirección y enlace de Google Maps, resumen de señal, notas y borrador de contacto."
+                : "Includes public email & phone, website, Google Maps address & URL, signal summary, notes, and outreach draft."}
+            </li>
+            <li>
+              {es
+                ? "100% solo lectura: no puede crear, editar ni borrar nada."
+                : "100% read-only: cannot create, edit, or delete anything."}
+            </li>
+          </ul>
+        </div>
+      </section>
 
       <section className="rounded-xl border border-border bg-card p-5 sm:p-6 space-y-4 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -223,8 +262,8 @@ function Connect() {
             </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
               {es
-                ? "Usa esta URL en tu asistente de IA. Al conectar, iniciarás sesión con tu cuenta GoLeads Pro y aprobarás el acceso."
-                : "Use this URL in your AI assistant. When connecting, you will sign in with your GoLeads Pro account and approve access."}
+                ? "Usa esta URL en tu asistente de IA. Al conectar, iniciarás sesión con tu cuenta GoLeads (Gratis o Pro) y aprobarás el acceso de solo lectura."
+                : "Use this URL in your AI assistant. When connecting, you will sign in with your GoLeads account (Free or Pro) and approve read-only access."}
             </p>
           </div>
           <button
@@ -239,8 +278,8 @@ function Connect() {
                 ? "Comprobando…"
                 : "Checking…"
               : es
-              ? "Probar estado de mi cuenta MCP"
-              : "Test my MCP account status"}
+              ? "Probar consulta MCP"
+              : "Test MCP query"}
           </button>
         </div>
 
@@ -292,7 +331,7 @@ function Connect() {
                   to="/app"
                   className="inline-block font-semibold underline underline-offset-2"
                 >
-                  {es ? "Ir a Encuentra clientes →" : "Go to Find leads →"}
+                  {es ? "Ir a Encuentra clientes →" : "Go to Find clients →"}
                 </Link>
               )}
             </div>
