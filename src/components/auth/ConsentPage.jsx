@@ -242,6 +242,13 @@ export function ConsentPage() {
       subtitle={t("auth.consentSubtitle", { client, appName })}
     >
       {error && <div className="mb-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+      <div className="mb-4 rounded-lg border border-primary/25 bg-primary/5 p-3 text-xs text-muted-foreground leading-relaxed">
+        <strong className="text-foreground">GoLeads MCP · Pro:</strong>{" "}
+        {t("auth.consentSubtitle", { client, appName })}.{" "}
+        <span>
+          Solo lectura de tus propios leads guardados (requiere GoLeads Pro activo; sin acceso a pagos ni escrituras). / Read-only access to your own saved leads (requires active GoLeads Pro; no billing or write access).
+        </span>
+      </div>
       <p className="mb-3 text-sm font-medium text-foreground">
         {tools.length ? t("auth.consentWillBeAbleTo", { client }) : t("auth.consentNoTools")}
       </p>

@@ -1,17 +1,264 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  FileSpreadsheet,
+  FileText,
+  Plug,
+  CheckCircle2,
+  Lock,
+  RefreshCw,
+} from "lucide-react";
 import { usePreferences } from "@/lib/PreferencesContext";
 import useGoogleIntegration from "@/hooks/useGoogleIntegration";
 
-export const Route = createFileRoute("/_authed/integrations")({ ssr: false, head: () => ({ meta: [{ title: "Integrations — GoLeads" }, { name: "robots", content: "noindex, nofollow" }] }), component: Integrations });
+export const Route = createFileRoute("/_authed/integrations")({
+  ssr: false,
+  head: () => ({
+    meta: [
+      { title: "Integrations — GoLeads" },
+      { name: "robots", content: "noindex, nofollow" },
+    ],
+  }),
+  component: Integrations,
+});
+
 function Integrations() {
-  const { lang } = usePreferences(); const es = lang === "es";
-  const google = useGoogleIntegration(); const [message, setMessage] = useState(""); const [busy,setBusy] = useState(false);
-  async function act(fn) { setBusy(true); setMessage(""); try { await fn(); } catch { setMessage(es ? "No pudimos actualizar tu conexión. Inténtalo de nuevo." : "Unable to update your connection. Please try again."); } finally { setBusy(false); } }
-  const pro = google.data?.access?.isPro;
-  return <div className="space-y-6"><header><p className="text-xs font-semibold text-primary">{es ? "Integraciones" : "Integrations"}</p><h1 className="mt-2 text-3xl font-semibold">{es ? "Tus leads, en tus herramientas." : "Your leads, in your tools."}</h1><p className="mt-3 text-sm text-muted-foreground">{es ? "Cada persona conecta su propia cuenta. Tú decides qué leads exportar." : "Each person connects their own account. You choose which leads to export."}</p></header>
-    <section className="rounded-xl border border-border bg-card p-6"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-lg font-semibold">Google Sheets</h2><span className="rounded-md bg-secondary px-3 py-1 text-xs">{es ? "Gratis y Pro" : "Free and Pro"}</span></div><p className="mt-3 text-sm text-muted-foreground">{es ? "Exporta los leads seleccionados a una hoja de cálculo de tu cuenta de Google." : "Export selected leads to a spreadsheet in your Google account."}</p><p className="mt-4 text-sm">{google.isPending ? (es ? "Comprobando conexión…" : "Checking connection…") : google.isError ? (es ? "No pudimos comprobar la conexión." : "Could not check the connection.") : google.data?.connected ? (es ? "Google conectado" : "Google connected") : (es ? "Sin conectar" : "Not connected")}</p><div className="mt-4 flex flex-wrap gap-3"><button disabled={busy || !google.data} onClick={() => act(google.data?.connected ? google.disconnect : google.connect)} className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50">{google.data?.connected ? (es ? "Desconectar Google" : "Disconnect Google") : (es ? "Conectar mi Google" : "Connect my Google")}</button><button onClick={() => google.refetch()} disabled={google.isFetching} className="rounded-lg border border-border px-4 py-2 text-sm">{es ? "Comprobar conexión" : "Check connection"}</button></div></section>
-    <section className="rounded-xl border border-border bg-card p-6"><h2 className="text-lg font-semibold">Workspace · Google Docs + Drive <span className="text-xs text-primary">Pro</span></h2><p className="mt-3 text-sm leading-6 text-muted-foreground">{es ? "Crea un documento con tus leads seleccionados y los borradores de contacto guardados, en tu propio Drive. Utiliza la misma conexión de Google; solo accede a archivos utilizados con GoLeads." : "Create a document with selected leads and saved outreach drafts in your own Drive. Uses the same Google connection and only accesses files used with GoLeads."}</p><Link to={pro ? "/saved" : "/plans"} className="mt-4 inline-flex text-sm font-medium text-primary hover:underline">{pro ? (es ? "Ir a mis leads →" : "Go to my leads →") : (es ? "Ver Pro →" : "View Pro →")}</Link></section>
-    <section className="rounded-xl border border-border bg-card p-6"><h2 className="text-lg font-semibold">MCP <span className="text-xs text-primary">Pro</span></h2><p className="mt-3 text-sm text-muted-foreground">{es ? "Permite a tu asistente de IA consultar tus leads guardados con acceso de lectura y autorización de tu cuenta." : "Let your AI assistant read your saved leads with account authorization and read-only access."}</p><Link to={pro ? "/connect" : "/plans"} className="mt-4 inline-flex text-sm font-medium text-primary hover:underline">{pro ? (es ? "Conectar un asistente →" : "Connect an assistant →") : (es ? "Ver Pro →" : "View Pro →")}</Link></section>
-    <p className="text-xs leading-6 text-muted-foreground">{es ? "El envío de Gmail, Calendar y la sincronización directa con CRM aún no están disponibles. Puedes preparar tus mensajes y, con Pro, exportar CSV para importarlo en tu CRM." : "Gmail sending, Calendar and direct CRM sync are not available yet. You can prepare messages and, with Pro, export a CSV for your CRM."}</p>{message && <p role="alert" className="text-sm text-destructive">{message}</p>}</div>;
+  const { lang } = usePreferences();
+  const es = lang === "es";
+  const google = useGoogleIntegration();
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function act(fn) {
+    setBusy(true);
+    setMessage("");
+    try {
+      await fn();
+    } catch {
+      setMessage(
+        es
+          ? "No pudimos actualizar tu conexión. Inténtalo de nuevo."
+          : "Unable to update your connection. Please try again."
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const pro = Boolean(google.data?.access?.isPro);
+  const connected = Boolean(google.data?.connected);
+
+  return (
+    <div className="max-w-4xl space-y-6">
+      <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-border pb-5">
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+            {es ? "Integraciones y exportación" : "Integrations & export"}
+          </p>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            {es ? "Tus leads, en tus herramientas" : "Your leads, in your tools"}
+          </h1>
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            {es
+              ? "Conecta tu propia cuenta de Google para exportar leads o conecta tu asistente de IA mediante MCP."
+              : "Connect your own Google account to export leads, or connect your AI assistant via MCP."}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Link
+            to="/saved"
+            className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground hover:bg-secondary"
+          >
+            {es ? "Ver leads guardados" : "View saved leads"}
+          </Link>
+          <Link
+            to="/connect"
+            className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            {es ? "Conectar asistente (MCP)" : "Connect assistant (MCP)"}
+          </Link>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 gap-4">
+        {/* Google Sheets Card */}
+        <section className="rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                <FileSpreadsheet className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-semibold text-foreground">Google Sheets</h2>
+                  <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                    {es ? "Incluido en Gratis y Pro" : "Included in Free & Pro"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+                  {es
+                    ? "Exporta tus leads seleccionados con email, teléfono, Google Maps y señales verificadas a una hoja de cálculo en tu cuenta de Google."
+                    : "Export selected leads with email, phone, Google Maps, and verified signals to a spreadsheet in your Google account."}
+                </p>
+              </div>
+            </div>
+
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${
+                connected
+                  ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                  : "bg-secondary text-muted-foreground border-border"
+              }`}
+            >
+              {google.isPending
+                ? es
+                  ? "Comprobando conexión…"
+                  : "Checking connection…"
+                : google.isError
+                ? es
+                  ? "Error al comprobar"
+                  : "Check failed"
+                : connected
+                ? es
+                  ? "Google conectado"
+                  : "Google connected"
+                : es
+                ? "Sin conectar"
+                : "Not connected"}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-border/70">
+            <button
+              type="button"
+              disabled={busy || !google.data}
+              onClick={() => act(connected ? google.disconnect : google.connect)}
+              className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {connected
+                ? es
+                  ? "Desconectar Google"
+                  : "Disconnect Google"
+                : es
+                ? "Conectar mi Google"
+                : "Connect my Google"}
+            </button>
+            <button
+              type="button"
+              onClick={() => google.refetch()}
+              disabled={google.isFetching}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground hover:bg-secondary disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${google.isFetching ? "animate-spin" : ""}`} />
+              {es ? "Comprobar estado" : "Check status"}
+            </button>
+          </div>
+        </section>
+
+        {/* Workspace Docs + CSV Card */}
+        <section className="rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-semibold text-foreground">
+                    Google Docs + Drive & CSV
+                  </h2>
+                  <span className="rounded-full bg-primary/15 border border-primary/30 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                    GoLeads Pro
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  {es
+                    ? "Genera un documento estructurado en tu Google Drive con los leads seleccionados y sus borradores de contacto, o descarga un archivo CSV listo para tu CRM."
+                    : "Create a structured document in your Google Drive with selected leads and their outreach drafts, or download a CSV file ready for your CRM."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-border/70">
+            <Link
+              to={pro ? "/saved" : "/plans"}
+              className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              {pro
+                ? es
+                  ? "Exportar desde Leads guardados"
+                  : "Export from Saved leads"
+                : es
+                ? "Activar GoLeads Pro"
+                : "Upgrade to GoLeads Pro"}
+            </Link>
+          </div>
+        </section>
+
+        {/* MCP Card */}
+        <section className="rounded-xl border border-primary/30 bg-card p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                <Plug className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-semibold text-foreground">
+                    {es ? "Conectar asistente (MCP)" : "Connect assistant (MCP)"}
+                  </h2>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 border border-primary/30 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                    {pro ? (
+                      <CheckCircle2 className="h-3 w-3" />
+                    ) : (
+                      <Lock className="h-3 w-3" />
+                    )}
+                    {es ? "Requiere GoLeads Pro" : "Requires GoLeads Pro"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                  {es
+                    ? "Conecta Claude, ChatGPT, Cursor u otros clientes MCP mediante OAuth 2.0 para consultar tus propios leads guardados en modo de solo lectura."
+                    : "Connect Claude, ChatGPT, Cursor, or other MCP clients via OAuth 2.0 to query your own saved leads in read-only mode."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 pt-2 border-t border-border/70">
+            <Link
+              to="/connect"
+              className="rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              {es
+                ? "Conectar asistente y ver instrucciones"
+                : "Connect assistant & view setup guide"}
+            </Link>
+            {!pro && (
+              <Link
+                to="/plans"
+                className="rounded-lg border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground hover:bg-secondary"
+              >
+                {es ? "Ver planes Pro" : "View Pro plans"}
+              </Link>
+            )}
+          </div>
+        </section>
+      </div>
+
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        {es
+          ? "Nota: El envío directo por Gmail, Google Calendar y la sincronización directa con CRM aún no están disponibles. Puedes preparar tus borradores y exportar tus leads a Google Sheets, Google Docs o CSV."
+          : "Note: Direct Gmail sending, Google Calendar, and direct CRM sync are not available yet. You can prepare outreach drafts and export your leads to Google Sheets, Google Docs, or CSV."}
+      </p>
+
+      {message && (
+        <p role="alert" className="text-xs font-medium text-destructive">
+          {message}
+        </p>
+      )}
+    </div>
+  );
 }

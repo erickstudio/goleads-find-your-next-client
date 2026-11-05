@@ -1,66 +1,90 @@
 {
   "auth": "oauth",
-  "login_path": null,
-  "consent_path": null,
+  "login_path": "/login",
+  "consent_path": "/oauth/consent",
   "tools": {
     "excluded_agents": [
       "evidence_analyst",
       "search_strategist"
     ],
     "entity_overrides": {
+      "SavedOpportunity": {
+        "operations": []
+      },
+      "Opportunity": {
+        "operations": []
+      },
+      "EvidenceItem": {
+        "operations": []
+      },
+      "LeadSearch": {
+        "operations": []
+      },
+      "OpportunityFeedback": {
+        "operations": []
+      },
+      "UserProfile": {
+        "operations": []
+      },
+      "EmailCampaignContent": {
+        "operations": []
+      },
       "PayPalSubscription": {
-        "operations": [],
-        "description": null
+        "operations": []
       },
       "PayPalWebhookEvent": {
-        "operations": [],
-        "description": null
+        "operations": []
       },
       "PaymentWebhookEvent": {
-        "operations": [],
-        "description": null
+        "operations": []
       },
       "PilotEnrollment": {
-        "operations": [],
-        "description": null
+        "operations": []
       },
       "User": {
-        "operations": [],
-        "description": null
+        "operations": []
       },
       "AdminCollaborator": {
-        "operations": [],
-        "description": null
+        "operations": []
       },
       "ProAccessGrant": {
-        "operations": [],
-        "description": null
+        "operations": []
       }
     },
     "functions": [
       {
         "name": "list_saved_leads",
-        "title": null,
-        "description": "Read up to 50 of your own saved GoLeads leads. Requires an active GoLeads Pro subscription. No billing data or write operations.",
+        "title": "List saved leads",
+        "description": "Read up to 50 of your own saved GoLeads leads (business name, category, location, website, public email/phone, Google Maps venue details, expansion signal, source URL, review stage, and outreach draft). Requires an active GoLeads Pro plan. Read-only: no write operations, administrative data, or payment information.",
         "input_schema": {
           "type": "object",
           "properties": {
             "limit": {
               "type": "integer",
-              "minimum": 1,
-              "maximum": 50,
+              "description": "Maximum number of saved leads to return (1-50, defaults to 20).",
               "default": 20
+            },
+            "stage": {
+              "type": "string",
+              "enum": [
+                "all",
+                "saved",
+                "researching",
+                "qualified",
+                "archived"
+              ],
+              "description": "Optional review stage filter (defaults to all)."
             }
-          },
-          "additionalProperties": false
+          }
         },
         "annotations": {
           "read_only_hint": true,
-          "destructive_hint": null,
-          "idempotent_hint": null,
-          "open_world_hint": null
+          "destructive_hint": false,
+          "idempotent_hint": true,
+          "open_world_hint": false
         },
         "handler": "/api/mcp-leads",
+        "method": "post",
         "disabled": false
       }
     ]
