@@ -1,0 +1,117 @@
+{
+  "name": "Promoci\u00f3n de GoLeads Pro tras el registro",
+  "description": "Espera 24 horas despu\u00e9s de completar el registro/onboarding; si el usuario a\u00fan no se ha suscrito a Pro, le env\u00eda los beneficios de GoLeads Pro en espa\u00f1ol o ingl\u00e9s seg\u00fan su idioma seleccionado.",
+  "trigger": {
+    "config": {
+      "trigger_type": "entity",
+      "entity_name": "UserProfile",
+      "events": [
+        "create",
+        "update"
+      ]
+    },
+    "condition": "${ .trigger.data.onboarding_completed == true and (.trigger.old_data.onboarding_completed // false) != true and (.trigger.data.owner_email // \"\") != \"\" }"
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "pro_upgrade_followup_by_language",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "wait_after_signup": {
+          "wait": "P1D",
+          "then": "check_pro_status",
+          "x-base44": {
+            "title": "Esperar 24 horas tras el registro",
+            "description": "Da tiempo al usuario para probar el plan Gratis"
+          }
+        }
+      },
+      {
+        "check_pro_status": {
+          "call": "invoke_server_route",
+          "with": {
+            "path": "/api/workflow-checks",
+            "method": "POST",
+            "body": {
+              "action": "check_pro_promo",
+              "user_id": "${ .trigger.data.owner_id }",
+              "email": "${ .trigger.data.owner_email }",
+              "ui_language": "${ .trigger.data.ui_language // \"es\" }"
+            }
+          },
+          "then": "route_by_status_and_language",
+          "x-base44": {
+            "title": "Verificar si ya es Pro e idioma",
+            "description": "Comprueba suscripci\u00f3n activa e idioma del perfil"
+          }
+        }
+      },
+      {
+        "route_by_status_and_language": {
+          "switch": [
+            {
+              "when": "${ .check_pro_status.should_send == true and .check_pro_status.language == \"es\" }",
+              "then": "send_pro_promo_es"
+            },
+            {
+              "when": "${ .check_pro_status.should_send == true }",
+              "then": "send_pro_promo_en"
+            },
+            {
+              "when": "${ true }",
+              "then": "end"
+            }
+          ],
+          "x-base44": {
+            "title": "Elegir idioma o finalizar si ya es Pro",
+            "description": "Espa\u00f1ol, ingl\u00e9s u omitir si ya tiene Pro"
+          }
+        }
+      },
+      {
+        "send_pro_promo_es": {
+          "call": "send_email",
+          "with": {
+            "template_name": "ProBenefitsPromoEs",
+            "to": "${ .check_pro_status.email }",
+            "description": "Promociona los beneficios de GoLeads Pro en espa\u00f1ol con enlace a Planes",
+            "category": "marketing",
+            "variables": {
+              "first_name": "${ .check_pro_status.first_name }",
+              "cta_url": "https://goleads.space/plans"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Enviar beneficios Pro en espa\u00f1ol",
+            "description": "Plantilla ProBenefitsPromoEs"
+          }
+        }
+      },
+      {
+        "send_pro_promo_en": {
+          "call": "send_email",
+          "with": {
+            "template_name": "ProBenefitsPromo",
+            "to": "${ .check_pro_status.email }",
+            "description": "Promotes GoLeads Pro benefits in English with a direct link to Plans",
+            "category": "marketing",
+            "variables": {
+              "first_name": "${ .check_pro_status.first_name }",
+              "cta_url": "https://goleads.space/plans"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Enviar beneficios Pro en ingl\u00e9s",
+            "description": "Plantilla ProBenefitsPromo"
+          }
+        }
+      }
+    ]
+  }
+}

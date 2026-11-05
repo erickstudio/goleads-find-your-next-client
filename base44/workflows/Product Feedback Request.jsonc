@@ -1,0 +1,117 @@
+{
+  "name": "Solicitud de feedback y encuesta de mejora por idioma",
+  "description": "Solicita al usuario calificar su experiencia y dejar comentarios de qu\u00e9 mejorar en la p\u00e1gina privada de encuesta (/survey), en espa\u00f1ol o ingl\u00e9s seg\u00fan su idioma seleccionado.",
+  "trigger": {
+    "config": {
+      "trigger_type": "entity",
+      "entity_name": "UserProfile",
+      "events": [
+        "create",
+        "update"
+      ]
+    },
+    "condition": "${ .trigger.data.onboarding_completed == true and (.trigger.old_data.onboarding_completed // false) != true and (.trigger.data.owner_email // \"\") != \"\" }"
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "product_feedback_request_by_language",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "wait_for_product_usage": {
+          "wait": "P2D",
+          "then": "check_survey_status",
+          "x-base44": {
+            "title": "Esperar 2 d\u00edas de uso del producto",
+            "description": "Permite explorar b\u00fasquedas antes de pedir feedback"
+          }
+        }
+      },
+      {
+        "check_survey_status": {
+          "call": "invoke_server_route",
+          "with": {
+            "path": "/api/workflow-checks",
+            "method": "POST",
+            "body": {
+              "action": "check_feedback_survey",
+              "user_id": "${ .trigger.data.owner_id }",
+              "email": "${ .trigger.data.owner_email }",
+              "ui_language": "${ .trigger.data.ui_language // \"es\" }"
+            }
+          },
+          "then": "branch_feedback_by_language",
+          "x-base44": {
+            "title": "Verificar si ya respondi\u00f3 la encuesta e idioma",
+            "description": "Evita duplicados y detecta espa\u00f1ol o ingl\u00e9s"
+          }
+        }
+      },
+      {
+        "branch_feedback_by_language": {
+          "switch": [
+            {
+              "when": "${ .check_survey_status.should_send == true and .check_survey_status.language == \"es\" }",
+              "then": "send_survey_request_es"
+            },
+            {
+              "when": "${ .check_survey_status.should_send == true }",
+              "then": "send_survey_request_en"
+            },
+            {
+              "when": "${ true }",
+              "then": "end"
+            }
+          ],
+          "x-base44": {
+            "title": "Enviar seg\u00fan idioma del usuario",
+            "description": "Espa\u00f1ol, ingl\u00e9s u omitir si ya envi\u00f3 su encuesta"
+          }
+        }
+      },
+      {
+        "send_survey_request_es": {
+          "call": "send_email",
+          "with": {
+            "template_name": "FeedbackSurveyRequestEs",
+            "to": "${ .check_survey_status.email }",
+            "description": "Invita en espa\u00f1ol a puntuar GoLeads y sugerir mejoras en /survey",
+            "category": "marketing",
+            "variables": {
+              "first_name": "${ .check_survey_status.first_name }",
+              "cta_url": "https://goleads.space/survey"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Enviar solicitud de encuesta en espa\u00f1ol",
+            "description": "Plantilla FeedbackSurveyRequestEs"
+          }
+        }
+      },
+      {
+        "send_survey_request_en": {
+          "call": "send_email",
+          "with": {
+            "template_name": "FeedbackSurveyRequest",
+            "to": "${ .check_survey_status.email }",
+            "description": "Invites the user in English to rate GoLeads and share improvements at /survey",
+            "category": "marketing",
+            "variables": {
+              "first_name": "${ .check_survey_status.first_name }",
+              "cta_url": "https://goleads.space/survey"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Enviar solicitud de encuesta en ingl\u00e9s",
+            "description": "Plantilla FeedbackSurveyRequest"
+          }
+        }
+      }
+    ]
+  }
+}

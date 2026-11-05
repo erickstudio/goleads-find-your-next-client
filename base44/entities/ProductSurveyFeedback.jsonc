@@ -1,0 +1,130 @@
+{
+  "name": "ProductSurveyFeedback",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string",
+      "description": "Authenticated user ID derived on the server"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Authenticated user email derived on the server"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "Display name or agency name of the user"
+    },
+    "ui_language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "es"
+      ],
+      "default": "es",
+      "description": "Language selected by the user when submitting the survey"
+    },
+    "rating": {
+      "type": "number",
+      "description": "Overall satisfaction score from 1 to 5 stars"
+    },
+    "nps_score": {
+      "type": "number",
+      "description": "Likelihood to recommend score from 0 to 10"
+    },
+    "improvement_area": {
+      "type": "string",
+      "enum": [
+        "lead_quality",
+        "search_speed",
+        "integrations_mcp",
+        "pricing_plans",
+        "ui_experience",
+        "other"
+      ],
+      "default": "lead_quality",
+      "description": "Primary area the user suggests improving"
+    },
+    "improvement_comment": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Open comment box explaining what to improve in GoLeads"
+    },
+    "favorite_feature": {
+      "type": "string",
+      "maxLength": 1000,
+      "description": "Optional note on what the user found most useful"
+    },
+    "plan_at_submission": {
+      "type": "string",
+      "enum": [
+        "free",
+        "pro"
+      ],
+      "default": "free"
+    },
+    "admin_status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "reviewed",
+        "planned",
+        "resolved"
+      ],
+      "default": "new",
+      "description": "Admin review status for this feedback item"
+    },
+    "submitted_at_iso": {
+      "type": "string",
+      "description": "ISO timestamp when the survey was submitted"
+    }
+  },
+  "required": [
+    "owner_id",
+    "rating",
+    "improvement_comment",
+    "submitted_at_iso"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

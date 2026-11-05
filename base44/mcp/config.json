@@ -49,6 +49,12 @@
       },
       "ProAccessGrant": {
         "operations": []
+      },
+      "ProductSurveyFeedback": {
+        "operations": []
+      },
+      "SubscriptionRecoveryEvent": {
+        "operations": []
       }
     },
     "functions": [

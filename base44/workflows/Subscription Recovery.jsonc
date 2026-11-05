@@ -1,0 +1,120 @@
+{
+  "name": "Recuperaci\u00f3n de suscripci\u00f3n Pro por idioma",
+  "description": "Se activa cuando un usuario permanece mucho tiempo en la p\u00e1gina de suscripci\u00f3n sin completar o cuando intenta suscribirse y algo falla o se cancela, enviando un correo de recuperaci\u00f3n en su idioma para volver a la p\u00e1gina de suscripci\u00f3n.",
+  "trigger": {
+    "config": {
+      "trigger_type": "entity",
+      "entity_name": "SubscriptionRecoveryEvent",
+      "events": [
+        "create"
+      ]
+    },
+    "condition": "${ (.trigger.data.owner_email // \"\") != \"\" and (.trigger.data.recovery_status // \"pending\") == \"pending\" }"
+  },
+  "definition": {
+    "document": {
+      "dsl": "1.0.0",
+      "name": "subscription_recovery_by_language",
+      "version": "1.0",
+      "namespace": "base44"
+    },
+    "do": [
+      {
+        "wait_before_recovery": {
+          "wait": "PT10M",
+          "then": "check_recovery_eligibility",
+          "x-base44": {
+            "title": "Esperar 10 minutos antes de recuperar",
+            "description": "Permite que el usuario termine si segu\u00eda intentando"
+          }
+        }
+      },
+      {
+        "check_recovery_eligibility": {
+          "call": "invoke_server_route",
+          "with": {
+            "path": "/api/workflow-checks",
+            "method": "POST",
+            "body": {
+              "action": "check_subscription_recovery",
+              "event_id": "${ .trigger.entity_id }",
+              "user_id": "${ .trigger.data.owner_id }",
+              "email": "${ .trigger.data.owner_email }",
+              "trigger_reason": "${ .trigger.data.trigger_reason }",
+              "ui_language": "${ .trigger.data.ui_language // \"es\" }"
+            }
+          },
+          "then": "branch_recovery_by_language",
+          "x-base44": {
+            "title": "Verificar estado de suscripci\u00f3n e idioma",
+            "description": "Comprueba que a\u00fan no haya activado Pro"
+          }
+        }
+      },
+      {
+        "branch_recovery_by_language": {
+          "switch": [
+            {
+              "when": "${ .check_recovery_eligibility.should_send == true and .check_recovery_eligibility.language == \"es\" }",
+              "then": "send_recovery_es"
+            },
+            {
+              "when": "${ .check_recovery_eligibility.should_send == true }",
+              "then": "send_recovery_en"
+            },
+            {
+              "when": "${ true }",
+              "then": "end"
+            }
+          ],
+          "x-base44": {
+            "title": "Seleccionar idioma de recuperaci\u00f3n",
+            "description": "Espa\u00f1ol, ingl\u00e9s u omitir si ya activ\u00f3 Pro"
+          }
+        }
+      },
+      {
+        "send_recovery_es": {
+          "call": "send_email",
+          "with": {
+            "template_name": "SubscriptionRecoveryEs",
+            "to": "${ .check_recovery_eligibility.email }",
+            "description": "Invita en espa\u00f1ol a retomar la suscripci\u00f3n en la p\u00e1gina de Planes",
+            "category": "marketing",
+            "variables": {
+              "first_name": "${ .check_recovery_eligibility.first_name }",
+              "recovery_note": "${ .check_recovery_eligibility.recovery_note }",
+              "cta_url": "https://goleads.space/plans?recover=1"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Enviar recuperaci\u00f3n en espa\u00f1ol",
+            "description": "Plantilla SubscriptionRecoveryEs"
+          }
+        }
+      },
+      {
+        "send_recovery_en": {
+          "call": "send_email",
+          "with": {
+            "template_name": "SubscriptionRecovery",
+            "to": "${ .check_recovery_eligibility.email }",
+            "description": "Invites the user in English to return to the subscription page",
+            "category": "marketing",
+            "variables": {
+              "first_name": "${ .check_recovery_eligibility.first_name }",
+              "recovery_note": "${ .check_recovery_eligibility.recovery_note }",
+              "cta_url": "https://goleads.space/plans?recover=1"
+            }
+          },
+          "then": "end",
+          "x-base44": {
+            "title": "Enviar recuperaci\u00f3n en ingl\u00e9s",
+            "description": "Plantilla SubscriptionRecovery"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,109 @@
+{
+  "name": "SubscriptionRecoveryEvent",
+  "type": "object",
+  "properties": {
+    "owner_id": {
+      "type": "string",
+      "description": "Authenticated user ID derived on the server"
+    },
+    "owner_email": {
+      "type": "string",
+      "description": "Authenticated user email derived on the server"
+    },
+    "user_name": {
+      "type": "string",
+      "description": "User or agency display name"
+    },
+    "ui_language": {
+      "type": "string",
+      "enum": [
+        "en",
+        "es"
+      ],
+      "default": "es",
+      "description": "Preferred language of the user at the moment of the event"
+    },
+    "trigger_reason": {
+      "type": "string",
+      "enum": [
+        "lingered_on_plans",
+        "checkout_failed",
+        "checkout_cancelled"
+      ],
+      "default": "lingered_on_plans",
+      "description": "Why the recovery flow was triggered"
+    },
+    "error_detail": {
+      "type": "string",
+      "maxLength": 600,
+      "description": "Optional diagnostic or user-facing detail when a subscription attempt failed"
+    },
+    "return_url": {
+      "type": "string",
+      "description": "URL to return directly to the subscription page"
+    },
+    "recovery_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "email_sent",
+        "converted_to_pro",
+        "skipped"
+      ],
+      "default": "pending"
+    },
+    "created_at_iso": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "owner_id",
+    "owner_email",
+    "trigger_reason",
+    "ui_language",
+    "created_at_iso"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}
