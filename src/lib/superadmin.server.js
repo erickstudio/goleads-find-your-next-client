@@ -108,6 +108,81 @@ export async function resolveAdminPanelAccess(base44, user) {
   };
 }
 
+export const MIN_PRO_ACCESS_CODE_LENGTH = 12;
+const REDEEM_WINDOW_MS = 15 * 60 * 1000;
+const MAX_USER_FAILED_ATTEMPTS = 5;
+const MAX_GLOBAL_FAILED_ATTEMPTS = 25;
+const BASE_LOCKOUT_MS = 15 * 60 * 1000;
+
+const userRedeemAttempts = new Map();
+let globalFailedAttempts = [];
+
+function checkRedeemRateLimit(userId, nowMs) {
+  globalFailedAttempts = globalFailedAttempts.filter(
+    (ts) => nowMs - ts < REDEEM_WINDOW_MS
+  );
+  if (globalFailedAttempts.length >= MAX_GLOBAL_FAILED_ATTEMPTS) {
+    return {
+      allowed: false,
+      retryAfterSec: Math.ceil(REDEEM_WINDOW_MS / 1000),
+    };
+  }
+
+  const entry = userRedeemAttempts.get(userId);
+  if (!entry) return { allowed: true, retryAfterSec: 0 };
+
+  if (entry.lockedUntilMs && entry.lockedUntilMs > nowMs) {
+    return {
+      allowed: false,
+      retryAfterSec: Math.max(1, Math.ceil((entry.lockedUntilMs - nowMs) / 1000)),
+    };
+  }
+
+  const recentFailures = (entry.failures || []).filter(
+    (ts) => nowMs - ts < REDEEM_WINDOW_MS
+  );
+  entry.failures = recentFailures;
+  if (recentFailures.length >= MAX_USER_FAILED_ATTEMPTS) {
+    const lockDuration =
+      BASE_LOCKOUT_MS * Math.pow(2, Math.max(0, (entry.lockoutCount || 0)));
+    entry.lockedUntilMs = nowMs + Math.min(lockDuration, 24 * 60 * 60 * 1000);
+    entry.lockoutCount = (entry.lockoutCount || 0) + 1;
+    userRedeemAttempts.set(userId, entry);
+    return {
+      allowed: false,
+      retryAfterSec: Math.max(1, Math.ceil((entry.lockedUntilMs - nowMs) / 1000)),
+    };
+  }
+
+  return { allowed: true, retryAfterSec: 0 };
+}
+
+function recordFailedRedeemAttempt(userId, nowMs) {
+  globalFailedAttempts.push(nowMs);
+  const entry = userRedeemAttempts.get(userId) || {
+    failures: [],
+    lockedUntilMs: 0,
+    lockoutCount: 0,
+  };
+  const recentFailures = (entry.failures || []).filter(
+    (ts) => nowMs - ts < REDEEM_WINDOW_MS
+  );
+  recentFailures.push(nowMs);
+  entry.failures = recentFailures;
+
+  if (recentFailures.length >= MAX_USER_FAILED_ATTEMPTS) {
+    const lockDuration =
+      BASE_LOCKOUT_MS * Math.pow(2, Math.max(0, entry.lockoutCount || 0));
+    entry.lockedUntilMs = nowMs + Math.min(lockDuration, 24 * 60 * 60 * 1000);
+    entry.lockoutCount = (entry.lockoutCount || 0) + 1;
+  }
+  userRedeemAttempts.set(userId, entry);
+}
+
+function clearRedeemAttempts(userId) {
+  userRedeemAttempts.delete(userId);
+}
+
 export async function redeemComplimentaryProCode({
   serviceRoleBase44,
   user,
@@ -117,12 +192,29 @@ export async function redeemComplimentaryProCode({
   if (!user?.id) {
     throw new Error("Debes iniciar sesión para activar un código Pro.");
   }
+
+  const rateCheck = checkRedeemRateLimit(user.id, nowMs);
+  if (!rateCheck.allowed) {
+    return {
+      ok: false,
+      code: "TOO_MANY_ATTEMPTS",
+      retryAfterSec: rateCheck.retryAfterSec,
+      message:
+        "Demasiados intentos fallidos al canjear códigos. Por seguridad, espera unos minutos antes de volver a intentarlo.",
+    };
+  }
+
   const cleanCode = String(rawCode || "").trim();
-  if (cleanCode.length < 4 || cleanCode.length > 80) {
+  if (
+    cleanCode.length < MIN_PRO_ACCESS_CODE_LENGTH ||
+    cleanCode.length > 80
+  ) {
+    recordFailedRedeemAttempt(user.id, nowMs);
     return {
       ok: false,
       code: "INVALID_CODE",
-      message: "La contraseña o código de invitación no es válido.",
+      message:
+        "La contraseña o código de invitación no es válido (mínimo 12 caracteres).",
     };
   }
 
@@ -168,6 +260,7 @@ export async function redeemComplimentaryProCode({
   });
 
   if (!matchingCodeGrant) {
+    recordFailedRedeemAttempt(user.id, nowMs);
     return {
       ok: false,
       code: "CODE_NOT_FOUND_OR_EXPIRED",
@@ -175,6 +268,8 @@ export async function redeemComplimentaryProCode({
         "La contraseña o código de acceso no es válido, ya fue utilizado o expiró.",
     };
   }
+
+  clearRedeemAttempts(user.id);
 
   const nowIso = new Date(nowMs).toISOString();
   const nextCount = (Number(matchingCodeGrant.redemption_count) || 0) + 1;

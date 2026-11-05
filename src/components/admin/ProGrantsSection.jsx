@@ -165,11 +165,11 @@ export default function ProGrantsSection({
                 <input
                   type="text"
                   required
-                  minLength={4}
+                  minLength={12}
                   maxLength={80}
                   value={accessPassword}
                   onChange={(e) => setAccessPassword(e.target.value)}
-                  placeholder={isEs ? "Ej. FEEDBACK-PRO-2026" : "e.g. FEEDBACK-PRO-2026"}
+                  placeholder={isEs ? "Ej. FEEDBACK-PRO-2026 (mín. 12)" : "e.g. FEEDBACK-PRO-2026 (min 12)"}
                   className="w-full h-9 px-3 rounded-md border border-input bg-background text-xs font-mono text-foreground"
                 />
               </div>

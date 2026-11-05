@@ -224,9 +224,10 @@ export function buildDefaultTemplateVariables({
 } = {}) {
   const isEs = language === "es";
   const rawName =
-    String(profile?.agency_or_freelancer_name || user?.full_name || "").trim() ||
-    (isEs ? "equipo" : "there");
-  const firstName = rawName.split(/\s+/)[0] || rawName;
+    String(profile?.agency_or_freelancer_name || user?.full_name || "")
+      .replace(/[<>"'&;\r\n\t:/\\]/g, "")
+      .trim() || (isEs ? "equipo" : "there");
+  const firstName = (rawName.split(/\s+/)[0] || rawName).slice(0, 40);
 
   const issueDate = now.toLocaleDateString(isEs ? "es-ES" : "en-US", {
     month: "long",

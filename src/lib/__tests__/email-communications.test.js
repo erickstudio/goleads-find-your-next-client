@@ -229,4 +229,33 @@ test("Complimentary Pro grants and invite passwords work independently of PayPal
   assert.equal(access.isPro, true);
   assert.equal(access.entitlementSource, "complimentary");
   assert.equal(access.maxResultsPerSearch, 20);
+
+  // Verify short codes (< 12 chars) and repeated brute-force attempts are rate-limited and locked out
+  const shortAttempt = await superAdmin.redeemComplimentaryProCode({
+    serviceRoleBase44: fakeServiceRole,
+    user: { id: "brute-user-1", email: "brute@example.com" },
+    rawCode: "ABCD",
+    nowMs,
+  });
+  assert.equal(shortAttempt.ok, false);
+  assert.equal(shortAttempt.code, "INVALID_CODE");
+
+  for (let i = 0; i < 4; i++) {
+    const failedTry = await superAdmin.redeemComplimentaryProCode({
+      serviceRoleBase44: fakeServiceRole,
+      user: { id: "brute-user-1", email: "brute@example.com" },
+      rawCode: `WRONG-LONG-CODE-${i}`,
+      nowMs: nowMs + (i + 1) * 1000,
+    });
+    assert.equal(failedTry.ok, false);
+  }
+
+  const lockedAttempt = await superAdmin.redeemComplimentaryProCode({
+    serviceRoleBase44: fakeServiceRole,
+    user: { id: "brute-user-1", email: "brute@example.com" },
+    rawCode: "BETA-FEEDBACK-2026",
+    nowMs: nowMs + 6000,
+  });
+  assert.equal(lockedAttempt.ok, false);
+  assert.equal(lockedAttempt.code, "TOO_MANY_ATTEMPTS");
 });

@@ -6,8 +6,34 @@ import {
 } from "@/lib/email-communications.server";
 
 const recentSupportSubmissions = new Map();
+const recentIpSubmissions = new Map();
+let globalSupportTimestamps = [];
+let globalDailyAutoReplies = [];
+
 const RATE_WINDOW_MS = 10 * 60 * 1000;
-const MAX_PER_WINDOW = 4;
+const DAY_WINDOW_MS = 24 * 60 * 60 * 1000;
+const MAX_PER_WINDOW = 3;
+const MAX_IP_PER_WINDOW = 3;
+const MAX_GLOBAL_PER_WINDOW = 15;
+const MAX_DAILY_AUTOREPLIES = 30;
+
+function extractClientIp(context) {
+  const headers = context?.request?.headers;
+  if (!headers || typeof headers.get !== "function") return "unknown-ip";
+  const cfIp = headers.get("cf-connecting-ip");
+  if (cfIp) return cfIp.trim().slice(0, 64);
+  const xff = headers.get("x-forwarded-for");
+  if (xff) return xff.split(",")[0].trim().slice(0, 64);
+  return "unknown-ip";
+}
+
+function sanitizePlainHeaderText(value = "", maxLen = 120) {
+  return String(value)
+    .replace(/[\r\n\t<>]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLen);
+}
 
 function escapeHtml(value = "") {
   return String(value)
@@ -51,11 +77,23 @@ export const submitSupportEnquiry = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const now = Date.now();
     const senderEmail = data.email.trim().toLowerCase();
+    const clientIp = extractClientIp(context);
 
+    globalSupportTimestamps = globalSupportTimestamps.filter(
+      (ts) => now - ts < RATE_WINDOW_MS
+    );
+    const prevIpTimestamps = (recentIpSubmissions.get(clientIp) || []).filter(
+      (ts) => now - ts < RATE_WINDOW_MS
+    );
     const prevTimestamps = (recentSupportSubmissions.get(senderEmail) || []).filter(
       (ts) => now - ts < RATE_WINDOW_MS
     );
-    if (prevTimestamps.length >= MAX_PER_WINDOW) {
+
+    if (
+      prevTimestamps.length >= MAX_PER_WINDOW ||
+      prevIpTimestamps.length >= MAX_IP_PER_WINDOW ||
+      globalSupportTimestamps.length >= MAX_GLOBAL_PER_WINDOW
+    ) {
       throw new Error(
         data.preferred_language === "es"
           ? "Has enviado demasiadas solicitudes recientemente. Por favor espera unos minutos o escribe a info@goleads.space."
@@ -64,11 +102,14 @@ export const submitSupportEnquiry = createServerFn({ method: "POST" })
     }
     prevTimestamps.push(now);
     recentSupportSubmissions.set(senderEmail, prevTimestamps);
+    prevIpTimestamps.push(now);
+    recentIpSubmissions.set(clientIp, prevIpTimestamps);
+    globalSupportTimestamps.push(now);
 
     const base44 = context.getBase44();
     const serviceRole = base44.asServiceRole;
 
-    // 1. Resolve sender's UserProfile if they are a registered user so we respect their preferred language
+    // 1. Resolve sender's UserProfile & registered User record
     let senderProfile = null;
     if (serviceRole?.entities?.UserProfile?.filter) {
       const profPage = await serviceRole.entities.UserProfile.filter(
@@ -85,17 +126,22 @@ export const submitSupportEnquiry = createServerFn({ method: "POST" })
       ? normalizePreferredEmailLanguage(senderProfile)
       : normalizePreferredEmailLanguage(data.preferred_language || "es");
 
-    // 2. Collect owner/admin recipient emails + info@goleads.space
+    // 2. Collect owner/admin recipient emails + info@goleads.space and check if sender is a registered user
     const adminEmails = new Set(["info@goleads.space"]);
+    let registeredSenderUser = null;
     if (serviceRole?.entities?.User?.list) {
       const usersRaw = await serviceRole.entities.User.list(
         "-created_date",
-        50
+        100
       ).catch(() => []);
       const users = Array.isArray(usersRaw) ? usersRaw : usersRaw?.items || [];
       for (const u of users) {
-        if (u?.role === "admin" && u?.email) {
-          adminEmails.add(String(u.email).trim().toLowerCase());
+        const uEmail = String(u?.email || "").trim().toLowerCase();
+        if (u?.role === "admin" && uEmail) {
+          adminEmails.add(uEmail);
+        }
+        if (uEmail && uEmail === senderEmail) {
+          registeredSenderUser = u;
         }
       }
     }
@@ -143,11 +189,14 @@ export const submitSupportEnquiry = createServerFn({ method: "POST" })
       `Fecha: ${nowIso}`,
     ].join("\n");
 
+    const cleanSubjectHeader = sanitizePlainHeaderText(data.subject, 120);
+    const cleanNameHeader = sanitizePlainHeaderText(data.name, 80);
+
     let deliveredToOwner = false;
     for (const targetAdminEmail of adminEmails) {
       const res = await serviceRole.integrations.Core.SendEmail({
         to: targetAdminEmail,
-        subject: `[Soporte GoLeads] ${data.subject} — ${data.name}`,
+        subject: `[Soporte GoLeads] ${cleanSubjectHeader} — ${cleanNameHeader}`,
         html: ownerHtml,
         text: ownerText,
         category: "transactional",
@@ -157,15 +206,43 @@ export const submitSupportEnquiry = createServerFn({ method: "POST" })
       }
     }
 
-    // 3. Send multilingual EnquiryReply / EnquiryReplyEs confirmation to the user in their preferred language
-    const autoReply = await sendCommunicationEmailByProfileLanguage({
-      serviceRoleBase44: serviceRole,
-      recipientEmail: data.email,
-      emailKey: "enquiry_reply",
-      overrideLanguage: userLang,
-      user: { full_name: data.name, email: data.email },
-      profile: senderProfile,
-    }).catch(() => null);
+    // 3. Only send automatic confirmation email to verified registered accounts (never to arbitrary unverified external emails, and never interpolating untrusted caller-supplied name)
+    globalDailyAutoReplies = globalDailyAutoReplies.filter(
+      (ts) => now - ts < DAY_WINDOW_MS
+    );
+    const verifiedAccountEmail =
+      registeredSenderUser?.email || senderProfile?.owner_email || "";
+    const canSendVerifiedAutoReply =
+      Boolean(verifiedAccountEmail) &&
+      String(verifiedAccountEmail).trim().toLowerCase() === senderEmail &&
+      globalDailyAutoReplies.length < MAX_DAILY_AUTOREPLIES;
+
+    let autoReply = null;
+    if (canSendVerifiedAutoReply) {
+      globalDailyAutoReplies.push(now);
+      const trustedDisplayName = sanitizePlainHeaderText(
+        senderProfile?.agency_or_freelancer_name ||
+          registeredSenderUser?.full_name ||
+          "",
+        60
+      );
+      autoReply = await sendCommunicationEmailByProfileLanguage({
+        serviceRoleBase44: serviceRole,
+        recipientEmail: verifiedAccountEmail,
+        recipientUserId:
+          registeredSenderUser?.id ||
+          senderProfile?.owner_id ||
+          senderProfile?.created_by_id ||
+          undefined,
+        emailKey: "enquiry_reply",
+        overrideLanguage: userLang,
+        user: {
+          full_name: trustedDisplayName,
+          email: verifiedAccountEmail,
+        },
+        profile: senderProfile,
+      }).catch(() => null);
+    }
 
     return {
       ok: true,

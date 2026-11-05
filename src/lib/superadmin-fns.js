@@ -310,9 +310,9 @@ export const grantComplimentaryProAccess = createServerFn({ method: "POST" })
 
     // access_code (password/code for invited testers)
     const rawPassword = String(data.access_password || "").trim();
-    if (rawPassword.length < 4) {
+    if (rawPassword.length < 12) {
       throw new Error(
-        "La contraseña o código de invitación debe tener al menos 4 caracteres."
+        "La contraseña o código de invitación debe tener al menos 12 caracteres."
       );
     }
 
@@ -368,7 +368,7 @@ export const redeemProInvitePassword = createServerFn({ method: "POST" })
   .middleware([requireUser])
   .validator(
     z.object({
-      password_or_code: z.string().trim().min(4).max(80),
+      password_or_code: z.string().trim().min(12).max(80),
     })
   )
   .handler(async ({ data, context }) => {
