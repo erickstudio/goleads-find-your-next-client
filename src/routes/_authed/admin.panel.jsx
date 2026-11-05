@@ -4,6 +4,7 @@ import { usePreferences } from "@/lib/PreferencesContext";
 import ProGrantsSection from "@/components/admin/ProGrantsSection";
 import BilingualEmailEditorSection from "@/components/admin/BilingualEmailEditorSection";
 import CollaboratorsSection from "@/components/admin/CollaboratorsSection";
+import SurveyFeedbackDashboardSection from "@/components/admin/SurveyFeedbackDashboardSection";
 
 export const Route = createFileRoute("/_authed/admin/panel")({
   ssr: false,
@@ -83,6 +84,13 @@ function SuperAdminPanelPage() {
           </Link>
         )}
       </header>
+
+      <SurveyFeedbackDashboardSection
+        surveyFeedback={data.surveyFeedback}
+        recoveryEvents={data.recoveryEvents}
+        isEs={isEs}
+        onRefresh={refresh}
+      />
 
       {access.canManageProGrants && (
         <ProGrantsSection

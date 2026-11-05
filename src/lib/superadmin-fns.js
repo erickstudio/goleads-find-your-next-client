@@ -36,35 +36,52 @@ export const getSuperAdminDashboardData = createServerFn({ method: "GET" })
         proGrants: [],
         usersList: [],
         campaigns: {},
+        surveyFeedback: [],
+        recoveryEvents: [],
       };
     }
 
-    const [collabsPage, grantsPage, profilesPage, campaignsPage, usersRaw] =
-      await Promise.all([
-        access.canManageCollaborators
-          ? serviceRole.entities.AdminCollaborator.filter(
-              {},
-              { sort: "-created_date", limit: 50 }
-            ).catch(() => ({ items: [] }))
-          : Promise.resolve({ items: [] }),
-        access.canManageProGrants
-          ? serviceRole.entities.ProAccessGrant.filter(
-              {},
-              { sort: "-created_date", limit: 100 }
-            ).catch(() => ({ items: [] }))
-          : Promise.resolve({ items: [] }),
-        serviceRole.entities.UserProfile.filter(
-          {},
-          { sort: "-created_date", limit: 100 }
-        ).catch(() => ({ items: [] })),
-        access.canSendCommunications
-          ? serviceRole.entities.EmailCampaignContent.filter(
-              {},
-              { sort: "-created_date", limit: 20 }
-            ).catch(() => ({ items: [] }))
-          : Promise.resolve({ items: [] }),
-        serviceRole.entities.User.list("-created_date", 100).catch(() => []),
-      ]);
+    const [
+      collabsPage,
+      grantsPage,
+      profilesPage,
+      campaignsPage,
+      usersRaw,
+      surveysPage,
+      recoveryPage,
+    ] = await Promise.all([
+      access.canManageCollaborators
+        ? serviceRole.entities.AdminCollaborator.filter(
+            {},
+            { sort: "-created_date", limit: 50 }
+          ).catch(() => ({ items: [] }))
+        : Promise.resolve({ items: [] }),
+      access.canManageProGrants
+        ? serviceRole.entities.ProAccessGrant.filter(
+            {},
+            { sort: "-created_date", limit: 100 }
+          ).catch(() => ({ items: [] }))
+        : Promise.resolve({ items: [] }),
+      serviceRole.entities.UserProfile.filter(
+        {},
+        { sort: "-created_date", limit: 100 }
+      ).catch(() => ({ items: [] })),
+      access.canSendCommunications
+        ? serviceRole.entities.EmailCampaignContent.filter(
+            {},
+            { sort: "-created_date", limit: 20 }
+          ).catch(() => ({ items: [] }))
+        : Promise.resolve({ items: [] }),
+      serviceRole.entities.User.list("-created_date", 100).catch(() => []),
+      serviceRole.entities.ProductSurveyFeedback.filter(
+        {},
+        { sort: "-created_date", limit: 100 }
+      ).catch(() => ({ items: [] })),
+      serviceRole.entities.SubscriptionRecoveryEvent.filter(
+        {},
+        { sort: "-created_date", limit: 50 }
+      ).catch(() => ({ items: [] })),
+    ]);
 
     const profilesByUserId = new Map();
     const profilesByEmail = new Map();
@@ -145,6 +162,8 @@ export const getSuperAdminDashboardData = createServerFn({ method: "GET" })
       proGrants: sanitizedGrants,
       usersList,
       campaigns,
+      surveyFeedback: surveysPage?.items || [],
+      recoveryEvents: recoveryPage?.items || [],
     };
   });
 
